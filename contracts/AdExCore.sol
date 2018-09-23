@@ -44,9 +44,12 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	function deliveryCommitmentStart(BidLibrary.Bid memory bid, bytes signature, address validator, uint validatorReward)
+	function deliveryCommitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward)
 		external
 	{
+		// @TODO: replace with struct in the args once solidity supports it
+		BidLibrary.Bid memory bid = BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards);
+
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
 
@@ -54,7 +57,7 @@ contract AdExCore is AdExCoreInterface {
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
-		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, validator, validatorReward);
+		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, extraValidator, extraValidatorReward);
 		states[bidId] = BidState.Active;
 		commitment[bidId] = commitment.hash();
 
@@ -64,9 +67,12 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	function deliveryCommitmentTimeout(CommitmentLibrary.Commitment memory commitment)
+	function deliveryCommitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards)
 		external
 	{
+		// @TODO: replace with struct in the args once solidity supports it
+		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards);
+
 		require(states[commitment.bidId] == BidState.Active);
 		require(commitments[commitment.bidId] == commitment.hash());
 		require(now > commitment.validUntil);
@@ -82,9 +88,12 @@ contract AdExCore is AdExCoreInterface {
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(CommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] sigs, bytes32 vote)
 		external
 	{
+		// @TODO: replace with struct in the args once solidity supports it
+		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards);
+
 		require(states[commitment.bidId] == BidState.Active);
 		require(commitment[commitment.bidId] == commitment.hash());
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
