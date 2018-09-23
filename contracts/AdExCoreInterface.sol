@@ -6,7 +6,7 @@ import "./libs/CommitmentLibrary.sol";
 contract AdExCoreInterface {
 	// @TODO events
 
-	function cancelBid(BidLibrary.Bid memory bid) external;
+	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external;
 
 	function deliveryCommitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external;
 	function deliveryCommitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external;
