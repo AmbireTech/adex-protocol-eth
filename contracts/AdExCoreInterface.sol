@@ -10,9 +10,9 @@ contract AdExCoreInterface {
 
 	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external;
 
-	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external;
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, byte[66] signature, address extraValidator, uint extraValidatorReward) external;
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external;
-	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] signatures, bytes32 vote) external;
+	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, byte[66][] signatures, bytes32 vote) external;
 
 	function deposit(address token, uint amount) external;
 	function withdraw(address token, uint amount) external;
