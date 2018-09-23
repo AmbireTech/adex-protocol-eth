@@ -2,6 +2,7 @@ pragma solidity 0.4.24;
 
 import "./libs/SafeMath.sol";
 import "./libs/SignatureValidator.sol";
+import "./libs/SafeERC20.sol";
 import "./libs/BidLibrary.sol";
 import "./libs/CommitmentLibrary.sol";
 import "./AdExCoreInterface.sol";
@@ -33,7 +34,7 @@ contract AdExCore is AdExCoreInterface {
 		external
 	{
 		balanceAdd(token, msg.sender, amount);
-		require(new ERC20(token).transferFrom(msg.sender, address(this), amount));
+		SafeERC20.transferFrom(token, msg.sender, address(this), amount);
 
 		LogDeposit(msg.sender, token, amount);
 	}
@@ -44,7 +45,7 @@ contract AdExCore is AdExCoreInterface {
 		require(amount <= balances[token][msg.sender]);
 
 		balanceSub(token, msg.sender, amount);
-		require(new ERC20(token).transfer(msg.sender, amount));
+		SafeERC20.transfer(token, msg.sender, amount);
 
 		LogWithdrawal(msg.sender, token, amount);
 	}
