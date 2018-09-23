@@ -55,13 +55,13 @@ contract AdExCore is AdExCoreInterface {
 	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
 		bidCancelInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards));
 	}
-	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external {
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, byte[66] signature, address extraValidator, uint extraValidatorReward) external {
 		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator, extraValidatorReward);
 	}
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external {
 		commitmentTimeoutInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards));
 	}
-	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] signatures, bytes32 vote) external {
+	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, byte[66][] signatures, bytes32 vote) external {
 		commitmentFinalizeInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards), signatures, vote);
 	}
 
@@ -77,7 +77,7 @@ contract AdExCore is AdExCoreInterface {
 		states[bidId] = BidLibrary.State.Canceled;
 	}
 
-	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes signature, address extraValidator, uint extraValidatorReward)
+	function commitmentStartInternal(BidLibrary.Bid memory bid, byte[66] signature, address extraValidator, uint extraValidatorReward)
 		internal
 	{
 		bytes32 bidId = bid.hash();
@@ -117,7 +117,7 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[] signatures, bytes32 vote)
+	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, byte[66][] signatures, bytes32 vote)
 		internal
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
@@ -134,9 +134,10 @@ contract AdExCore is AdExCoreInterface {
 		uint sigLen = signatures.length;
 		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
-			if (signatures[i] == 0x0) {
-				continue;
-			}
+			// @TODO: skip upon an empty sig
+			// if (signatures[i] == 0x0) {
+			// 	continue;
+			// }
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorRewards[i]);

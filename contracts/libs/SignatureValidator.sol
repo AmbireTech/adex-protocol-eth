@@ -1,7 +1,6 @@
 pragma solidity 0.4.24;
 
 library SignatureValidator {
-
 	enum SignatureMode {
 		EIP712,
 		GETH,
@@ -13,8 +12,7 @@ library SignatureValidator {
 	/// @param signer Address of the signer.
 	/// @param signature ECDSA signature along with the mode (0 = EIP712, 1 = Geth, 2 = Trezor) {mode}{v}{r}{s}.
 	/// @return Returns whether signature is from a specified user.
-	function isValidSignature(bytes32 hash, address signer, bytes signature) internal pure returns (bool) {
-		require(signature.length == 66);
+	function isValidSignature(bytes32 hash, address signer, byte[66] signature) internal pure returns (bool) {
 		SignatureMode mode = SignatureMode(uint8(signature[0]));
 
 		uint8 v = uint8(signature[1]);
