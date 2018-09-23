@@ -39,7 +39,7 @@ library BidLibrary {
 	// can be serialized to (bidAddresses, bidValues, bidValidators, bidValidatorRewards)
 
 	// The addr of the SC is part of the hash, cause otherwise we might replay bids on newer versions
-	function hash(Bid memory bid) internal pure returns (bytes32) {
+	function hash(Bid memory bid) internal view returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
 		return keccak256(abi.encodePacked(
 			address(this),
