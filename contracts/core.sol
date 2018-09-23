@@ -1,8 +1,8 @@
 pragma solidity ^0.4.24;
 
 import "./libs/SafeMath.sol";
-import "./libs/Bid.sol";
-import "./libs/DeliveryCommitment.sol";
+import "./libs/BidLibrary.sol";
+import "./libs/DeliveryCommitmentLibrary.sol";
 import "./libs/SignatureValidator.sol";
 import "./AdExCoreInterface.sol";
 
@@ -43,14 +43,14 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	function deliveryCommitmentStart(Bid memory bid, bytes bidSig, address validator, uint validatorReward)
+	function deliveryCommitmentStart(Bid memory bid, bytes signature, address validator, uint validatorReward)
 		external
 	{
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
 
 		// Check if validly signed and advertiser has the funds
-		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, bidSig));
+		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
 		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, validator, validatorReward);
