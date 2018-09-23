@@ -34,6 +34,23 @@ library CommitmentLibrary {
 		));
 	}
 
+	function fromValues(bytes32[6] values, address[] validators, uint[] validatorRewards)
+		internal
+		pure
+		returns (Commitment memory)
+	{
+		return Commitment({
+			bidId: values[0],
+			tokenAddr: address(values[1]),
+			tokenAmount: uint(values[2]),
+			validUntil: uint(values[3]),
+			publisher: address(values[4]),
+			advertiser: address(values[5]),
+			validators: validators,
+			validatorRewards: validatorRewards
+		});
+	}
+
 	function fromBid(BidLibrary.Bid memory bid, address extraValidator, uint extraValidatorReward)
 		internal
 		pure

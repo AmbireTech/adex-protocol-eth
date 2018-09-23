@@ -20,10 +20,10 @@ library BidLibrary {
 
 	struct Bid {
 		address advertiser;
-		uint adUnit;
+		bytes32 adUnit;
 
 		// Requirements
-		uint goal;
+		bytes32 goal;
 		uint timeout;
 
 		// Reward
@@ -36,7 +36,24 @@ library BidLibrary {
 		address[] validators;
 		uint[] validatorRewards;
 	}
-	// can be serialized to (bidAddresses[2], bidValues[5], bidValidators, bidValidatorRewards)
+
+	function fromValues(bytes32[7] values, address[] validators, uint[] validatorRewards)
+		internal
+		pure
+		returns (Bid memory)
+	{
+		return Bid({
+			advertiser: address(values[0]),
+			adUnit: values[1],
+			goal: values[2],
+			timeout: uint(values[3]),
+			tokenAddr: address(values[4]),
+			tokenAmount: uint(values[5]),
+			openedTime: uint(values[6]),
+			validators: validators,
+			validatorRewards: validatorRewards
+		});
+	}
 
 	// The addr of the SC is part of the hash, cause otherwise we might replay bids on newer versions
 	function hash(Bid memory bid) internal view returns (bytes32) {
