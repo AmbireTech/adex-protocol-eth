@@ -2,6 +2,7 @@ pragma solidity 0.4.24;
 
 library SignatureValidator {
 	enum SignatureMode {
+		NO_SIG,
 		EIP712,
 		GETH,
 		TREZOR
@@ -14,6 +15,10 @@ library SignatureValidator {
 	/// @return Returns whether signature is from a specified user.
 	function isValidSignature(bytes32 hash, address signer, byte[66] signature) internal pure returns (bool) {
 		SignatureMode mode = SignatureMode(uint8(signature[0]));
+
+		if (mode == SignatureMode.NO_SIG) {
+			return false;
+		}
 
 		uint8 v = uint8(signature[1]);
 		bytes32 r;
