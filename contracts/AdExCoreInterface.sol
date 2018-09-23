@@ -4,7 +4,9 @@ import "./libs/BidLibrary.sol";
 import "./libs/CommitmentLibrary.sol";
 
 contract AdExCoreInterface {
-	// @TODO events
+	// @TODO more events
+	event LogDeposit(address user, address token, uint amount);
+	event LogWithdrawal(address user, address token, uint amount);
 
 	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external;
 

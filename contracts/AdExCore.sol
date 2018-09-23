@@ -1,5 +1,4 @@
 pragma solidity 0.4.25;
-pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
 import "./libs/SignatureValidator.sol";
@@ -10,7 +9,7 @@ import "./AdExCoreInterface.sol";
 // Things we can static-analyze
 // 1) Every time we check if the state is active, we also check delivery commitment hash
 // 2) every time we check the state, the function should either revert or change the state
-// 3) state transition: deliveryCommitmentStart locks up tokens, then Finalize and Timeout can always unlock
+// 3) state transition: CommitmentLibrary.CommitmentStart locks up tokens, then Finalize and Timeout can always unlock
 // 4) every time we transition out of BidState.Active, we should delete commitments[]
 
 contract AdExCore is AdExCoreInterface {
@@ -22,7 +21,7 @@ contract AdExCore is AdExCoreInterface {
 	mapping (address => mapping (address => uint)) private balances;
 
  	// bidId => bidState
-	mapping (bytes32 => BidState) public states;
+	mapping (bytes32 => BidLibrary.State) public states;
 	// bidId => commitmentId
 	mapping (bytes32 => bytes32) public commitments;
 
@@ -71,26 +70,24 @@ contract AdExCore is AdExCoreInterface {
 	{
 		require(msg.sender == bid.advertiser);
 
-		bytes32 memory bidId = bid.hash();
+		bytes32 bidId = bid.hash();
 
-		require(states[bidId] == BidState.Unknown);
-		states[bidId] = BidState.Canceled;
-
-		LogBidCanceled(bidId);
+		require(states[bidId] == BidLibrary.State.Unknown);
+		states[bidId] = BidLibrary.State.Canceled;
 	}
 
 	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes signature, address extraValidator, uint extraValidatorReward)
 		internal
 	{
-		bytes32 memory bidId = bid.hash();
-		require(states[bidId] == BidState.Unknown);
+		bytes32 bidId = bid.hash();
+		require(states[bidId] == BidLibrary.State.Unknown);
 
 		// Check if validly signed and advertiser has the funds
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
-		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, extraValidator, extraValidatorReward);
-		states[bidId] = BidState.Active;
+		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, msg.sender, extraValidator, extraValidatorReward);
+		states[bidId] = BidLibrary.State.Active;
 		commitment[bidId] = commitment.hash();
 
 		balanceSub(bid.tokenAddr, bid.advertiser, bid.tokenAmount);
@@ -101,11 +98,11 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
 		internal
 	{
-		require(states[commitment.bidId] == BidState.Active);
+		require(states[commitment.bidId] == BidLibrary.State.Active);
 		require(commitments[commitment.bidId] == commitment.hash());
 		require(now > commitment.validUntil);
 
-		states[commitment.bidId] = BidState.DeliveryTimedOut;
+		states[commitment.bidId] = BidLibrary.State.DeliveryTimedOut;
 		delete commitment[commitment.bidId];
 
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
@@ -117,7 +114,7 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[] signatures, bytes32 vote)
 		internal
 	{
-		require(states[commitment.bidId] == BidState.Active);
+		require(states[commitment.bidId] == BidLibrary.State.Active);
 		require(commitment[commitment.bidId] == commitment.hash());
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		// @TODO check if it's not timed out (??)
@@ -125,10 +122,10 @@ contract AdExCore is AdExCoreInterface {
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
-		bytes32 memory hashToSign = keccak256(commitment.hash(), vote);
-		uint memory remaining = commitment.tokenAmount;
-		uint memory votes = 0;
-		uint memory sigLen = signatures.length;
+		bytes32 hashToSign = keccak256(commitment.hash(), vote);
+		uint remaining = commitment.tokenAmount;
+		uint votes = 0;
+		uint sigLen = signatures.length;
 		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
 			if (signatures[i] == 0x0) {
@@ -146,10 +143,10 @@ contract AdExCore is AdExCoreInterface {
 		require(votes*3 >= commitment.validators.length*2);
 
 		if (vote != 0x0) {
-			states[commitment.bidId] = BidState.DeliverySucceeded;
+			states[commitment.bidId] = BidLibrary.State.DeliverySucceeded;
 			balanceAdd(commitment.tokenAddr, commitment.publisher, remaining);
 		} else {
-			states[commitment.bidId] = BidState.DeliveryFailed;
+			states[commitment.bidId] = BidLibrary.State.DeliveryFailed;
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
 		delete commitments[commitment.bidId];

@@ -2,7 +2,7 @@ pragma solidity 0.4.25;
 
 library BidLibrary {
 	// @TODO: schema hash
-	enum BidState { 
+	enum State { 
 		// Unknown means it does not exist on-chain, i.e. there's never been a DeliveryCommitment for it
 		Unknown,
 
