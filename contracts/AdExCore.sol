@@ -1,4 +1,4 @@
-pragma solidity 0.4.25;
+pragma solidity 0.4.24;
 
 import "./libs/SafeMath.sol";
 import "./libs/SignatureValidator.sol";
@@ -81,6 +81,12 @@ contract AdExCore is AdExCoreInterface {
 	{
 		bytes32 bidId = bid.hash();
 		require(states[bidId] == BidLibrary.State.Unknown);
+		require(bid.tokenAmount > 0);
+
+		// @TODO: validator reward sum here
+		// if we don't do that, finalize will always fail but we will end up with a stuck bid that can only be timed out
+
+		// @TODO: max timeout?
 
 		// Check if validly signed and advertiser has the funds
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
