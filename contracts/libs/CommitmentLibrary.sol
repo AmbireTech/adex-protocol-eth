@@ -73,6 +73,6 @@ library CommitmentLibrary {
 		pure
 		returns (Commitment memory)
 	{
-		// @TODO
+		// @TODO construct from bid
 	}
 }

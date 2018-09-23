@@ -29,7 +29,6 @@ contract AdExCore is AdExCoreInterface {
 	// Public Functions
 	constructor() public {}
 
-	// @TODO: ERC20 hack
 	function deposit(address token, uint amount)
 		external
 	{
