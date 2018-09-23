@@ -29,10 +29,12 @@ contract AdExCore is AdExCoreInterface {
 	// Public Functions
 	constructor() public {}
 
-	// The bid is canceled by the advertiser
-	function cancelBid(BidLibrary.Bid memory bid)
+	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards)
 		external
 	{
+		// @TODO: replace with struct in the args once solidity supports it
+		BidLibrary.Bid memory bid = BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards);
+
 		require(msg.sender == bid.advertiser);
 
 		bytes32 memory bidId = bid.hash();
@@ -43,7 +45,6 @@ contract AdExCore is AdExCoreInterface {
 		LogBidCanceled(bidId);
 	}
 
-	// the bid is accepted by the publisher
 	function deliveryCommitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward)
 		external
 	{
@@ -66,7 +67,6 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-	// This can be done if a bid is accepted, but expired
 	function deliveryCommitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards)
 		external
 	{
@@ -86,8 +86,6 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-
-	// both publisher and advertiser have to call this for a bid to be considered verified
 	function deliveryCommitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] sigs, bytes32 vote)
 		external
 	{
