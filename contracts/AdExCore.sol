@@ -134,6 +134,7 @@ contract AdExCore is AdExCoreInterface {
 		uint sigLen = signatures.length;
 		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
+			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorRewards[i]);
