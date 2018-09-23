@@ -25,8 +25,7 @@ contract AdExCore is AdExCoreInterface {
 	mapping (bytes32 => bytes32) public commitments;
 
 	// Public Functions
-	function ADXCore() public {
-	}
+	function ADXCore() public {}
 
 	// The bid is canceled by the advertiser
 	function cancelBid(Bid memory bid)
@@ -64,7 +63,6 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	// @TODO docs
 	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitment memory commitment)
 		public
 	{
@@ -91,6 +89,9 @@ contract AdExCore is AdExCoreInterface {
 		require(commitment[bidId] == commitment.hash());
 		// @TODO check if it's not timed out (??)
 
+		// Unlock the funds
+		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
+
 		uint memory remaining = commitment.tokenAmount;
 		uint memory votes = 0;
 		uint memory sigLen = sigs.length;
@@ -109,8 +110,6 @@ contract AdExCore is AdExCoreInterface {
 		// Always require supermajority
 		require(votes*3 >= commitment.validators.length*2);
 
-		delete commitments[bidId];
-
 		if (vote != 0x0) {
 			states[bidId] = BidState.DeliverySucceeded;
 			balanceAdd(commitment.tokenAddr, commitment.publisher, remaining);
@@ -118,7 +117,7 @@ contract AdExCore is AdExCoreInterface {
 			states[bidId] =BidState.DeliveryFailed;
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
-		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
+		delete commitments[bidId];
 
 		// @TODO: log event
 	}
