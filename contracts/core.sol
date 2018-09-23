@@ -100,7 +100,6 @@ contract AdExCore is AdExCoreInterface {
 			}
 			if (commitment.didSignVote(i, sigs[i], vote)) {
 				votes++;
-				// @WARNING: balanceAdd is re-entrant here
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
 				// if the sum of al validatorRewards is more than tokenAmount, this will revert eventually
 				remaining = remaining.sub(commitment.validatorReward[i]);
