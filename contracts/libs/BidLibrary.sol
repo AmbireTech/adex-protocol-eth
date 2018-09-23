@@ -1,6 +1,7 @@
 pragma solidity 0.4.25;
 
 library BidLibrary {
+	// @TODO: schema hash
 	enum BidState { 
 		// Unknown means it does not exist on-chain, i.e. there's never been a DeliveryCommitment for it
 		Unknown,
@@ -29,26 +30,27 @@ library BidLibrary {
 		address tokenAddr;
 		uint tokenAmount;
 
-		// @TODO: should tihs be 'nonce'?
+		// @TODO: should this be 'nonce'?
 		uint openedTime;
 
 		address[] validators;
 		uint[] validatorRewards;
 	}
-	// can be serialized to (addresses, values, validators, validatorRewards)
+	// can be serialized to (bidAddresses, bidValues, bidValidators, bidValidatorRewards)
 
-    function hash(Bid memory bid) internal view returns (bytes32) {
-    	// In this version of solidity, we can no longer keccak256() directly
-        return keccak256(abi.encodePacked(
-            address(this),
-            bid.advertiser,
-            bid.adUnit,
-            bid.goal,
-            bid.timeout,
-            bid.tokenAddr,
-            bid.tokenAmount,
-            bid.openedTime,
-            this
-        ));
-    }
+	function hash(Bid memory bid) internal pure returns (bytes32) {
+		// In this version of solidity, we can no longer keccak256() directly
+		return keccak256(abi.encodePacked(
+			address(this),
+			bid.advertiser,
+			bid.adUnit,
+			bid.goal,
+			bid.timeout,
+			bid.tokenAddr,
+			bid.tokenAmount,
+			bid.openedTime,
+			bid.validators,
+			bid.validatorRewards,
+		));
+	}
 }

@@ -64,7 +64,7 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitmentLibrary.DeliveryCommitment memory commitment)
+	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitmentLibrary.Commitment memory commitment)
 		external
 	{
 		require(states[bidId] == BidState.Active);
@@ -82,7 +82,7 @@ contract AdExCore is AdExCoreInterface {
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitmentLibrary.DeliveryCommitment memory commitment, bytes32[] sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
 		external
 	{
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
