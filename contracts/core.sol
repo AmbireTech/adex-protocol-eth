@@ -43,29 +43,24 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	function deliveryCommitmentStart(Bid memory bid, address validator, uint validatorReward)
+	function deliveryCommitmentStart(Bid memory bid, bytes32 bidSig, address validator, uint validatorReward)
 		public
 	{
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
 
-		// @TODO set commitment
+		// Check if validly signed and advertiser has the funds
+		address memory signer = bid.getSigner(bidSig);
+		require(signer == bid.advertiser);
+		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
+		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, validator, validatorReward);
 		states[bidId] = BidState.Active;
 		commitment[bidId] = commitment.hash();
 
-		// deliveryPeriodStart(bid, validator, validatorReward)
-		// check if bid is in state Unknown
-		// check if the signer (advertiser) has the funds
-		// check if the validator reward sum <= total reward
-		// build the deliveryPeriod, hash it
-		// lock the reward
-		// set that the bid is in progress
-		// set the deliveryPeriod hash in the mapping
-		// return the hash
 		balanceSub(bid.tokenAddr, bid.advertiser, bid.tokenAmount);
 		balanceAdd(bid.tokenAddr, address(this), bid.tokenAmount);
-
+		// @TODO log event
 	}
 
 	// This can be done if a bid is accepted, but expired
@@ -105,6 +100,7 @@ contract AdExCore is AdExCoreInterface {
 			}
 			if (commitment.didSignVote(i, sigs[i], vote)) {
 				votes++;
+				// @WARNING: balanceAdd is re-entrant here
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
 				// if the sum of al validatorRewards is more than tokenAmount, this will revert eventually
 				remaining = remaining.sub(commitment.validatorReward[i]);
@@ -114,7 +110,7 @@ contract AdExCore is AdExCoreInterface {
 		// Always require supermajority
 		require(votes*3 >= commitment.validators.length*2);
 
-		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
+		delete commitments[bidId];
 
 		if (vote != 0x0) {
 			states[bidId] = BidState.DeliverySucceeded;
@@ -123,8 +119,8 @@ contract AdExCore is AdExCoreInterface {
 			states[bidId] =BidState.DeliveryFailed;
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
+		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
-		delete commitments[bidId];
 		// @TODO: log event
 	}
 
