@@ -82,17 +82,16 @@ contract AdExCore is AdExCoreInterface {
 		bytes32 bidId = bid.hash();
 		require(states[bidId] == BidLibrary.State.Unknown);
 		require(bid.tokenAmount > 0);
-
-		// @TODO: validator reward sum here
-		// if we don't do that, finalize will always fail but we will end up with a stuck bid that can only be timed out
-
 		// @TODO: max timeout?
-
+		// @TODO: should we have more bid validation here? e.g. bid.isValid()
 		// Check if validly signed and advertiser has the funds
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
 		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, msg.sender, extraValidator, extraValidatorReward);
+
+		require(commitment.isValid());
+
 		states[bidId] = BidLibrary.State.Active;
 		commitment[bidId] = commitment.hash();
 
@@ -122,7 +121,7 @@ contract AdExCore is AdExCoreInterface {
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
 		require(commitment[commitment.bidId] == commitment.hash());
-		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
+		// @TODO: AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		// @TODO check if it's not timed out (??)
 
 		// Unlock the funds
