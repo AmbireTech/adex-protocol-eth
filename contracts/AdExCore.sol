@@ -29,6 +29,27 @@ contract AdExCore is AdExCoreInterface {
 	// Public Functions
 	constructor() public {}
 
+	// @TODO: ERC20 hack
+	function deposit(address token, uint amount)
+		external
+	{
+		balanceAdd(token, msg.sender, amount);
+		require(new ERC20(token).transferFrom(msg.sender, address(this), amount));
+
+		LogDeposit(msg.sender, token, amount);
+	}
+
+	function withdraw(address token, uint amount)
+		external
+	{
+		require(amount <= balances[token][msg.sender]);
+
+		balanceSub(token, msg.sender, amount);
+		require(new ERC20(token).transfer(msg.sender, amount));
+
+		LogWithdrawal(msg.sender, token, amount);
+	}
+
 	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards)
 		external
 	{
@@ -130,27 +151,6 @@ contract AdExCore is AdExCoreInterface {
 		delete commitments[commitment.bidId];
 
 		// @TODO: log event
-	}
-
-	// @TODO: ERC20 hack
-	function deposit(address token, uint amount)
-		external
-	{
-		balanceAdd(token, msg.sender, amount);
-		require(new ERC20(token).transferFrom(msg.sender, address(this), amount));
-
-		LogDeposit(msg.sender, token, amount);
-	}
-
-	function withdraw(address token, uint amount)
-		external
-	{
-		require(amount <= balances[token][msg.sender]);
-
-		balanceSub(token, msg.sender, amount);
-		require(new ERC20(token).transfer(msg.sender, amount));
-
-		LogWithdrawal(msg.sender, token, amount);
 	}
 
 	// A few internal helpers
