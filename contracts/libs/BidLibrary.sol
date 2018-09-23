@@ -51,7 +51,7 @@ library BidLibrary {
 			bid.tokenAmount,
 			bid.openedTime,
 			bid.validators,
-			bid.validatorRewards,
+			bid.validatorRewards
 		));
 	}
 }
