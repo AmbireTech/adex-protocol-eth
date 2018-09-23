@@ -134,10 +134,6 @@ contract AdExCore is AdExCoreInterface {
 		uint sigLen = signatures.length;
 		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
-			// @TODO: skip upon an empty sig
-			// if (signatures[i] == 0x0) {
-			// 	continue;
-			// }
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorRewards[i]);
