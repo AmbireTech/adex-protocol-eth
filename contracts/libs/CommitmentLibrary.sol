@@ -1,6 +1,6 @@
 pragma solidity 0.4.25;
 
-import "./libs/BidLibrary.sol";
+import "./BidLibrary.sol";
 
 library CommitmentLibrary {
 	struct Commitment {
