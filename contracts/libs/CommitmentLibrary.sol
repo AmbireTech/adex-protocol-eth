@@ -1,8 +1,11 @@
 pragma solidity 0.4.24;
 
+import "./SafeMath.sol";
 import "./BidLibrary.sol";
 
 library CommitmentLibrary {
+	using SafeMath for uint;
+
 	uint8 constant MIN_VALIDATOR_COUNT = 3;
 
 	struct Commitment {
@@ -46,8 +49,17 @@ library CommitmentLibrary {
 		if (commitment.validators.length < MIN_VALIDATOR_COUNT) {
 			return false;
 		}
-		// @TODO: validator reward sum here
+
+		// Validator reward sum is checked
 		// if we don't do that, finalize will always fail but we will end up with a stuck bid that can only be timed out
+		uint totalReward = 0;
+		for (uint i=0; i<commitment.validatorRewards.length; i++) {
+			totalReward = totalReward.add(commitment.validatorRewards[i]);
+		}
+		if (totalReward > commitment.tokenAmount) {
+			return false;
+		}
+
 		return true;
 	}
 
