@@ -18,7 +18,6 @@ library CommitmentLibrary {
 		address[] validators;
 		uint[] validatorRewards;
 	}
-	// can be serialized to (bidId, commitmentAddrs, commitmentValues, validators, validatorRewards)
 
 	function hash(Commitment memory commitment) internal pure returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
@@ -32,6 +31,16 @@ library CommitmentLibrary {
 			commitment.validators,
 			commitment.validatorRewards
 		));
+	}
+
+	function isValid(Commitment memory commitment)
+		internal
+		pure
+		returns (bool)
+	{
+		// @TODO: validator reward sum here
+		// if we don't do that, finalize will always fail but we will end up with a stuck bid that can only be timed out
+		return true;
 	}
 
 	function fromValues(bytes32[6] values, address[] validators, uint[] validatorRewards)
