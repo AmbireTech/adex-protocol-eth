@@ -60,7 +60,7 @@ library CommitmentLibrary {
 		});
 	}
 
-	function fromBid(BidLibrary.Bid memory bid, address extraValidator, uint extraValidatorReward)
+	function fromBid(BidLibrary.Bid memory bid, address publisher, address extraValidator, uint extraValidatorReward)
 		internal
 		pure
 		returns (Commitment memory)

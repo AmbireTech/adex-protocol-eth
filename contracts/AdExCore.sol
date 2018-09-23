@@ -36,7 +36,7 @@ contract AdExCore is AdExCoreInterface {
 		balanceAdd(token, msg.sender, amount);
 		SafeERC20.transferFrom(token, msg.sender, address(this), amount);
 
-		LogDeposit(msg.sender, token, amount);
+		emit LogDeposit(msg.sender, token, amount);
 	}
 
 	function withdraw(address token, uint amount)
@@ -47,15 +47,15 @@ contract AdExCore is AdExCoreInterface {
 		balanceSub(token, msg.sender, amount);
 		SafeERC20.transfer(token, msg.sender, amount);
 
-		LogWithdrawal(msg.sender, token, amount);
+		emit LogWithdrawal(msg.sender, token, amount);
 	}
 
 	// Shim that will be removed once solidity supports external functions with structs in their args
 	// Then, we will delete the next 4 functions and just rename all *Internal and change their visibility
-	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
+	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
 		bidCancelInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards));
 	}
-	function commitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external {
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external {
 		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator, extraValidatorReward);
 	}
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external {
@@ -94,7 +94,7 @@ contract AdExCore is AdExCoreInterface {
 		require(commitment.isValid());
 
 		states[bidId] = BidLibrary.State.Active;
-		commitment[bidId] = commitment.hash();
+		commitments[bidId] = commitment.hash();
 
 		balanceSub(bid.tokenAddr, bid.advertiser, bid.tokenAmount);
 		balanceAdd(bid.tokenAddr, address(this), bid.tokenAmount);
@@ -109,7 +109,7 @@ contract AdExCore is AdExCoreInterface {
 		require(now > commitment.validUntil);
 
 		states[commitment.bidId] = BidLibrary.State.DeliveryTimedOut;
-		delete commitment[commitment.bidId];
+		delete commitments[commitment.bidId];
 
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 		balanceAdd(commitment.tokenAddr, commitment.advertiser, commitment.tokenAmount);
@@ -121,14 +121,14 @@ contract AdExCore is AdExCoreInterface {
 		internal
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
-		require(commitment[commitment.bidId] == commitment.hash());
+		require(commitments[commitment.bidId] == commitment.hash());
 		// @TODO: AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		// @TODO check if it's not timed out (??)
 
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
-		bytes32 hashToSign = keccak256(commitment.hash(), vote);
+		bytes32 hashToSign = keccak256(abi.encodePacked(commitment.hash(), vote));
 		uint remaining = commitment.tokenAmount;
 		uint votes = 0;
 		uint sigLen = signatures.length;
@@ -139,9 +139,9 @@ contract AdExCore is AdExCoreInterface {
 			}
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
-				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
+				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorRewards[i]);
 				// if the sum of all validatorRewards is more than tokenAmount, this will revert eventually
-				remaining = remaining.sub(commitment.validatorReward[i]);
+				remaining = remaining.sub(commitment.validatorRewards[i]);
 			}
 		}
 
