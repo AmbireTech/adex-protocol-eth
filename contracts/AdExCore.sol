@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "./libs/SafeMath.sol";
 import "./libs/SignatureValidator.sol";
 import "./libs/BidLibrary.sol";
-import "./libs/DeliveryCommitmentLibrary.sol";
+import "./libs/CommitmentLibrary.sol";
 import "./AdExCoreInterface.sol";
 
 // Things we can static-analyze
@@ -16,7 +16,7 @@ import "./AdExCoreInterface.sol";
 contract AdExCore is AdExCoreInterface {
 	using SafeMath for *;
 	using BidLibrary for BidLibrary.Bid;
-	using DeliveryCommitmentLibrary for DeliveryCommitmentLibrary.Commitment;
+	using CommitmentLibrary for CommitmentLibrary.Commitment;
 
 	// assets (tokenAddr => (account => uint))
 	mapping (address => mapping (address => uint)) private balances;
@@ -64,7 +64,7 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	function deliveryCommitmentTimeout(DeliveryCommitmentLibrary.Commitment memory commitment)
+	function deliveryCommitmentTimeout(CommitmentLibrary.Commitment memory commitment)
 		external
 	{
 		require(states[commitment.bidId] == BidState.Active);
@@ -82,7 +82,7 @@ contract AdExCore is AdExCoreInterface {
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(DeliveryCommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(CommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
 		external
 	{
 		require(states[commitment.bidId] == BidState.Active);

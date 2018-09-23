@@ -2,7 +2,7 @@ pragma solidity 0.4.25;
 
 import "./libs/BidLibrary.sol";
 
-library DeliveryCommitmentLibrary {
+library CommitmentLibrary {
 	struct Commitment {
 		// because it contains the bidId, we don't need to hash address(this)
 		bytes32 bidId;
