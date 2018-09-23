@@ -42,15 +42,14 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	function deliveryCommitmentStart(Bid memory bid, bytes32 bidSig, address validator, uint validatorReward)
+	function deliveryCommitmentStart(Bid memory bid, bytes bidSig, address validator, uint validatorReward)
 		public
 	{
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
 
 		// Check if validly signed and advertiser has the funds
-		address memory signer = bid.getSigner(bidSig);
-		require(signer == bid.advertiser);
+		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, bidSig));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
 		DeliveryCommitment memory commitment = DeliveryCommitment.fromBid(bid, msg.sender, validator, validatorReward);
@@ -92,14 +91,16 @@ contract AdExCore is AdExCoreInterface {
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
+		bytes32 memory hashToSign = keccak256(commitment.hash(), vote);
 		uint memory remaining = commitment.tokenAmount;
 		uint memory votes = 0;
 		uint memory sigLen = sigs.length;
+		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
 			if (sigs[i] == 0x0) {
 				continue;
 			}
-			if (commitment.didSignVote(i, sigs[i], vote)) {
+			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], sigs[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
 				// if the sum of all validatorRewards is more than tokenAmount, this will revert eventually
@@ -107,7 +108,7 @@ contract AdExCore is AdExCoreInterface {
 			}
 		}
 
-		// Always require supermajority
+		// Always require supermajority; we're checking the same vote, so this means 2/3 validators signed the same vote
 		require(votes*3 >= commitment.validators.length*2);
 
 		if (vote != 0x0) {
