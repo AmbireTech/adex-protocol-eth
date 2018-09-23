@@ -18,7 +18,7 @@ library DeliveryCommitmentLibrary {
 		address[] validators;
 		uint[] validatorRewards;
 	}
-	// can be serialized to ... @TODO
+	// can be serialized to (bidId, commitmentAddrs, commitmentValues, validators, validatorRewards)
 
 	function hash(Commitment memory commitment) internal pure returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
