@@ -68,11 +68,37 @@ library CommitmentLibrary {
 		});
 	}
 
-	function fromBid(BidLibrary.Bid memory bid, address publisher, address extraValidator, uint extraValidatorReward)
+	function fromBid(BidLibrary.Bid memory bid, bytes32 bidId, address publisher, address extraValidator, uint extraValidatorReward)
 		internal
-		pure
+		view
 		returns (Commitment memory)
 	{
-		// @TODO construct from bid
+		address[] memory validators = bid.validators;
+		uint[] memory validatorRewards = bid.validatorRewards;
+
+		// publishers are allowed to add up to one extra validator
+		if (extraValidator != 0x0) {
+			uint validatorLen = bid.validators.length;
+			validators = new address[](validatorLen + 1);
+			validatorRewards = new uint[](validatorLen + 1);
+
+			for (uint i=0; i<validatorLen; i++) {
+				validators[i] = bid.validators[i];
+				validatorRewards[i] = bid.validatorRewards[i];
+			}
+			validators[validatorLen] = extraValidator;
+			validatorRewards[validatorLen] = extraValidatorReward;
+		}
+
+		return Commitment({
+			bidId: bidId,
+			tokenAddr: bid.tokenAddr,
+			tokenAmount: bid.tokenAmount,
+			validUntil: now + bid.timeout,
+			publisher: publisher,
+			advertiser: bid.advertiser,
+			validators: validators,
+			validatorRewards: validatorRewards
+		});
 	}
 }
