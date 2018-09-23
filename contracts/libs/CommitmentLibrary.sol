@@ -81,7 +81,6 @@ library CommitmentLibrary {
 			uint validatorLen = bid.validators.length;
 			validators = new address[](validatorLen + 1);
 			validatorRewards = new uint[](validatorLen + 1);
-
 			for (uint i=0; i<validatorLen; i++) {
 				validators[i] = bid.validators[i];
 				validatorRewards[i] = bid.validatorRewards[i];

@@ -81,10 +81,9 @@ contract AdExCore is AdExCoreInterface {
 	{
 		bytes32 bidId = bid.hash();
 		require(states[bidId] == BidLibrary.State.Unknown);
-		require(bid.tokenAmount > 0);
-		// @TODO: max timeout?
-		// @TODO: should we have more bid validation here? e.g. bid.isValid()
-		// Check if validly signed and advertiser has the funds
+		require(bid.isValid());
+
+		// Check if validly signed and the advertiser has the funds
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
