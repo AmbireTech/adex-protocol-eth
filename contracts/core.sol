@@ -3,6 +3,7 @@ pragma solidity ^0.4.24;
 import "./libs/SafeMath.sol";
 import "./libs/Bid.sol";
 import "./libs/DeliveryCommitment.sol";
+import "./libs/SignatureValidator.sol";
 import "./AdExCoreInterface.sol";
 
 // Things we can static-analyze
@@ -29,7 +30,7 @@ contract AdExCore is AdExCoreInterface {
 
 	// The bid is canceled by the advertiser
 	function cancelBid(Bid memory bid)
-		public
+		external
 	{
 		require(msg.sender == bid.advertiser);
 
@@ -43,7 +44,7 @@ contract AdExCore is AdExCoreInterface {
 
 	// the bid is accepted by the publisher
 	function deliveryCommitmentStart(Bid memory bid, bytes bidSig, address validator, uint validatorReward)
-		public
+		external
 	{
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
@@ -63,7 +64,7 @@ contract AdExCore is AdExCoreInterface {
 
 	// This can be done if a bid is accepted, but expired
 	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitment memory commitment)
-		public
+		external
 	{
 		require(states[bidId] == BidState.Active);
 		require(commitments[bidId] == commitment.hash());
@@ -81,7 +82,7 @@ contract AdExCore is AdExCoreInterface {
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
 	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitment memory commitment, bytes32[] sigs, bytes32 vote)
-		public
+		external
 	{
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		require(states[bidId] == BidState.Active);
@@ -115,7 +116,7 @@ contract AdExCore is AdExCoreInterface {
 			states[bidId] = BidState.DeliverySucceeded;
 			balanceAdd(commitment.tokenAddr, commitment.publisher, remaining);
 		} else {
-			states[bidId] =BidState.DeliveryFailed;
+			states[bidId] = BidState.DeliveryFailed;
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
 		delete commitments[bidId];
@@ -144,7 +145,7 @@ contract AdExCore is AdExCoreInterface {
 		LogWithdrawal(msg.sender, token, amount);
 	}
 
-	// Internals
+	// A few internal helpers
 	function balanceSub(address token, address acc, uint amount) internal {
 		balances[token][acc] = balances[token][acc].sub(amount);
 	}
