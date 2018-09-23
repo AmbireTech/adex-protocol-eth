@@ -1,4 +1,5 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.25;
+pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
 import "./libs/BidLibrary.sol";
@@ -26,10 +27,10 @@ contract AdExCore is AdExCoreInterface {
 	mapping (bytes32 => bytes32) public commitments;
 
 	// Public Functions
-	function ADXCore() public {}
+	constructor() public {}
 
 	// The bid is canceled by the advertiser
-	function cancelBid(Bid memory bid)
+	function cancelBid(BidLibrary.Bid memory bid)
 		external
 	{
 		require(msg.sender == bid.advertiser);
@@ -43,7 +44,7 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	function deliveryCommitmentStart(Bid memory bid, bytes signature, address validator, uint validatorReward)
+	function deliveryCommitmentStart(BidLibrary.Bid memory bid, bytes signature, address validator, uint validatorReward)
 		external
 	{
 		bytes32 memory bidId = bid.hash();
@@ -63,7 +64,7 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitment memory commitment)
+	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitmentLibrary.DeliveryCommitment memory commitment)
 		external
 	{
 		require(states[bidId] == BidState.Active);
@@ -81,7 +82,7 @@ contract AdExCore is AdExCoreInterface {
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitment memory commitment, bytes32[] sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitmentLibrary.DeliveryCommitment memory commitment, bytes32[] sigs, bytes32 vote)
 		external
 	{
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0

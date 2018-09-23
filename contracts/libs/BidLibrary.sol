@@ -1,6 +1,6 @@
-pragma solidity ^0.4.24;
+pragma solidity 0.4.25;
 
-contract BidLibrary {
+library BidLibrary {
 	enum BidState { 
 		// Unknown means it does not exist on-chain, i.e. there's never been a DeliveryCommitment for it
 		Unknown,
@@ -18,8 +18,6 @@ contract BidLibrary {
 	}
 
 	struct Bid {
-		address exchange;
-
 		address advertiser;
 		bytes32 adUnit;
 
@@ -37,4 +35,20 @@ contract BidLibrary {
 		address[] validators;
 		uint[] validatorRewards;
 	}
+	// can be serialized to (addresses, values, validators, validatorRewards)
+
+    function hash(Bid memory bid) internal view returns (bytes32) {
+    	// In this version of solidity, we can no longer keccak256() directly
+        return keccak256(abi.encodePacked(
+            address(this),
+            bid.advertiser,
+            bid.adUnit,
+            bid.goal,
+            bid.timeout,
+            bid.tokenAddr,
+            bid.tokenAmount,
+            bid.openedTime,
+            this
+        ));
+    }
 }
