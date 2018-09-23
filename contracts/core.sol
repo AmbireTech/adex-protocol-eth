@@ -2,9 +2,9 @@ pragma solidity 0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
+import "./libs/SignatureValidator.sol";
 import "./libs/BidLibrary.sol";
 import "./libs/DeliveryCommitmentLibrary.sol";
-import "./libs/SignatureValidator.sol";
 import "./AdExCoreInterface.sol";
 
 // Things we can static-analyze
