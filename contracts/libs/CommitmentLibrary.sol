@@ -3,6 +3,8 @@ pragma solidity 0.4.24;
 import "./BidLibrary.sol";
 
 library CommitmentLibrary {
+	uint8 constant MIN_VALIDATOR_COUNT = 3;
+
 	struct Commitment {
 		// because it contains the bidId, we don't need to hash address(this)
 		bytes32 bidId;
@@ -38,6 +40,12 @@ library CommitmentLibrary {
 		pure
 		returns (bool)
 	{
+		if (commitment.validators.length != commitment.validatorRewards.length) {
+			return false;
+		}
+		if (commitment.validators.length < MIN_VALIDATOR_COUNT) {
+			return false;
+		}
 		// @TODO: validator reward sum here
 		// if we don't do that, finalize will always fail but we will end up with a stuck bid that can only be timed out
 		return true;
