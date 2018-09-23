@@ -8,11 +8,11 @@ contract AdExCoreInterface {
 	event LogDeposit(address user, address token, uint amount);
 	event LogWithdrawal(address user, address token, uint amount);
 
-	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external;
+	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external;
 
-	function commitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external;
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external;
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external;
-	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes[] signatures, bytes32 vote);
+	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] signatures, bytes32 vote) external;
 
 	function deposit(address token, uint amount) external;
 	function withdraw(address token, uint amount) external;
