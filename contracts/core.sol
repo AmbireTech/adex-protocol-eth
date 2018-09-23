@@ -43,7 +43,6 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// the bid is accepted by the publisher
-	// @TODO: deliveryCommitmentStart
 	function deliveryCommitmentStart(Bid memory bid, address validator, uint validatorReward)
 		public
 	{
@@ -89,30 +88,44 @@ contract AdExCore is AdExCoreInterface {
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitment memory commitment, []bytes32 sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitment memory commitment, bytes32[] sigs, bytes32 vote)
 		public
 	{
-		// @TODO: assert in some static way that every time we check if state is Active, we should also check commitments[bidId]
-		// and, finally, we change the state
+		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		require(states[bidId] == BidState.Active);
 		require(commitment[bidId] == commitment.hash());
 		// @TODO check if it's not timed out (??)
 
-		// go through sigs, count the valid ones; don't check ones set to 0x0
-		// 	for each valid one, assign the validator reward
-		// check if isSupermajority (voteCount*3 >= totalValidators*2)
-		// send the REMAINING of the reward to the publisher/advertiser, depending on the vote
-		// 	balances[token][adv or pub] += remaining
-		// 	balances[token][adv] -= total
-		// unlock the reward
-		// change state
+		uint memory remaining = commitment.tokenAmount;
+		uint memory votes = 0;
+		uint memory sigLen = sigs.length;
+		for (uint i=0; i<sigLen; i++) {
+			if (sigs[i] == 0x0) {
+				continue;
+			}
+			if (commitment.didSignVote(i, sigs[i], vote)) {
+				votes++;
+				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
+				// if the sum of al validatorRewards is more than tokenAmount, this will revert eventually
+				remaining = remaining.sub(commitment.validatorReward[i]);
+			}
+		}
 
-		states[bidId] = BidState.Success;
-		delete commitments[bidId];
+		// Always require supermajority
+		require(votes*3 >= commitment.validators.length*2);
 
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
-		// @TODO: publisher OR advertiser, remaining amount
-		balanceAdd(commitment.tokenAddr, commitment.publisher, commitment.tokenAmount);
+
+		if (vote != 0x0) {
+			states[bidId] = BidState.DeliverySucceeded;
+			balanceAdd(commitment.tokenAddr, commitment.publisher, remaining);
+		} else {
+			states[bidId] =BidState.DeliveryFailed;
+			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
+		}
+
+		delete commitments[bidId];
+		// @TODO: log event
 	}
 
 	// @TODO: ERC20 hack
