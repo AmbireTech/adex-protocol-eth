@@ -14,7 +14,7 @@ import "./AdExCoreInterface.sol";
 // 4) every time we transition out of BidState.Active, we should delete commitments[]
 
 contract AdExCore is AdExCoreInterface {
-	using SafeMath for *;
+	using SafeMath for uint;
 	using BidLibrary for BidLibrary.Bid;
 	using CommitmentLibrary for CommitmentLibrary.Commitment;
 
@@ -129,9 +129,8 @@ contract AdExCore is AdExCoreInterface {
 		bytes32 hashToSign = keccak256(abi.encodePacked(commitment.hash(), vote));
 		uint remaining = commitment.tokenAmount;
 		uint votes = 0;
-		uint sigLen = signatures.length;
-		require(sigLen <= commitment.validators.length);
-		for (uint i=0; i<sigLen; i++) {
+		require(signatures.length <= commitment.validators.length);
+		for (uint i=0; i<signatures.length; i++) {
 			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
