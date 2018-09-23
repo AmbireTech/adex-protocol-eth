@@ -50,12 +50,25 @@ contract AdExCore is AdExCoreInterface {
 		LogWithdrawal(msg.sender, token, amount);
 	}
 
-	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards)
-		external
-	{
-		// @TODO: replace with struct in the args once solidity supports it
-		BidLibrary.Bid memory bid = BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards);
+	// Shim that will be removed once solidity supports external functions with structs in their args
+	// Then, we will delete the next 4 functions and just rename all *Internal and change their visibility
+	function bidCancel(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
+		bidCancelInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards));
+	}
+	function commitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward) external {
+		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator, extraValidatorReward);
+	}
+	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external {
+		commitmentTimeoutInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards));
+	}
+	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] signatures, bytes32 vote) external {
+		commitmentFinalizeInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards), signatures, vote);
+	}
 
+	// Internal functions
+	function bidCancelInternal(BidLibrary.Bid memory bid)
+		internal
+	{
 		require(msg.sender == bid.advertiser);
 
 		bytes32 memory bidId = bid.hash();
@@ -66,12 +79,9 @@ contract AdExCore is AdExCoreInterface {
 		LogBidCanceled(bidId);
 	}
 
-	function deliveryCommitmentStart(uint[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes signature, address extraValidator, uint extraValidatorReward)
-		external
+	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes signature, address extraValidator, uint extraValidatorReward)
+		internal
 	{
-		// @TODO: replace with struct in the args once solidity supports it
-		BidLibrary.Bid memory bid = BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards);
-
 		bytes32 memory bidId = bid.hash();
 		require(states[bidId] == BidState.Unknown);
 
@@ -88,12 +98,9 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-	function deliveryCommitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards)
-		external
+	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
+		internal
 	{
-		// @TODO: replace with struct in the args once solidity supports it
-		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards);
-
 		require(states[commitment.bidId] == BidState.Active);
 		require(commitments[commitment.bidId] == commitment.hash());
 		require(now > commitment.validUntil);
@@ -107,12 +114,9 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-	function deliveryCommitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[] sigs, bytes32 vote)
-		external
+	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[] signatures, bytes32 vote)
+		internal
 	{
-		// @TODO: replace with struct in the args once solidity supports it
-		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards);
-
 		require(states[commitment.bidId] == BidState.Active);
 		require(commitment[commitment.bidId] == commitment.hash());
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
@@ -124,13 +128,13 @@ contract AdExCore is AdExCoreInterface {
 		bytes32 memory hashToSign = keccak256(commitment.hash(), vote);
 		uint memory remaining = commitment.tokenAmount;
 		uint memory votes = 0;
-		uint memory sigLen = sigs.length;
+		uint memory sigLen = signatures.length;
 		require(sigLen <= commitment.validators.length);
 		for (uint i=0; i<sigLen; i++) {
-			if (sigs[i] == 0x0) {
+			if (signatures[i] == 0x0) {
 				continue;
 			}
-			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], sigs[i])) {
+			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorReward[i]);
 				// if the sum of all validatorRewards is more than tokenAmount, this will revert eventually
