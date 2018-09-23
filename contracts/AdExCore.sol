@@ -7,8 +7,8 @@ import "./libs/BidLibrary.sol";
 import "./libs/CommitmentLibrary.sol";
 import "./AdExCoreInterface.sol";
 
-// Things we can static-analyze
-// 1) Every time we check if the state is active, we also check delivery commitment hash
+// AUDIT: Things we should look for
+// 1) Every time we check if the state is Active, we also check commitment hash
 // 2) every time we check the state, the function should either revert or change the state
 // 3) state transition: CommitmentLibrary.CommitmentStart locks up tokens, then Finalize and Timeout can always unlock
 // 4) every time we transition out of BidState.Active, we should delete commitments[]
@@ -88,7 +88,7 @@ contract AdExCore is AdExCoreInterface {
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
-		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, msg.sender, extraValidator, extraValidatorReward);
+		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, bidId, msg.sender, extraValidator, extraValidatorReward);
 
 		require(commitment.isValid());
 
