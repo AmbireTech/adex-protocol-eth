@@ -23,8 +23,6 @@ library DeliveryCommitmentLibrary {
 	function hash(Commitment memory commitment) internal pure returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
 		return keccak256(abi.encodePacked(
-			// @TODO: possible optimization: we don't *need* to hash tokenAddr, tokenAmount, advertiser
-			// they're part of the bid and don't change on Commitment.fromBid()
 			commitment.bidId,
 			commitment.tokenAddr,
 			commitment.tokenAmount,
