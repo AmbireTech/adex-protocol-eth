@@ -20,10 +20,10 @@ library BidLibrary {
 
 	struct Bid {
 		address advertiser;
-		bytes32 adUnit;
+		uint adUnit;
 
 		// Requirements
-		bytes32 goal;
+		uint goal;
 		uint timeout;
 
 		// Reward
@@ -36,7 +36,7 @@ library BidLibrary {
 		address[] validators;
 		uint[] validatorRewards;
 	}
-	// can be serialized to (bidAddresses, bidValues, bidValidators, bidValidatorRewards)
+	// can be serialized to (bidAddresses[2], bidValues[5], bidValidators, bidValidatorRewards)
 
 	// The addr of the SC is part of the hash, cause otherwise we might replay bids on newer versions
 	function hash(Bid memory bid) internal view returns (bytes32) {

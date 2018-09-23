@@ -64,30 +64,30 @@ contract AdExCore is AdExCoreInterface {
 	}
 
 	// This can be done if a bid is accepted, but expired
-	function deliveryCommitmentTimeout(bytes32 bidId, DeliveryCommitmentLibrary.Commitment memory commitment)
+	function deliveryCommitmentTimeout(DeliveryCommitmentLibrary.Commitment memory commitment)
 		external
 	{
-		require(states[bidId] == BidState.Active);
-		require(commitments[bidId] == commitment.hash());
+		require(states[commitment.bidId] == BidState.Active);
+		require(commitments[commitment.bidId] == commitment.hash());
 		require(now > commitment.validUntil);
 
-		states[bidId] = BidState.DeliveryTimedOut;
-		delete commitment[bidId];
+		states[commitment.bidId] = BidState.DeliveryTimedOut;
+		delete commitment[commitment.bidId];
 
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 		balanceAdd(commitment.tokenAddr, commitment.advertiser, commitment.tokenAmount);
 
-		LogBidExpired(bidId);
+		// @TODO log event
 	}
 
 
 	// both publisher and advertiser have to call this for a bid to be considered verified
-	function deliveryCommitmentFinalize(bytes32 bidId, DeliveryCommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
+	function deliveryCommitmentFinalize(DeliveryCommitmentLibrary.Commitment memory commitment, bytes32[] sigs, bytes32 vote)
 		external
 	{
+		require(states[commitment.bidId] == BidState.Active);
+		require(commitment[commitment.bidId] == commitment.hash());
 		// @AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
-		require(states[bidId] == BidState.Active);
-		require(commitment[bidId] == commitment.hash());
 		// @TODO check if it's not timed out (??)
 
 		// Unlock the funds
@@ -114,13 +114,13 @@ contract AdExCore is AdExCoreInterface {
 		require(votes*3 >= commitment.validators.length*2);
 
 		if (vote != 0x0) {
-			states[bidId] = BidState.DeliverySucceeded;
+			states[commitment.bidId] = BidState.DeliverySucceeded;
 			balanceAdd(commitment.tokenAddr, commitment.publisher, remaining);
 		} else {
-			states[bidId] = BidState.DeliveryFailed;
+			states[commitment.bidId] = BidState.DeliveryFailed;
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
-		delete commitments[bidId];
+		delete commitments[commitment.bidId];
 
 		// @TODO: log event
 	}
