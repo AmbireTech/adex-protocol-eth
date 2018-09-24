@@ -42,7 +42,7 @@ contract AdExCore is AdExCoreInterface {
 	function withdraw(address token, uint amount)
 		external
 	{
-		require(amount <= balances[token][msg.sender]);
+		require(amount <= balances[token][msg.sender], "INSUFFIENT_BALANCE");
 
 		balanceSub(token, msg.sender, amount);
 		SafeERC20.transfer(token, msg.sender, amount);
@@ -69,11 +69,11 @@ contract AdExCore is AdExCoreInterface {
 	function bidCancelInternal(BidLibrary.Bid memory bid)
 		internal
 	{
-		require(msg.sender == bid.advertiser);
+		require(msg.sender == bid.advertiser, "NOT_ADVERTISER");
 
 		bytes32 bidId = bid.hash();
 
-		require(states[bidId] == BidLibrary.State.Unknown);
+		require(states[bidId] == BidLibrary.State.Unknown, "INVALID_STATE");
 		states[bidId] = BidLibrary.State.Canceled;
 
 		emit LogBidCancel(bidId);
@@ -83,17 +83,17 @@ contract AdExCore is AdExCoreInterface {
 		internal
 	{
 		bytes32 bidId = bid.hash();
-		require(states[bidId] == BidLibrary.State.Unknown);
-		require(bid.isValid());
+		require(states[bidId] == BidLibrary.State.Unknown, "INVALID_STATE");
+		require(bid.isValid(), "INVALID_BID");
 
 		// Check if validly signed and the advertiser has the funds
-		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature));
-		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
+		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature), "INVALID_SIG");
+		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount, "INSUFFIENT_BALANCE");
 
 		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, bidId, msg.sender, extraValidator, extraValidatorReward);
 		bytes32 commitmentId = commitment.hash();
 
-		require(commitment.isValid());
+		require(commitment.isValid(), "INVALID_COMMITMENT");
 
 		states[bidId] = BidLibrary.State.Active;
 		commitments[bidId] = commitmentId;
@@ -107,9 +107,9 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
 		internal
 	{
-		require(states[commitment.bidId] == BidLibrary.State.Active);
-		require(commitments[commitment.bidId] == commitment.hash());
-		require(now > commitment.validUntil);
+		require(states[commitment.bidId] == BidLibrary.State.Active, "INVALID_STATE");
+		require(commitments[commitment.bidId] == commitment.hash(), "INVALID_COMMITMENT_HASH");
+		require(now > commitment.validUntil, "COMMITMENT_NOT_EXPIRED");
 
 		states[commitment.bidId] = BidLibrary.State.DeliveryTimedOut;
 		delete commitments[commitment.bidId];
@@ -123,9 +123,9 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[3][] signatures, bytes32 vote)
 		internal
 	{
-		require(states[commitment.bidId] == BidLibrary.State.Active);
-		require(commitments[commitment.bidId] == commitment.hash());
-		require(now <= commitment.validUntil);
+		require(states[commitment.bidId] == BidLibrary.State.Active, "INVALID_STATE");
+		require(commitments[commitment.bidId] == commitment.hash(), "INVALID_COMMITMENT_HASH");
+		require(now <= commitment.validUntil, "COMMITMENT_EXPIRED");
 
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
@@ -133,7 +133,7 @@ contract AdExCore is AdExCoreInterface {
 		bytes32 hashToSign = keccak256(abi.encodePacked(commitment.hash(), vote));
 		uint remaining = commitment.tokenAmount;
 		uint votes = 0;
-		require(signatures.length <= commitment.validators.length);
+		require(signatures.length <= commitment.validators.length, "INVALID_SIG_LEN");
 		for (uint i=0; i<signatures.length; i++) {
 			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
@@ -146,7 +146,7 @@ contract AdExCore is AdExCoreInterface {
 		}
 
 		// Always require supermajority; we're checking the same vote, so this means 2/3 validators signed the same vote
-		require(votes*3 >= commitment.validators.length*2);
+		require(votes*3 >= commitment.validators.length*2, "INSUFFICIENT_VOTES");
 
 		if (vote != 0x0) {
 			states[commitment.bidId] = BidLibrary.State.DeliverySucceeded;
