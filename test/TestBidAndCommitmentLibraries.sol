@@ -109,9 +109,32 @@ contract TestBidAndCommitmentLibraries {
 		Assert.equal(comm4.isValid(), false, "Commitment is not valid cause it does not have enough validators");
 	}
 
-	// function testCommitmentHash() public {
-	// 	// @TODO: hash changes when bidId changes
-	// }
+	function testCommitmentHash() public {
+		address[] memory validators1 = new address[](3);
+		uint[] memory validatorRewards1 = new uint[](3);
+
+		address publisher = address(this);
+		BidLibrary.Bid memory bid = newTestBid(validators1, validatorRewards1);
+
+		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0x0);
+		Assert.equal(comm1.isValid(), true, "Commitment 1 is valid");
+
+		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0x0);
+		Assert.equal(comm2.isValid(), true, "Commitment 2 is valid");
+
+		Assert.equal(comm1.hash(), comm2.hash(), "The two commitments have the same hash");
+
+		comm1.validators = new address[](3);
+		comm1.validators[0] = address(this);
+		Assert.notEqual(comm1.hash(), comm2.hash(), "hash changed when changing validator set");
+
+		comm1.validators = comm2.validators;
+		comm1.validatorRewards = comm2.validatorRewards;
+		Assert.equal(comm1.hash(), comm2.hash(), "The two commitments have the same hash");
+
+		comm1.bidId = bytes32(0xdeadbeef);
+		Assert.notEqual(comm1.hash(), comm2.hash(), "hash changed when changing bidId");
+	}
 
 	//
 	// Internals
