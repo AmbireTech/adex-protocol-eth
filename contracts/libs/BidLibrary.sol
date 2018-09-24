@@ -3,22 +3,24 @@ pragma solidity 0.4.24;
 library BidLibrary {
 	uint constant MAX_TIMEOUT = 365 days;
 
-	// @TODO: move to a JS library, hardcode the hash
+	// @TODO: have this in a JS library too, hardcode the hash here
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
 	// @TODO: use eth-sig-util in the tests, so we can conform with what metamask does
 	// https://github.com/MetaMask/eth-sig-util/blob/master/index.js
 	// https://github.com/ethereumjs/ethereumjs-abi/blob/master/lib/index.js
 	bytes32 constant public HASH_SCHEME = keccak256(abi.encodePacked(
-		"address Exchange",
-		"address Advertiser",
-		"bytes32 Ad Unit",
-		"bytes32 Goal",
-		"uint Timeout",
-		"address Token Address",
-		"uint Token Amount",
-		"uint Opened Time",
-		"address[] Validators",
-		"uint[] Validator Rewards"
+		"Bid(",
+		"address exchange,",
+		"address advertiser,",
+		"bytes32 adUnit,",
+		"bytes32 goal,",
+		"uint256 timeout,",
+		"address tokenAddr,",
+		"uint256 tokenAmount,",
+		"uint256 openedTime,",
+		"address[] validators,",
+		"uint[] validatorRewards",
+		")"
 	));
 
 	// @TODO: schema hash
@@ -63,18 +65,16 @@ library BidLibrary {
 		// @TODO can we optimize this?
 		return keccak256(abi.encodePacked(
 			HASH_SCHEME,
-			keccak256(abi.encodePacked(
-				address(this),
-				bid.advertiser,
-				bid.adUnit,
-				bid.goal,
-				bid.timeout,
-				bid.tokenAddr,
-				bid.tokenAmount,
-				bid.openedTime,
-				bid.validators,
-				bid.validatorRewards
-			))
+			address(this),
+			bid.advertiser,
+			bid.adUnit,
+			bid.goal,
+			bid.timeout,
+			bid.tokenAddr,
+			bid.tokenAmount,
+			bid.openedTime,
+			bid.validators,
+			bid.validatorRewards
 		));
 	}
 
