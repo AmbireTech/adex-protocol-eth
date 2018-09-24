@@ -1,14 +1,11 @@
 const AdExCore = artifacts.require('AdExCore')
 
-// @TODO: async/await
-
 contract('AdExCore', function(accounts) {
-	it('deploy', function() {
+	it('deploy', async function() {
 		// console.log(accounts)
-		return AdExCore.deployed()
-		.then(function(instance) {
-			// console.log(instance)
-		})
+		const instance = await AdExCore.deployed()
+		
+
 	})
 
 	// @TODO: ensure timeouts always work
