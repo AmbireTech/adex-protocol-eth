@@ -1,12 +1,34 @@
 const AdExCore = artifacts.require('AdExCore')
+const MockToken = artifacts.require('./mocks/Token')
 
 contract('AdExCore', function(accounts) {
-	it('deploy', async function() {
-		// console.log(accounts)
-		const instance = await AdExCore.deployed()
-		
+	let token
+	let core
 
+	before(async function() {
+		token = await MockToken.new()
+		core = await AdExCore.deployed()
 	})
+
+	it('deposit and withdraw', async function() {
+		const acc = accounts[0]
+		const minted = 666
+		const deposited = 300
+		const withdrawn = 200
+
+		// NOTE: the mock token does not require allowance to be set
+		await token.setBalanceTo(acc, minted)
+
+		await core.deposit(token.address, deposited, { from: acc })
+		assert.equal((await core.balanceOf(token.address, acc)).toNumber(), deposited, 'correct amount deposited')
+		assert.equal((await token.balanceOf(acc)).toNumber(), minted-deposited, 'amount was taken off the token')
+
+		await core.withdraw(token.address, withdrawn, { from: acc })
+		assert.equal((await core.balanceOf(token.address, acc)).toNumber(), deposited-withdrawn, 'correct amount on core')
+		assert.equal((await token.balanceOf(acc)).toNumber(), (minted-deposited)+withdrawn, 'amount is now on token')
+	})
+
+	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
 	// @TODO: ensure timeouts always work
 	// ensure there is a max timeout
