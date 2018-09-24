@@ -124,7 +124,7 @@ contract AdExCore is AdExCoreInterface {
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
 		require(commitments[commitment.bidId] == commitment.hash());
-		// @TODO check if it's not timed out (??)
+		require(now <= commitment.validUntil);
 
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
