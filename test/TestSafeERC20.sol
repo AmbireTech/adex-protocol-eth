@@ -25,16 +25,26 @@ contract TestSafeERC20 {
 
 	function testToken() public {
 		SafeERC20.transfer(address(token), 0x0, 500);
-		// @TODO test failures
+		Assert.equal(address(this).call(TestSafeERC20(this).tokenFail.selector), false, "token transfer is failing when amnt too big");
 	}
 
 	function testBadToken() public {
 		SafeERC20.transfer(address(badToken), 0x0, 500);
-		// @TODO test failures
+		Assert.equal(address(this).call(TestSafeERC20(this).badTokenFail.selector), false, "token transfer is failing when amnt too big");
 	}
 
 	function testWorstToken() public {
 		SafeERC20.transfer(address(worstToken), 0x0, 500);
-		// @TODO test failures
+		Assert.equal(address(this).call(TestSafeERC20(this).worstTokenFail.selector), false, "token transfer is failing when amnt too big");
+	}
+
+	function tokenFail() public {
+		SafeERC20.transfer(address(token), 0x0, 10001);
+	}
+	function badTokenFail() public {
+		SafeERC20.transfer(address(badToken), 0x0, 10001);
+	}
+	function worstTokenFail() public {
+		SafeERC20.transfer(address(worstToken), 0x0, 10001);
 	}
 }
