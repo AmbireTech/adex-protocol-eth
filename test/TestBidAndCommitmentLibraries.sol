@@ -134,6 +134,14 @@ contract TestBidAndCommitmentLibraries {
 
 		comm1.bidId = bytes32(0xdeadbeef);
 		Assert.notEqual(comm1.hash(), comm2.hash(), "hash changed when changing bidId");
+
+		CommitmentLibrary.Commitment memory comm3 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0);
+		comm3.validators = new address[](4);
+		comm3.validatorRewards = new uint[](4);
+		comm3.validators[3] = address(this);
+		comm3.validatorRewards[3] = 1;
+		CommitmentLibrary.Commitment memory comm4 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this), 1);
+		Assert.equal(comm3.hash(), comm4.hash(), "hash reproducable with extra validator");
 	}
 
 	//
