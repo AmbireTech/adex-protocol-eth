@@ -43,8 +43,6 @@ library BidLibrary {
 	struct Bid {
 		address advertiser;
 		bytes32 adUnit;
-
-		// Requirements
 		bytes32 goal;
 		uint timeout;
 
@@ -62,7 +60,6 @@ library BidLibrary {
 	// The addr of the SC is part of the hash, cause otherwise we might replay bids on newer versions
 	function hash(Bid memory bid) internal view returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
-		// @TODO can we optimize this?
 		return keccak256(abi.encode(
 			HASH_SCHEME,
 			address(this),
