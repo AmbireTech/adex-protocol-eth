@@ -12,6 +12,7 @@ import "./AdExCoreInterface.sol";
 // 2) every time we check the state, the function should either revert or change the state
 // 3) state transition: CommitmentLibrary.CommitmentStart locks up tokens, then Finalize and Timeout can always unlock
 // 4) every time we transition out of BidState.Active, we should delete commitments[]
+// 5) it's important we do not change .validators[] or .validatorRewards[] elements in place, cause it's a mem ref; can we enforce that?
 
 contract AdExCore is AdExCoreInterface {
 	using SafeMath for uint;
@@ -157,6 +158,11 @@ contract AdExCore is AdExCoreInterface {
 		delete commitments[commitment.bidId];
 
 		emit LogBidFinalize(commitment.bidId, vote);
+	}
+
+	// Views
+	function balanceOf(address token, address acc) view external returns (uint) {
+		return balances[token][acc];
 	}
 
 	// A few internal helpers
