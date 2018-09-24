@@ -63,7 +63,7 @@ library BidLibrary {
 	function hash(Bid memory bid) internal view returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
 		// @TODO can we optimize this?
-		return keccak256(abi.encodePacked(
+		return keccak256(abi.encode(
 			HASH_SCHEME,
 			address(this),
 			bid.advertiser,

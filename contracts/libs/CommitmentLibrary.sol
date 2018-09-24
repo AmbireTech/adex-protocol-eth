@@ -39,7 +39,7 @@ library CommitmentLibrary {
 
 	function hash(Commitment memory commitment) internal pure returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
-		return keccak256(abi.encodePacked(
+		return keccak256(abi.encode(
 			HASH_SCHEME,
 			commitment.bidId,
 			commitment.tokenAddr,
