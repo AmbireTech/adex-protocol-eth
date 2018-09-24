@@ -1,6 +1,14 @@
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 
+// @TODO: have this in a JS library too, hardcode the hash here
+// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
+// @TODO: use eth-sig-util in the tests, so we can conform with what metamask does
+// https://github.com/MetaMask/eth-sig-util/blob/master/index.js
+// https://github.com/ethereumjs/ethereumjs-abi/blob/master/lib/index.js
+const bidSchemaHash = '0xf05a6d38810408971c1e2a9cd015fefd95aaae6d0c1a25da4ed10c1ac77ebb64'
+const commitmentSchemaHash = '0x8aa1fb0e671ad6f7d73ad552eff29b7b79186e0143b91e48a013151a34ae50dd'
+
 contract('AdExCore', function(accounts) {
 	let token
 	let core
