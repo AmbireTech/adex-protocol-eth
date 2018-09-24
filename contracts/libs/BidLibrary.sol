@@ -17,7 +17,7 @@ library BidLibrary {
 		"uint256 timeout,",
 		"address tokenAddr,",
 		"uint256 tokenAmount,",
-		"uint256 openedTime,",
+		"uint256 nonce,",
 		"address[] validators,",
 		"uint[] validatorRewards",
 		")"
@@ -50,8 +50,7 @@ library BidLibrary {
 		address tokenAddr;
 		uint tokenAmount;
 
-		// @TODO: should this be 'nonce'?
-		uint openedTime;
+		uint nonce;
 
 		address[] validators;
 		uint[] validatorRewards;
@@ -69,7 +68,7 @@ library BidLibrary {
 			bid.timeout,
 			bid.tokenAddr,
 			bid.tokenAmount,
-			bid.openedTime,
+			bid.nonce,
 			bid.validators,
 			bid.validatorRewards
 		));
@@ -78,7 +77,7 @@ library BidLibrary {
 	function isValid(Bid memory bid) internal pure returns (bool) {
 		return (bid.timeout > 0 && bid.timeout < MAX_TIMEOUT)
 			&& bid.tokenAmount > 0
-			&& bid.openedTime > 0
+			&& bid.nonce > 0
 			&& bid.validators.length == bid.validatorRewards.length;
 	}
 
@@ -94,7 +93,7 @@ library BidLibrary {
 			timeout: uint(values[3]),
 			tokenAddr: address(values[4]),
 			tokenAmount: uint(values[5]),
-			openedTime: uint(values[6]),
+			nonce: uint(values[6]),
 			validators: validators,
 			validatorRewards: validatorRewards
 		});
