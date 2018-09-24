@@ -1,6 +1,10 @@
 pragma solidity 0.4.24;
 
-import "../interfaces/ERC20.sol";
+interface GeneralERC20 {
+	function transfer(address to, uint256 value) external;
+	function transferFrom(address from, address to, uint256 value) external;
+	function approve(address spender, uint256 value) external;
+}
 
 library SafeERC20 {
 	// definitely not a pure fn but the compiler complains otherwise
@@ -37,17 +41,17 @@ library SafeERC20 {
 	}
 
 	function transfer(address token, address to, uint256 amount) internal {
-		ERC20(token).transfer(to, amount);
+		GeneralERC20(token).transfer(to, amount);
 		require(checkSuccess());
 	}
 
 	function transferFrom(address token, address from, address to, uint256 amount) internal {
- 		ERC20(token).transferFrom(from, to, amount);
+		GeneralERC20(token).transferFrom(from, to, amount);
 		require(checkSuccess());
 	}
 
 	function approve(address token, address spender, uint256 amount) internal {
- 		ERC20(token).approve(spender, amount);
- 		require(checkSuccess());
+		GeneralERC20(token).approve(spender, amount);
+		require(checkSuccess());
 	}
 }
