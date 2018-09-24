@@ -7,6 +7,19 @@ library CommitmentLibrary {
 	using SafeMath for uint;
 
 	uint8 constant MIN_VALIDATOR_COUNT = 3;
+	// @TODO: have this in a JS library too, hardcode the hash here
+	bytes32 constant public HASH_SCHEME = keccak256(abi.encodePacked(
+		"Commitment(",
+		"bytes32 bid,",
+		"address tokenAddr,",
+		"uint256 tokenAmount,",
+		"uint256 validUntil,",
+		"address advertiser,",
+		"address publisher,",
+		"address[] validators,",
+		"uint[] validatorRewards",
+		")"
+	));
 
 	struct Commitment {
 		// because it contains the bidId, we don't need to hash address(this)
@@ -27,6 +40,7 @@ library CommitmentLibrary {
 	function hash(Commitment memory commitment) internal pure returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
 		return keccak256(abi.encodePacked(
+			HASH_SCHEME,
 			commitment.bidId,
 			commitment.tokenAddr,
 			commitment.tokenAmount,
