@@ -17,7 +17,7 @@ contract TestBidLibrary {
 			timeout: 60,
 			tokenAddr: address(0x0),
 			tokenAmount: 1,
-			openedTime: now,
+			nonce: 1537791457450,
 			validators: validators,
 			validatorRewards: validatorRewards
 		});

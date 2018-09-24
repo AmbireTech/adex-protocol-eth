@@ -74,6 +74,8 @@ contract AdExCore is AdExCoreInterface {
 
 		require(states[bidId] == BidLibrary.State.Unknown);
 		states[bidId] = BidLibrary.State.Canceled;
+
+		emit LogBidCancel(bidId);
 	}
 
 	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes32[3] signature, address extraValidator, uint extraValidatorReward)
@@ -88,15 +90,17 @@ contract AdExCore is AdExCoreInterface {
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount);
 
 		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, bidId, msg.sender, extraValidator, extraValidatorReward);
+		bytes32 commitmentId = commitment.hash();
 
 		require(commitment.isValid());
 
 		states[bidId] = BidLibrary.State.Active;
-		commitments[bidId] = commitment.hash();
+		commitments[bidId] = commitmentId;
 
 		balanceSub(bid.tokenAddr, bid.advertiser, bid.tokenAmount);
 		balanceAdd(bid.tokenAddr, address(this), bid.tokenAmount);
-		// @TODO log event
+
+		emit LogBidCommitment(bidId, commitmentId);
 	}
 
 	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
@@ -112,7 +116,7 @@ contract AdExCore is AdExCoreInterface {
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 		balanceAdd(commitment.tokenAddr, commitment.advertiser, commitment.tokenAmount);
 
-		// @TODO log event
+		emit LogBidTimeout(commitment.bidId);
 	}
 
 	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[3][] signatures, bytes32 vote)
@@ -120,7 +124,6 @@ contract AdExCore is AdExCoreInterface {
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
 		require(commitments[commitment.bidId] == commitment.hash());
-		// @TODO: AUDIT: ensure the sum of all balanceSub/balanceAdd is 0
 		// @TODO check if it's not timed out (??)
 
 		// Unlock the funds
@@ -135,7 +138,8 @@ contract AdExCore is AdExCoreInterface {
 			if (SignatureValidator.isValidSignature(hashToSign, commitment.validators[i], signatures[i])) {
 				votes++;
 				balanceAdd(commitment.tokenAddr, commitment.validators[i], commitment.validatorRewards[i]);
-				// if the sum of all validatorRewards is more than tokenAmount, this will revert eventually
+				// if the sum of all validatorRewards is more than tokenAmount, this will eventually revert
+				// however, we still check in commitment.isValid() to ensure there are no non-finalizable commitments
 				remaining = remaining.sub(commitment.validatorRewards[i]);
 			}
 		}
@@ -152,7 +156,7 @@ contract AdExCore is AdExCoreInterface {
 		}
 		delete commitments[commitment.bidId];
 
-		// @TODO: log event
+		emit LogBidFinalize(commitment.bidId, vote);
 	}
 
 	// A few internal helpers
