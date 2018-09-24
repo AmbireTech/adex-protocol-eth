@@ -14,10 +14,12 @@ contract TestSafeERC20 {
 
 	constructor() public {
 		token = new Token();
-		badToken = new BadToken();
-		worstToken = new WorstToken();
 		token.setBalanceTo(address(this), 10000);
+
+		badToken = new BadToken();
 		badToken.setBalanceTo(address(this), 10000);
+
+		worstToken = new WorstToken();
 		worstToken.setBalanceTo(address(this), 10000);
 	}
 
@@ -26,10 +28,10 @@ contract TestSafeERC20 {
 		// @TODO test failures
 	}
 
-	// function testBadToken() public {
-	// 	SafeERC20.transfer(address(badToken), 0x0, 500);
-	// 	// @TODO test failures
-	// }
+	function testBadToken() public {
+		SafeERC20.transfer(address(badToken), 0x0, 500);
+		// @TODO test failures
+	}
 
 	function testWorstToken() public {
 		SafeERC20.transfer(address(worstToken), 0x0, 500);
