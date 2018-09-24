@@ -54,13 +54,13 @@ contract AdExCore is AdExCoreInterface {
 	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
 		bidCancelInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards));
 	}
-	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, byte[66] signature, address extraValidator, uint extraValidatorReward) external {
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes32[3] signature, address extraValidator, uint extraValidatorReward) external {
 		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator, extraValidatorReward);
 	}
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external {
 		commitmentTimeoutInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards));
 	}
-	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, byte[66][] signatures, bytes32 vote) external {
+	function commitmentFinalize(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards, bytes32[3][] signatures, bytes32 vote) external {
 		commitmentFinalizeInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards), signatures, vote);
 	}
 
@@ -76,7 +76,7 @@ contract AdExCore is AdExCoreInterface {
 		states[bidId] = BidLibrary.State.Canceled;
 	}
 
-	function commitmentStartInternal(BidLibrary.Bid memory bid, byte[66] signature, address extraValidator, uint extraValidatorReward)
+	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes32[3] signature, address extraValidator, uint extraValidatorReward)
 		internal
 	{
 		bytes32 bidId = bid.hash();
@@ -115,7 +115,7 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO log event
 	}
 
-	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, byte[66][] signatures, bytes32 vote)
+	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[3][] signatures, bytes32 vote)
 		internal
 	{
 		require(states[commitment.bidId] == BidLibrary.State.Active);
