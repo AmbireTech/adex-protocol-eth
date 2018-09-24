@@ -84,8 +84,9 @@ contract TestBidAndCommitmentLibraries {
 	}
 
 	function testCommitmentIsValid() public {
-		address[] memory validators1 = new address[](2);
-		uint[] memory validatorRewards1 = new uint[](2);
+		// CommitmentLibrary.MIN_VALIDATOR_COUNT - 1
+		address[] memory validators1 = new address[](1);
+		uint[] memory validatorRewards1 = new uint[](1);
 
 		address[] memory validators2;
 		uint[] memory validatorRewards2;

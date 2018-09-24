@@ -6,7 +6,7 @@ import "./BidLibrary.sol";
 library CommitmentLibrary {
 	using SafeMath for uint;
 
-	uint8 constant MIN_VALIDATOR_COUNT = 3;
+	uint8 constant MIN_VALIDATOR_COUNT = 2;
 	// keccak256("Commitment(bytes32 bid,address tokenAddr,uint256 tokenAmount,uint256 validUntil,address advertiser,address publisher,address[] validators,uint[] validatorRewards)");
 	bytes32 constant public SCHEMA_HASH = 0x8aa1fb0e671ad6f7d73ad552eff29b7b79186e0143b91e48a013151a34ae50dd;
 

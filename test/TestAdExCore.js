@@ -42,4 +42,5 @@ contract('AdExCore', function(accounts) {
 	// ensure there is a max timeout
 	// ensure we can't get into a istuation where we can't finalize (e.g. validator rewards are more than the total reward)
 	// ensure calling finalize (everything for that matter, except deposit/withdraw) is always zero-sum on balances
+	// @TODO to protect against math bugs, check common like: 1/2 validators voting (fail), 2/2 (success); 1/3 (f), 2/3 (s), 3/3 (s), etc.
 })
