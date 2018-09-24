@@ -3,6 +3,24 @@ pragma solidity 0.4.24;
 library BidLibrary {
 	uint constant MAX_TIMEOUT = 365 days;
 
+	// @TODO: move to a JS library, hardcode the hash
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
+	// @TODO: use eth-sig-util in the tests, so we can conform with what metamask does
+	// https://github.com/MetaMask/eth-sig-util/blob/master/index.js
+	// https://github.com/ethereumjs/ethereumjs-abi/blob/master/lib/index.js
+	bytes32 constant public HASH_SCHEME = keccak256(abi.encodePacked(
+		"address Exchange",
+		"address Advertiser",
+		"bytes32 Ad Unit",
+		"bytes32 Goal",
+		"uint Timeout",
+		"address Token Address",
+		"uint Token Amount",
+		"uint Opened Time",
+		"address[] Validators",
+		"uint[] Validator Rewards"
+	));
+
 	// @TODO: schema hash
 	enum State { 
 		// Unknown means it does not exist on-chain, i.e. there's never been a DeliveryCommitment for it
@@ -42,17 +60,21 @@ library BidLibrary {
 	// The addr of the SC is part of the hash, cause otherwise we might replay bids on newer versions
 	function hash(Bid memory bid) internal view returns (bytes32) {
 		// In this version of solidity, we can no longer keccak256() directly
+		// @TODO can we optimize this?
 		return keccak256(abi.encodePacked(
-			address(this),
-			bid.advertiser,
-			bid.adUnit,
-			bid.goal,
-			bid.timeout,
-			bid.tokenAddr,
-			bid.tokenAmount,
-			bid.openedTime,
-			bid.validators,
-			bid.validatorRewards
+			HASH_SCHEME,
+			keccak256(abi.encodePacked(
+				address(this),
+				bid.advertiser,
+				bid.adUnit,
+				bid.goal,
+				bid.timeout,
+				bid.tokenAddr,
+				bid.tokenAmount,
+				bid.openedTime,
+				bid.validators,
+				bid.validatorRewards
+			))
 		));
 	}
 
