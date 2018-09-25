@@ -40,8 +40,8 @@ Commitment.prototype.values = function() {
 
 Commitment.prototype.hash = function() {
 	return keccak256(abi.rawEncode(
-		['bytes32', 'bytes32', 'address', 'uint256', 'address', 'address', 'address[]', 'uint256[]'],
-		[SCHEMA_HASH, this.bidId, this.tokenAddr, this.tokenAmount, this.advertiser, this.publisher, this.validators, this.validatorRewards]
+		['bytes32', 'bytes32', 'address', 'uint256', 'uint256', 'address', 'address', 'address[]', 'uint256[]'],
+		[SCHEMA_HASH, this.bidId, this.tokenAddr, this.tokenAmount, this.validUntil, this.advertiser, this.publisher, this.validators, this.validatorRewards]
 	))
 }
 
