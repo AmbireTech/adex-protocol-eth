@@ -1,6 +1,11 @@
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 
+const Bid = require('../js/Bid').Bid
+const Commitment = require('../js/Commitment').Commitment
+
+const Web3 = require('web3')
+
 contract('AdExCore', function(accounts) {
 	let token
 	let core
@@ -28,6 +33,11 @@ contract('AdExCore', function(accounts) {
 		assert.equal((await token.balanceOf(acc)).toNumber(), (minted-deposited)+withdrawn, 'amount is now on token')
 	})
 
+	it('bid and commitment hashes match', async function() {
+		const { bid, commitment } = getTestValues()
+		console.log(bid, commitment)//, bid.hash(), commitment.hash())
+	})
+
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
 	// @TODO: ensure timeouts always work
@@ -35,4 +45,31 @@ contract('AdExCore', function(accounts) {
 	// ensure we can't get into a istuation where we can't finalize (e.g. validator rewards are more than the total reward)
 	// ensure calling finalize (everything for that matter, except deposit/withdraw) is always zero-sum on balances
 	// @TODO to protect against math bugs, check common like: 1/2 validators voting (fail), 2/2 (success); 1/3 (f), 2/3 (s), 3/3 (s), etc.
+
+	// UTILS
+	function getTestValues() {
+		const bid = new Bid({
+			advertiser: accounts[0],
+			adUnit: Web3.utils.randomHex(32),
+			goal: Web3.utils.randomHex(32),
+			timeout: 24*60*60,
+			tokenAddr: token.address,
+			tokenAmount: 2000,
+			nonce: Date.now(),
+			validators: [accounts[0], accounts[1], accounts[2]],
+			validatorRewards: [10, 11, 12]
+		})
+		// NOTE: should we have a fromBid to replicate solidity libs?
+		const commitment = new Commitment({
+			bidId: Web3.utils.randomHex(32),//bid.hash(),
+			tokenAddr: bid.tokenAddr,
+			tokenAmount: bid.tokenAmount,
+			validUntil: Math.floor(Date.now()/1000)+24*60*60,
+			advertiser: accounts[0],
+			publisher: accounts[1],
+			validators: bid.validators,
+			validatorRewards: bid.validatorRewards
+		})
+		return { bid, commitment }
+	}
 })
