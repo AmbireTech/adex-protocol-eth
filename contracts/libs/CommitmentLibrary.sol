@@ -76,8 +76,8 @@ library CommitmentLibrary {
 			tokenAddr: address(values[1]),
 			tokenAmount: uint(values[2]),
 			validUntil: uint(values[3]),
-			publisher: address(values[4]),
-			advertiser: address(values[5]),
+			advertiser: address(values[4]),
+			publisher: address(values[5]),
 			validators: validators,
 			validatorRewards: validatorRewards
 		});
@@ -109,8 +109,8 @@ library CommitmentLibrary {
 			tokenAddr: bid.tokenAddr,
 			tokenAmount: bid.tokenAmount,
 			validUntil: now + bid.timeout,
-			publisher: publisher,
 			advertiser: bid.advertiser,
+			publisher: publisher,
 			validators: validators,
 			validatorRewards: validatorRewards
 		});

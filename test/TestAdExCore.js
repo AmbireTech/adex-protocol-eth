@@ -1,13 +1,13 @@
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
+const MockLibs = artifacts.require('./mocks/Libs')
 
-// @TODO: have this in a JS library too, hardcode the hash here
-// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-712.md
-// @TODO: use eth-sig-util in the tests, so we can conform with what metamask does
-// https://github.com/MetaMask/eth-sig-util/blob/master/index.js
-// https://github.com/ethereumjs/ethereumjs-abi/blob/master/lib/index.js
-const bidSchemaHash = '0xf05a6d38810408971c1e2a9cd015fefd95aaae6d0c1a25da4ed10c1ac77ebb64'
-const commitmentSchemaHash = '0x8aa1fb0e671ad6f7d73ad552eff29b7b79186e0143b91e48a013151a34ae50dd'
+const Bid = require('../js/Bid').Bid
+const Commitment = require('../js/Commitment').Commitment
+const splitSig = require('../js/splitSig')
+
+const Web3 = require('web3')
+const promisify = require('util').promisify
 
 contract('AdExCore', function(accounts) {
 	let token
@@ -15,6 +15,7 @@ contract('AdExCore', function(accounts) {
 
 	before(async function() {
 		token = await MockToken.new()
+		libMock = await MockLibs.new()
 		core = await AdExCore.deployed()
 	})
 
@@ -36,6 +37,26 @@ contract('AdExCore', function(accounts) {
 		assert.equal((await token.balanceOf(acc)).toNumber(), (minted-deposited)+withdrawn, 'amount is now on token')
 	})
 
+	it('bid and commitment hashes match', async function() {
+		const { bid, commitment } = getTestValues()
+
+		const bidHashLocal = bid.hash(libMock.address);
+		const bidHashContract = await libMock.bidHash(bid.values(), bid.validators, bid.validatorRewards)
+		assert.equal(bidHashLocal, bidHashContract, 'bid: JS lib outputs same hash as the solidity lib')
+
+		const commHashLocal = commitment.hash();
+		const commHashContract = await libMock.commitmentHash(commitment.values(), commitment.validators, commitment.validatorRewards)
+		assert.equal(commHashLocal, commHashContract, 'commitment: JS lib outputs the same hash as the solidity lib')
+	})
+
+	it('SignatureValidator', async function() {
+		const { bid } = getTestValues()
+		const hash = bid.hash(libMock.address)
+		const sig = splitSig(await promisify(web3.eth.sign.bind(web3))(accounts[0], hash))
+		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
+		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
+	})
+
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
 	// @TODO: ensure timeouts always work
@@ -43,4 +64,31 @@ contract('AdExCore', function(accounts) {
 	// ensure we can't get into a istuation where we can't finalize (e.g. validator rewards are more than the total reward)
 	// ensure calling finalize (everything for that matter, except deposit/withdraw) is always zero-sum on balances
 	// @TODO to protect against math bugs, check common like: 1/2 validators voting (fail), 2/2 (success); 1/3 (f), 2/3 (s), 3/3 (s), etc.
+
+	// UTILS
+	function getTestValues() {
+		const bid = new Bid({
+			advertiser: accounts[0],
+			adUnit: Web3.utils.randomHex(32),
+			goal: Web3.utils.randomHex(32),
+			timeout: 24*60*60,
+			tokenAddr: token.address,
+			tokenAmount: 2000,
+			nonce: Date.now(),
+			validators: [accounts[0], accounts[1], accounts[2]],
+			validatorRewards: [10, 11, 12]
+		})
+		// NOTE: should we have a fromBid to replicate solidity libs?
+		const commitment = new Commitment({
+			bidId: bid.hash(libMock.address),
+			tokenAddr: bid.tokenAddr,
+			tokenAmount: bid.tokenAmount,
+			validUntil: Math.floor(Date.now()/1000)+24*60*60,
+			advertiser: accounts[0],
+			publisher: accounts[1],
+			validators: bid.validators,
+			validatorRewards: bid.validatorRewards
+		})
+		return { bid, commitment }
+	}
 })
