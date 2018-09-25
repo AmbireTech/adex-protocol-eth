@@ -1,8 +1,7 @@
-const ethereumAbi = require('ethereumjs-abi')
+const abi = require('ethereumjs-abi')
+const ensure = require('./ensureTypes')
 
 const SCHEMA_HASH = '0xf05a6d38810408971c1e2a9cd015fefd95aaae6d0c1a25da4ed10c1ac77ebb64'
-
-const ensure = require('./ensureTypes')
 
 function Bid(args) {
 	this.advertiser = ensure.Address(args.advertiser)
@@ -22,16 +21,11 @@ function Bid(args) {
 	return this
 }
 
-Bid.prototype.toABI = function() {
-	ethereumAbi.
-}
-
-Bid.prototype.fromABI = function() {
-	// @TODO
-}
-
 Bid.prototype.hash = function() {
-	return keccak256(this.toABI())
+	return abi.soliditySHA3(
+		['bytes32', 'address', 'bytes32', 'bytes32', 'uint256', 'address', 'uint256', 'uint256', 'address[]', 'uint256[]'],
+		[SCHEMA_HASH, this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce, this.validators, this.validatorRewards]
+	)
 }
 
 module.exports = { Bid, SCHEMA_HASH }
