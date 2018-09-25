@@ -79,7 +79,9 @@ contract('AdExCore', function(accounts) {
 		assert.isOk(receipt.logs.find(x => x.event === 'LogBidCommitment'))
 	})
 
-
+	
+	// @TODO commitmentFinalize
+	// @TODO commitmentTimeout
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
