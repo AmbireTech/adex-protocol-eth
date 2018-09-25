@@ -40,18 +40,18 @@ contract('AdExCore', function(accounts) {
 	it('bid and commitment hashes match', async function() {
 		const { bid, commitment } = getTestValues()
 
-		const bidHashLocal = '0x'+bid.hash(libMock.address).toString(16);
+		const bidHashLocal = bid.hash(libMock.address);
 		const bidHashContract = await libMock.bidHash(bid.values(), bid.validators, bid.validatorRewards)
 		assert.equal(bidHashLocal, bidHashContract, 'bid: JS lib outputs same hash as the solidity lib')
 
-		const commHashLocal = '0x'+commitment.hash().toString(16);
+		const commHashLocal = commitment.hash();
 		const commHashContract = await libMock.commitmentHash(commitment.values(), commitment.validators, commitment.validatorRewards)
 		assert.equal(commHashLocal, commHashContract, 'commitment: JS lib outputs the same hash as the solidity lib')
 	})
 
 	it('SignatureValidator', async function() {
 		const { bid } = getTestValues()
-		const hash = '0x'+bid.hash(libMock.address).toString(16)
+		const hash = bid.hash(libMock.address)
 		const sig = splitSig(await promisify(web3.eth.sign.bind(web3))(accounts[0], hash))
 		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
 		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
@@ -80,7 +80,7 @@ contract('AdExCore', function(accounts) {
 		})
 		// NOTE: should we have a fromBid to replicate solidity libs?
 		const commitment = new Commitment({
-			bidId: '0x'+bid.hash(libMock.address).toString(16),
+			bidId: bid.hash(libMock.address),
 			tokenAddr: bid.tokenAddr,
 			tokenAmount: bid.tokenAmount,
 			validUntil: Math.floor(Date.now()/1000)+24*60*60,

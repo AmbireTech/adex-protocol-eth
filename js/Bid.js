@@ -31,10 +31,11 @@ Bid.prototype.values = function() {
 
 Bid.prototype.hash = function(coreAddr) {
 	if (!coreAddr) throw 'coreAddr needs to be supplied'
-	return keccak256(abi.rawEncode(
+	const buf = keccak256(abi.rawEncode(
 		['bytes32', 'address', 'address', 'bytes32', 'bytes32', 'uint256', 'address', 'uint256', 'uint256', 'address[]', 'uint256[]'],
 		[SCHEMA_HASH, coreAddr, this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce, this.validators, this.validatorRewards]
 	))
+	return '0x'+buf.toString(16)
 }
 
 module.exports = { Bid, SCHEMA_HASH }
