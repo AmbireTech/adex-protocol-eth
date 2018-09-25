@@ -1,4 +1,5 @@
 const abi = require('ethereumjs-abi')
+const keccak256 = require('js-sha3').keccak256
 const ensure = require('./ensureTypes')
 
 const SCHEMA_HASH = '0xf05a6d38810408971c1e2a9cd015fefd95aaae6d0c1a25da4ed10c1ac77ebb64'
@@ -21,11 +22,15 @@ function Bid(args) {
 	return this
 }
 
-Bid.prototype.hash = function() {
-	return abi.soliditySHA3(
-		['bytes32', 'address', 'bytes32', 'bytes32', 'uint256', 'address', 'uint256', 'uint256', 'address[]', 'uint256[]'],
-		[SCHEMA_HASH, this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce, this.validators, this.validatorRewards]
-	)
+Bid.prototype.values = function() {
+	return [this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce]
+}
+
+Bid.prototype.hash = function(coreAddr) {
+	return keccak256(abi.rawEncode(
+		['bytes32', 'address', 'address', 'bytes32', 'bytes32', 'uint256', 'address', 'uint256', 'uint256', 'address[]', 'uint256[]'],
+		[SCHEMA_HASH, coreAddr, this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce, this.validators, this.validatorRewards]
+	))
 }
 
 module.exports = { Bid, SCHEMA_HASH }

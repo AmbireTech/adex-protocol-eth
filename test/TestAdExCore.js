@@ -1,5 +1,6 @@
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
+const MockLibs = artifacts.require('./mocks/Libs')
 
 const Bid = require('../js/Bid').Bid
 const Commitment = require('../js/Commitment').Commitment
@@ -12,6 +13,7 @@ contract('AdExCore', function(accounts) {
 
 	before(async function() {
 		token = await MockToken.new()
+		libMock = await MockLibs.new()
 		core = await AdExCore.deployed()
 	})
 
@@ -35,7 +37,14 @@ contract('AdExCore', function(accounts) {
 
 	it('bid and commitment hashes match', async function() {
 		const { bid, commitment } = getTestValues()
-		console.log(bid, commitment)//, bid.hash(), commitment.hash())
+
+		const bidHashLocal = bid.hash(core.address);
+		const bidHashContract = await libMock.bidHash(bid.values(), bid.validators, bid.validatorRewards)
+		assert.equal(bidHashLocal, bidHashContract, 'bid: JS lib outputs same hash as the solidity lib')
+
+		const commHashLocal = commitment.hash();
+		const commHashContract = await libMock.commitmentHash(commitment.values(), commitment.validators, commitment.validatorRewards)
+		assert.equal(commHashLocal, commHashContract, 'commitment: JS lib outputs the same hash as the solidity lib')
 	})
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
