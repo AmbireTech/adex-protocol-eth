@@ -4,8 +4,10 @@ const MockLibs = artifacts.require('./mocks/Libs')
 
 const Bid = require('../js/Bid').Bid
 const Commitment = require('../js/Commitment').Commitment
+const splitSig = require('../js/splitSig')
 
 const Web3 = require('web3')
+const promisify = require('util').promisify
 
 contract('AdExCore', function(accounts) {
 	let token
@@ -45,6 +47,14 @@ contract('AdExCore', function(accounts) {
 		const commHashLocal = '0x'+commitment.hash().toString(16);
 		const commHashContract = await libMock.commitmentHash(commitment.values(), commitment.validators, commitment.validatorRewards)
 		assert.equal(commHashLocal, commHashContract, 'commitment: JS lib outputs the same hash as the solidity lib')
+	})
+
+	it('SignatureValidator', async function() {
+		const { bid } = getTestValues()
+		const hash = '0x'+bid.hash(libMock.address).toString(16)
+		const sig = splitSig(await promisify(web3.eth.sign.bind(web3))(accounts[0], hash))
+		const isValid = await libMock.isValidSig(hash, accounts[0], sig)
+		assert.equal(isValid, true, 'isValidSig returns true')
 	})
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
