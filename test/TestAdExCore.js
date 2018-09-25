@@ -8,6 +8,7 @@ const splitSig = require('../js/splitSig')
 
 const Web3 = require('web3')
 const promisify = require('util').promisify
+const ethSign = promisify(web3.eth.sign.bind(web3))
 
 contract('AdExCore', function(accounts) {
 	let token
@@ -52,10 +53,33 @@ contract('AdExCore', function(accounts) {
 	it('SignatureValidator', async function() {
 		const { bid } = getTestValues()
 		const hash = bid.hash(libMock.address)
-		const sig = splitSig(await promisify(web3.eth.sign.bind(web3))(accounts[0], hash))
+		const sig = splitSig(await ethSign(accounts[0], hash))
 		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
 		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
 	})
+
+	it('commitmentStart', async function() {
+		// @TODO: can start a commitment with an invalid bid
+		// @TODO can't with an invalid signature
+		// @TODO can't w/o funds
+		const { bid } = getTestValues()
+
+		// prepare the advertiser
+		// @TODO: web3 1.x where toNumber will not be required
+		await token.setBalanceTo(bid.advertiser, bid.tokenAmount.toNumber())
+		await core.deposit(token.address, bid.tokenAmount.toNumber(), { from: bid.advertiser })
+
+		// FYI: validators for the default bid are accounts 0, 1, 2
+		// @TODO: case where we do add an extra validator
+		const hash = bid.hash(core.address)
+		const sig = splitSig(await ethSign(bid.advertiser, hash))
+		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, 0x0)
+
+		// @TODO: get the hash of the commitment from the log, and compare against a hash of a commitment that we construct (fromBid)
+		assert.isOk(receipt.logs.find(x => x.event === 'LogBidCommitment'))
+	})
+
+
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
@@ -68,7 +92,7 @@ contract('AdExCore', function(accounts) {
 	// UTILS
 	function getTestValues() {
 		const bid = new Bid({
-			advertiser: accounts[0],
+			advertiser: accounts[2],
 			adUnit: Web3.utils.randomHex(32),
 			goal: Web3.utils.randomHex(32),
 			timeout: 24*60*60,
