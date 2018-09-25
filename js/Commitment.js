@@ -31,8 +31,11 @@ function Commitment(args) {
 	return this
 }
 
+// returns all the scalar values, as hex strings prefixed with 0x
 Commitment.prototype.values = function() {
-	return [this.bidId, this.tokenAddr, this.tokenAmount, this.validUntil, this.advertiser, this.publisher]
+	const num = x => '0x' + x.toString(16, 64)
+	const hex = x => '0x' + ('0000000000000000000000000000000000000000000000000000000000000000'.concat(x.slice(2)).slice(-64))	
+	return [hex(this.bidId), hex(this.tokenAddr), num(this.tokenAmount), num(this.validUntil), hex(this.advertiser), hex(this.publisher)]
 }
 
 Commitment.prototype.hash = function() {
