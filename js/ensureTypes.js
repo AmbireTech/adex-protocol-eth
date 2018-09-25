@@ -8,7 +8,7 @@ function Uint256(x) {
 }
 function Address(x) {
 	if (x === undefined) throw 'undefined value given for address'
-	return web3.utils.toChecksumAddress(x)
+	return web3.utils.toChecksumAddress(x).toLowerCase()
 }
 function Bytes32(x) {
 	if (x === undefined) throw 'undefined value given for bytes32'

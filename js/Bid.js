@@ -22,11 +22,15 @@ function Bid(args) {
 	return this
 }
 
+// returns all the scalar values, as hex strings prefixed with 0x
 Bid.prototype.values = function() {
-	return [this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce]
+	const num = x => '0x' + x.toString(16, 64)
+	const hex = x => '0x' + ('0000000000000000000000000000000000000000000000000000000000000000'.concat(x.slice(2)).slice(-64))
+	return [hex(this.advertiser), hex(this.adUnit), hex(this.goal), num(this.timeout), hex(this.tokenAddr), num(this.tokenAmount), num(this.nonce)]
 }
 
 Bid.prototype.hash = function(coreAddr) {
+	if (!coreAddr) throw 'coreAddr needs to be supplied'
 	return keccak256(abi.rawEncode(
 		['bytes32', 'address', 'address', 'bytes32', 'bytes32', 'uint256', 'address', 'uint256', 'uint256', 'address[]', 'uint256[]'],
 		[SCHEMA_HASH, coreAddr, this.advertiser, this.adUnit, this.goal, this.timeout, this.tokenAddr, this.tokenAmount, this.nonce, this.validators, this.validatorRewards]
