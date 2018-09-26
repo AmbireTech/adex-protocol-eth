@@ -14,9 +14,9 @@ There is a minimum number of validators - 2. Ideally, that will be set to 3, but
 
 ### Please note
 
-If >2/3 signatures are not collected for a commitment, it will time out and be reverted completely. This means that even if some of the validators did vote, they will not get rewarded.
+If >=2/3 signatures are not collected for a commitment, it will time out and be reverted completely. This means that even if some of the validators did vote, they will not get rewarded.
 
 ## Credits
 
-* BrendanChou for https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
-* Dean Eigenmann for SignatureValidator
+* @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
+* @decanus for SignatureValidator
