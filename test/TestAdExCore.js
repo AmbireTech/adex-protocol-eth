@@ -14,6 +14,8 @@ contract('AdExCore', function(accounts) {
 	let token
 	let core
 
+	let commitment1
+
 	before(async function() {
 		token = await MockToken.new()
 		libMock = await MockLibs.new()
@@ -78,7 +80,19 @@ contract('AdExCore', function(accounts) {
 		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, 0x0)
 
 		// @TODO: get the hash of the commitment from the log, and compare against a hash of a commitment that we construct (fromBid)
-		assert.isOk(receipt.logs.find(x => x.event === 'LogBidCommitment'))
+		const ev = receipt.logs.find(x => x.event === 'LogBidCommitment')
+		assert.isOk(ev, 'event found')
+		commitment1 = new Commitment({
+			bidId: bid.hash(core.address),
+			tokenAddr: bid.tokenAddr,
+			tokenAmount: bid.tokenAmount,
+			validUntil: ev.args.validUntil.toNumber(),
+			advertiser: bid.advertiser,
+			publisher: accounts[0],
+			validators: bid.validators,
+			validatorRewards: bid.validatorRewards,
+		})
+		assert.equal(ev.args.commitmentId, commitment1.hash(), 'commitment hash matches')
 
 		const advertiserBal = (await core.balanceOf(token.address, bid.advertiser)).toNumber()
 		const coreBal = (await core.balanceOf(token.address, core.address)).toNumber()
