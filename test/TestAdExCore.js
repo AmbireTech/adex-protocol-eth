@@ -2,7 +2,7 @@ const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 const MockLibs = artifacts.require('./mocks/Libs')
 
-const Bid = require('../js/Bid').Bid
+const { Bid, BidState } = require('../js/Bid')
 const Commitment = require('../js/Commitment').Commitment
 const splitSig = require('../js/splitSig')
 
@@ -83,7 +83,7 @@ contract('AdExCore', function(accounts) {
 		const ev = receipt.logs.find(x => x.event === 'LogBidCommitment')
 		assert.isOk(ev, 'event found')
 		commitment1 = new Commitment({
-			bidId: bid.hash(core.address),
+			bidId: hash,
 			tokenAddr: bid.tokenAddr,
 			tokenAmount: bid.tokenAmount,
 			validUntil: ev.args.validUntil.toNumber(),
@@ -98,6 +98,9 @@ contract('AdExCore', function(accounts) {
 		const coreBal = (await core.balanceOf(token.address, core.address)).toNumber()
 		assert.equal(coreBal-initialCoreBal, bid.tokenAmount.toNumber(), 'core balance increased by bid tokenAmount')
 		assert.equal(initialCoreBal+initialAdvertiserBal, advertiserBal+coreBal, 'no inflation')
+
+		// State has changed
+		assert.equal((await core.getBidState(hash)).toNumber(), BidState.Active, 'bid state is active')
 		//console.log(receipt)
 	})
 
