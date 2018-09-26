@@ -28,8 +28,6 @@ contract AdExCore is AdExCoreInterface {
 	mapping (bytes32 => bytes32) public commitments;
 
 	// Public Functions
-	constructor() public {}
-
 	function deposit(address token, uint amount)
 		external
 	{
