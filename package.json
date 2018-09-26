@@ -1,0 +1,28 @@
+{
+  "name": "adex-protocol-eth",
+  "version": "1.0.0",
+  "description": "AdEx protocol on Ethereum",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "ethereumjs-abi": "^0.6.5",
+    "js-sha3": "^0.8.0",
+    "truffle": "^4.1.14",
+    "web3": "^1.0.0-beta.36"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "truffle test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AdExNetwork/adex-protocol-eth.git"
+  },
+  "author": "Ivo Georgiev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AdExNetwork/adex-protocol-eth/issues"
+  },
+  "homepage": "https://github.com/AdExNetwork/adex-protocol-eth#readme"
+}
