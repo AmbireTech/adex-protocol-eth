@@ -128,7 +128,7 @@ contract AdExCore is AdExCoreInterface {
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
-		bytes32 hashToSign = keccak256(abi.encodePacked(commitment.hash(), vote));
+		bytes32 hashToSign = keccak256(abi.encode(commitment.hash(), vote));
 		uint remaining = commitment.tokenAmount;
 		uint votes = 0;
 		require(signatures.length <= commitment.validators.length, "INVALID_SIG_LEN");
