@@ -107,6 +107,7 @@ contract('AdExCore', function(accounts) {
 	
 	// @TODO commitmentFinalize
 	// @TODO commitmentTimeout
+	// @TODO bidCancel
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
