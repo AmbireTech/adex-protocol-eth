@@ -38,4 +38,13 @@ Bid.prototype.hash = function(coreAddr) {
 	return '0x'+buf.toString(16)
 }
 
-module.exports = { Bid, SCHEMA_HASH }
+const BidState = {
+	Unknown: 0,
+	Active: 1,
+	Canceled: 2,
+	DeliveryTimedOut: 3,
+	DeliveryFailed: 4,
+	DeliverySucceeded: 5
+}
+
+module.exports = { Bid, BidState, SCHEMA_HASH }

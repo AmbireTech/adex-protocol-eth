@@ -23,9 +23,9 @@ contract AdExCore is AdExCoreInterface {
 	mapping (address => mapping (address => uint)) private balances;
 
  	// bidId => bidState
-	mapping (bytes32 => BidLibrary.State) public states;
+	mapping (bytes32 => BidLibrary.State) private states;
 	// bidId => commitmentId
-	mapping (bytes32 => bytes32) public commitments;
+	mapping (bytes32 => bytes32) private commitments;
 
 	// Public Functions
 	constructor() public {}
@@ -163,6 +163,9 @@ contract AdExCore is AdExCoreInterface {
 	// Views
 	function balanceOf(address token, address acc) view external returns (uint) {
 		return balances[token][acc];
+	}
+	function getBidState(bytes32 bidId) view external returns (uint8) {
+		return uint8(states[bidId]);
 	}
 
 	// A few internal helpers
