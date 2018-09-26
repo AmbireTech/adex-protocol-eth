@@ -66,9 +66,11 @@ contract('AdExCore', function(accounts) {
 
 		// prepare the advertiser
 		// @TODO: web3 1.x where toNumber will not be required
-		await token.setBalanceTo(bid.advertiser, bid.tokenAmount.toNumber())
-		await core.deposit(token.address, bid.tokenAmount.toNumber(), { from: bid.advertiser })
+		const initialAdvertiserBal = bid.tokenAmount.toNumber()
+		await token.setBalanceTo(bid.advertiser, initialAdvertiserBal)
+		await core.deposit(token.address, initialAdvertiserBal, { from: bid.advertiser })
 
+		const initialCoreBal = (await core.balanceOf(token.address, core.address)).toNumber()
 		// FYI: validators for the default bid are accounts 0, 1, 2
 		// @TODO: case where we do add an extra validator
 		const hash = bid.hash(core.address)
@@ -77,6 +79,12 @@ contract('AdExCore', function(accounts) {
 
 		// @TODO: get the hash of the commitment from the log, and compare against a hash of a commitment that we construct (fromBid)
 		assert.isOk(receipt.logs.find(x => x.event === 'LogBidCommitment'))
+
+		const advertiserBal = (await core.balanceOf(token.address, bid.advertiser)).toNumber()
+		const coreBal = (await core.balanceOf(token.address, core.address)).toNumber()
+		assert.equal(coreBal-initialCoreBal, bid.tokenAmount.toNumber(), 'core balance increased by bid tokenAmount')
+		assert.equal(initialCoreBal+initialAdvertiserBal, advertiserBal+coreBal, 'no inflation')
+		//console.log(receipt)
 	})
 
 	
