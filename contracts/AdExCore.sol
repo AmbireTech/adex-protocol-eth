@@ -101,7 +101,7 @@ contract AdExCore is AdExCoreInterface {
 		balanceSub(bid.tokenAddr, bid.advertiser, bid.tokenAmount);
 		balanceAdd(bid.tokenAddr, address(this), bid.tokenAmount);
 
-		emit LogBidCommitment(bidId, commitmentId);
+		emit LogBidCommitment(bidId, commitmentId, commitment.validUntil);
 	}
 
 	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
