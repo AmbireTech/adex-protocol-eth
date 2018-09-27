@@ -63,7 +63,7 @@ contract('AdExCore', function(accounts) {
 	it('commitmentStart', async function() {
 		// @TODO: can start a commitment with an invalid bid
 		// @TODO can't with an invalid signature
-		// @TODO can't w/o funds
+		// @TODO can't start if the advertiser does not have funds
 		const { bid } = getTestValues()
 
 		// prepare the advertiser
@@ -116,7 +116,7 @@ contract('AdExCore', function(accounts) {
 		const sig2 = splitSig(await ethSign(accounts[1], hash))
 		const sig3 = splitSig(await ethSign(accounts[2], hash))
 
-		// We have to wrap in try/catch cause this does not work w/o rethrowing
+		// First, test that we should revert when calling with the wrong vote
 		const wrongVote = '0x0000000000000000000000000000000000000000000000000000000000000000'
 		try {
 			await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3], wrongVote)
