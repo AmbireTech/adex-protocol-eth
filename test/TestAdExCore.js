@@ -132,8 +132,10 @@ contract('AdExCore', function(accounts) {
 		const toIncreaseAmnt = commitment.tokenAmount.toNumber() + publisherValidatorReward - allValidatorRewards
 		assert.equal(balBefore.toNumber() + toIncreaseAmnt, balAfter.toNumber(), 'balance increased by commitment tokenAmount')
 		// @TODO: test when the publisher is NOT a validator
-		// test different cases etc.
-		assert.isOk(receipt.logs.find(ev => ev.event === 'LogBidFinalize'), 'LogBidFinalize emitted')
+		// test different cases etc
+		const ev = receipt.logs.find(ev => ev.event === 'LogBidFinalize')
+		assert.isOk(ev, 'LogBidFinalize emitted')
+		assert.equal(ev.args.vote, vote, 'vote is the same')
 	})
 
 	// @TODO commitmentFinalize
