@@ -121,14 +121,15 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[3][] signatures, bytes32 vote)
 		internal
 	{
+		bytes32 commitmentId = commitment.hash();
 		require(states[commitment.bidId] == BidLibrary.State.Active, "INVALID_STATE");
-		require(commitments[commitment.bidId] == commitment.hash(), "INVALID_COMMITMENT_HASH");
+		require(commitments[commitment.bidId] == commitmentId, "INVALID_COMMITMENT_HASH");
 		require(now <= commitment.validUntil, "COMMITMENT_EXPIRED");
 
 		// Unlock the funds
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 
-		bytes32 hashToSign = keccak256(abi.encode(commitment.hash(), vote));
+		bytes32 hashToSign = keccak256(abi.encode(commitmentId, vote));
 		uint remaining = commitment.tokenAmount;
 		uint votes = 0;
 		require(signatures.length <= commitment.validators.length, "INVALID_SIG_LEN");
