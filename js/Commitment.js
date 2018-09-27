@@ -46,4 +46,9 @@ Commitment.prototype.hash = function() {
 	return '0x'+buf.toString(16)
 }
 
+Commitment.prototype.voteHash = function(vote) {
+	const buf = keccak256(abi.rawEncode(['bytes32', 'bytes32'], [this.hash(), vote]))
+	return '0x'+buf.toString(16)
+}
+
 module.exports = { Commitment, SCHEMA_HASH }
