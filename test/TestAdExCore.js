@@ -121,15 +121,19 @@ contract('AdExCore', function(accounts) {
 		const receipt = await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3],vote)
 
 		const balAfter = await core.balanceOf(token.address, publisher)
+		const sum = (a, b) => a+b
 		const publisherValidatorReward = commitment.validators
 			.map((x, i) => x==publisher ? commitment.validatorRewards[i].toNumber() : 0)
-			.reduce((a, b) => a+b, 0)
-		const allRewards = commitment.validatorRewards
+			.reduce(sum, 0)
+		const allValidatorRewards = commitment.validatorRewards
 			.map(x => x.toNumber())
-			.reduce((a, b) => a+b, 0)
-		const toIncreaseAmnt = commitment.tokenAmount.toNumber() + publisherValidatorReward - allRewards
+			.reduce(sum, 0)
+		// We are checking whether the publisher received the reward, and their validator reward (cause they're a validator)
+		const toIncreaseAmnt = commitment.tokenAmount.toNumber() + publisherValidatorReward - allValidatorRewards
 		assert.equal(balBefore.toNumber() + toIncreaseAmnt, balAfter.toNumber(), 'balance increased by commitment tokenAmount')
-		console.log(receipt)
+		// @TODO: test when the publisher is NOT a validator
+		// test different cases etc.
+		assert.isOk(receipt.logs.find(ev => ev.event === 'LogBidFinalize'), 'LogBidFinalize emitted')
 	})
 
 	// @TODO commitmentFinalize
