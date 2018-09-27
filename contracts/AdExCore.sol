@@ -105,8 +105,9 @@ contract AdExCore is AdExCoreInterface {
 	function commitmentTimeoutInternal(CommitmentLibrary.Commitment memory commitment)
 		internal
 	{
+		bytes32 commitmentId = commitment.hash();
 		require(states[commitment.bidId] == BidLibrary.State.Active, "INVALID_STATE");
-		require(commitments[commitment.bidId] == commitment.hash(), "INVALID_COMMITMENT_HASH");
+		require(commitments[commitment.bidId] == commitmentId, "INVALID_COMMITMENT_HASH");
 		require(now > commitment.validUntil, "COMMITMENT_NOT_EXPIRED");
 
 		states[commitment.bidId] = BidLibrary.State.DeliveryTimedOut;
@@ -115,7 +116,7 @@ contract AdExCore is AdExCoreInterface {
 		balanceSub(commitment.tokenAddr, address(this), commitment.tokenAmount);
 		balanceAdd(commitment.tokenAddr, commitment.advertiser, commitment.tokenAmount);
 
-		emit LogBidTimeout(commitment.bidId);
+		emit LogBidTimeout(commitment.bidId, commitmentId);
 	}
 
 	function commitmentFinalizeInternal(CommitmentLibrary.Commitment memory commitment, bytes32[3][] signatures, bytes32 vote)
@@ -156,7 +157,7 @@ contract AdExCore is AdExCoreInterface {
 		}
 		delete commitments[commitment.bidId];
 
-		emit LogBidFinalize(commitment.bidId, vote);
+		emit LogBidFinalize(commitment.bidId, commitmentId, vote);
 	}
 
 	// Views
