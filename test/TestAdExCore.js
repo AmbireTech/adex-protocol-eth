@@ -116,9 +116,17 @@ contract('AdExCore', function(accounts) {
 		const sig2 = splitSig(await ethSign(accounts[1], hash))
 		const sig3 = splitSig(await ethSign(accounts[2], hash))
 
-		// @TODO: won't work if the vote is different
+		// We have to wrap in try/catch cause this does not work w/o rethrowing
+		const wrongVote = '0x0000000000000000000000000000000000000000000000000000000000000000'
+		try {
+			await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3], wrongVote)
+			assert.isOk(false, 'commitmentFinalize did not throw with wrongVote')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'cannot vote with a different vote')
+		}
+
 		const balBefore = await core.balanceOf(token.address, publisher)
-		const receipt = await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3],vote)
+		const receipt = await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3], vote)
 
 		const balAfter = await core.balanceOf(token.address, publisher)
 		const sum = (a, b) => a+b
