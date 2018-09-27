@@ -77,7 +77,8 @@ contract('AdExCore', function(accounts) {
 		// @TODO: case where we do add an extra validator
 		const hash = bid.hash(core.address)
 		const sig = splitSig(await ethSign(bid.advertiser, hash))
-		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, 0x0)
+		const publisher = accounts[0]
+		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, 0x0, { from: publisher })
 
 		// @TODO: get the hash of the commitment from the log, and compare against a hash of a commitment that we construct (fromBid)
 		const ev = receipt.logs.find(x => x.event === 'LogBidCommitment')
@@ -104,7 +105,33 @@ contract('AdExCore', function(accounts) {
 		//console.log(receipt)
 	})
 
-	
+
+
+	it('commitmentFinalize', async function() {
+		const commitment = commitment1
+		const publisher = commitment.publisher
+		const vote = '0x0000000000000000000000000000000000000000000000000000000000000001'
+		const hash = commitment.voteHash(vote)
+		const sig1 = splitSig(await ethSign(accounts[0], hash))
+		const sig2 = splitSig(await ethSign(accounts[1], hash))
+		const sig3 = splitSig(await ethSign(accounts[2], hash))
+
+		// @TODO: won't work if the vote is different
+		const balBefore = await core.balanceOf(token.address, publisher)
+		const receipt = await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3],vote)
+
+		const balAfter = await core.balanceOf(token.address, publisher)
+		const publisherValidatorReward = commitment.validators
+			.map((x, i) => x==publisher ? commitment.validatorRewards[i].toNumber() : 0)
+			.reduce((a, b) => a+b, 0)
+		const allRewards = commitment.validatorRewards
+			.map(x => x.toNumber())
+			.reduce((a, b) => a+b, 0)
+		const toIncreaseAmnt = commitment.tokenAmount.toNumber() + publisherValidatorReward - allRewards
+		assert.equal(balBefore.toNumber() + toIncreaseAmnt, balAfter.toNumber(), 'balance increased by commitment tokenAmount')
+		console.log(receipt)
+	})
+
 	// @TODO commitmentFinalize
 	// @TODO commitmentTimeout
 	// @TODO bidCancel
