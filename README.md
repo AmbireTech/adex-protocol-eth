@@ -16,6 +16,10 @@ There is a minimum number of validators - 2. Ideally, that will be set to 3, but
 
 If >=2/3 signatures are not collected for a commitment, it will time out and be reverted completely. This means that even if some of the validators did vote, they will not get rewarded.
 
+## Deployment
+
+This will be deployed to Ropsten first, and a month after (in time for devcon4) we should have it on mainnet as well.
+
 ## Credits
 
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
