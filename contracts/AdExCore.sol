@@ -53,8 +53,8 @@ contract AdExCore is AdExCoreInterface {
 	function bidCancel(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards) external {
 		bidCancelInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards));
 	}
-	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes32[3] signature, address extraValidator, uint extraValidatorReward) external {
-		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator, extraValidatorReward);
+	function commitmentStart(bytes32[7] bidValues, address[] bidValidators, uint[] bidValidatorRewards, bytes32[3] signature, address extraValidator) external {
+		commitmentStartInternal(BidLibrary.fromValues(bidValues, bidValidators, bidValidatorRewards), signature, extraValidator);
 	}
 	function commitmentTimeout(bytes32[6] cValues, address[] cValidators, uint[] cValidatorRewards) external {
 		commitmentTimeoutInternal(CommitmentLibrary.fromValues(cValues, cValidators, cValidatorRewards));
@@ -77,7 +77,7 @@ contract AdExCore is AdExCoreInterface {
 		emit LogBidCancel(bidId);
 	}
 
-	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes32[3] signature, address extraValidator, uint extraValidatorReward)
+	function commitmentStartInternal(BidLibrary.Bid memory bid, bytes32[3] signature, address extraValidator)
 		internal
 	{
 		bytes32 bidId = bid.hash();
@@ -88,7 +88,7 @@ contract AdExCore is AdExCoreInterface {
 		require(SignatureValidator.isValidSignature(bidId, bid.advertiser, signature), "INVALID_SIG");
 		require(balances[bid.tokenAddr][bid.advertiser] >= bid.tokenAmount, "INSUFFIENT_BALANCE");
 
-		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, bidId, msg.sender, extraValidator, extraValidatorReward);
+		CommitmentLibrary.Commitment memory commitment = CommitmentLibrary.fromBid(bid, bidId, msg.sender, extraValidator);
 		bytes32 commitmentId = commitment.hash();
 
 		require(commitment.isValid(), "INVALID_COMMITMENT");

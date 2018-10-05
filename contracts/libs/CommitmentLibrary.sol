@@ -83,7 +83,7 @@ library CommitmentLibrary {
 		});
 	}
 
-	function fromBid(BidLibrary.Bid memory bid, bytes32 bidId, address publisher, address extraValidator, uint extraValidatorReward)
+	function fromBid(BidLibrary.Bid memory bid, bytes32 bidId, address publisher, address extraValidator)
 		internal
 		view
 		returns (Commitment memory)
@@ -101,7 +101,9 @@ library CommitmentLibrary {
 				validatorRewards[i] = bid.validatorRewards[i];
 			}
 			validators[validatorLen] = extraValidator;
-			validatorRewards[validatorLen] = extraValidatorReward;
+			// The extra validator rewards needs to be 0, explicitly, cause otherwise the publisher can set all the remaining reward
+			// as their own validator reward, therefore getting it merely by voting the same as the majority (no matter if true or false)
+			validatorRewards[validatorLen] = 0;
 		}
 
 		return Commitment({
