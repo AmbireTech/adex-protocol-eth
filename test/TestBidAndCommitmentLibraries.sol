@@ -72,12 +72,12 @@ contract TestBidAndCommitmentLibraries {
 		address publisher = address(this);
 
 		BidLibrary.Bid memory bid = newTestBid(validators1, validatorRewards1);
-		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0);
+		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0);
 		Assert.equal(comm1.bidId, bid.hash(), "commitment has right bidId");
 		Assert.equal(comm1.publisher, publisher, "commitment has right publisher");
 		Assert.equal(comm1.validators.length, 2, "commitment has right validator length");
 
-		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x1, 1);
+		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x1);
 		Assert.equal(comm2.bidId, bid.hash(), "commitment has right bidId");
 		Assert.equal(comm2.validators.length, 3, "commitment has an extra validator");
 		Assert.equal(comm2.validatorRewards.length, 3, "commitment validatorRewards is right length");
@@ -94,20 +94,24 @@ contract TestBidAndCommitmentLibraries {
 		address publisher = address(this);
 		BidLibrary.Bid memory bid = newTestBid(validators1, validatorRewards1);
 
-		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0x0);
+		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0);
 		Assert.equal(comm1.isValid(), false, "Commitment is not valid cause it does not have enough validators");
 
-		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this), 1);
+		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this));
 		Assert.equal(comm2.isValid(), true, "Commitment is valid cause we added an extra validator");
 		comm2.validatorRewards = validatorRewards1;
 		Assert.equal(comm2.isValid(), false, "Commitment is not valid cause validators.length != validatorRewards.length");
 
-		CommitmentLibrary.Commitment memory comm3 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this), bid.tokenAmount+1);
-		Assert.equal(comm3.isValid(), false, "Commitment is not valid cause the sum of all validator rewards is more than the token reward");
-
 		BidLibrary.Bid memory bid2 = newTestBid(validators2, validatorRewards2);
-		CommitmentLibrary.Commitment memory comm4 = CommitmentLibrary.fromBid(bid2, bid2.hash(), publisher, address(this), 1);
-		Assert.equal(comm4.isValid(), false, "Commitment is not valid cause it does not have enough validators");
+		CommitmentLibrary.Commitment memory comm3 = CommitmentLibrary.fromBid(bid2, bid2.hash(), publisher, address(this));
+		Assert.equal(comm3.isValid(), false, "Commitment is not valid cause it does not have enough validators");
+
+		address[] memory validators3 = new address[](1);
+		uint[] memory validatorRewards3 = new uint[](1);
+		validatorRewards3[0] = bid.tokenAmount+99;
+		BidLibrary.Bid memory bid3 = newTestBid(validators3, validatorRewards3);
+		CommitmentLibrary.Commitment memory comm4 = CommitmentLibrary.fromBid(bid3, bid3.hash(), publisher, address(this));
+		Assert.equal(comm4.isValid(), false, "Commitment is not valid cause the sum of all validator rewards is more than the token reward");
 	}
 
 	function testCommitmentHash() public {
@@ -117,10 +121,10 @@ contract TestBidAndCommitmentLibraries {
 		address publisher = address(this);
 		BidLibrary.Bid memory bid = newTestBid(validators1, validatorRewards1);
 
-		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0x0);
+		CommitmentLibrary.Commitment memory comm1 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0);
 		Assert.equal(comm1.isValid(), true, "Commitment 1 is valid");
 
-		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0x0);
+		CommitmentLibrary.Commitment memory comm2 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0);
 		Assert.equal(comm2.isValid(), true, "Commitment 2 is valid");
 
 		Assert.equal(comm1.hash(), comm2.hash(), "The two commitments have the same hash");
@@ -136,13 +140,13 @@ contract TestBidAndCommitmentLibraries {
 		comm1.bidId = bytes32(0xdeadbeef);
 		Assert.notEqual(comm1.hash(), comm2.hash(), "hash changed when changing bidId");
 
-		CommitmentLibrary.Commitment memory comm3 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0, 0);
+		CommitmentLibrary.Commitment memory comm3 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, 0x0);
 		comm3.validators = new address[](4);
 		comm3.validatorRewards = new uint[](4);
 		comm3.validators[3] = address(this);
-		comm3.validatorRewards[3] = 1;
-		CommitmentLibrary.Commitment memory comm4 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this), 1);
-		Assert.equal(comm3.hash(), comm4.hash(), "hash reproducable with extra validator");
+		comm3.validatorRewards[3] = 0;
+		CommitmentLibrary.Commitment memory comm4 = CommitmentLibrary.fromBid(bid, bid.hash(), publisher, address(this));
+		Assert.equal(comm3.hash(), comm4.hash(), "hash reproducable with an extra validator");
 	}
 
 	//

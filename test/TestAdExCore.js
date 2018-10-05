@@ -61,6 +61,7 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('commitmentStart', async function() {
+		// @TODO: cannot do this twice for the same bid
 		// @TODO: can start a commitment with an invalid bid
 		// @TODO can't with an invalid signature
 		// @TODO can't start if the advertiser does not have funds
@@ -78,7 +79,7 @@ contract('AdExCore', function(accounts) {
 		const hash = bid.hash(core.address)
 		const sig = splitSig(await ethSign(bid.advertiser, hash))
 		const publisher = accounts[0]
-		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, 0x0, { from: publisher })
+		const receipt = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, { from: publisher })
 
 		// @TODO: get the hash of the commitment from the log, and compare against a hash of a commitment that we construct (fromBid)
 		const ev = receipt.logs.find(x => x.event === 'LogBidCommitment')
@@ -108,6 +109,7 @@ contract('AdExCore', function(accounts) {
 
 
 	it('commitmentFinalize', async function() {
+		// @TODO can't finalize if we are timed out
 		const commitment = commitment1
 		const publisher = commitment.publisher
 		const vote = '0x0000000000000000000000000000000000000000000000000000000000000001'
@@ -144,9 +146,10 @@ contract('AdExCore', function(accounts) {
 		const ev = receipt.logs.find(ev => ev.event === 'LogBidFinalize')
 		assert.isOk(ev, 'LogBidFinalize emitted')
 		assert.equal(ev.args.vote, vote, 'vote is the same')
+
+		//console.log(receipt)
 	})
 
-	// @TODO commitmentFinalize
 	// @TODO commitmentTimeout
 	// @TODO bidCancel
 
@@ -154,7 +157,7 @@ contract('AdExCore', function(accounts) {
 
 	// @TODO: ensure timeouts always work
 	// ensure there is a max timeout
-	// ensure we can't get into a istuation where we can't finalize (e.g. validator rewards are more than the total reward)
+	// ensure we can't get into a situation where we can't finalize (e.g. validator rewards are more than the total reward)
 	// ensure calling finalize (everything for that matter, except deposit/withdraw) is always zero-sum on balances
 	// @TODO to protect against math bugs, check common like: 1/2 validators voting (fail), 2/2 (success); 1/3 (f), 2/3 (s), 3/3 (s), etc.
 
