@@ -6,7 +6,11 @@ import "./BidLibrary.sol";
 library CommitmentLibrary {
 	using SafeMath for uint;
 
+	// Both numbers are inclusive
 	uint8 constant MIN_VALIDATOR_COUNT = 2;
+	// This is an arbitrary number, but we impose this limit to restrict on-chain load; also to ensure the *3 operation is safe
+	uint8 constant MAX_VALIDATOR_COUNT = 50;
+
 	// keccak256("Commitment(bytes32 bid,address tokenAddr,uint256 tokenAmount,uint256 validUntil,address advertiser,address publisher,address[] validators,uint[] validatorRewards)");
 	bytes32 constant public SCHEMA_HASH = 0x8aa1fb0e671ad6f7d73ad552eff29b7b79186e0143b91e48a013151a34ae50dd;
 
@@ -50,6 +54,9 @@ library CommitmentLibrary {
 			return false;
 		}
 		if (commitment.validators.length < MIN_VALIDATOR_COUNT) {
+			return false;
+		}
+		if (commitment.validators.length > MAX_VALIDATOR_COUNT) {
 			return false;
 		}
 
