@@ -96,6 +96,15 @@ contract('AdExCore', function(accounts) {
 		})
 		assert.equal(ev.args.commitmentId, commitment1.hash(), 'commitment hash matches')
 
+		// Assert that we can't do this twice
+		try {
+			await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, { from: publisher })
+			assert.isOk('false', 'commitmentStart should not be callable twice with the same bid')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'cannot commitmentStart twice')
+		}
+
+		// Calculate balance changes
 		const advertiserBal = (await core.balanceOf(token.address, bid.advertiser)).toNumber()
 		const coreBal = (await core.balanceOf(token.address, core.address)).toNumber()
 		assert.equal(coreBal-initialCoreBal, bid.tokenAmount.toNumber(), 'core balance increased by bid tokenAmount')
@@ -150,13 +159,15 @@ contract('AdExCore', function(accounts) {
 		//console.log(receipt)
 	})
 
+	// @TODO: test finalize with many validators, e.g. 40
 	// @TODO commitmentTimeout
 	// @TODO bidCancel
+	// @TODO: on finalization, test if only the validators who signed get rewarded
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
 	// @TODO: ensure timeouts always work
-	// ensure there is a max timeout
+	// ensure there is a max timeout in any case
 	// ensure we can't get into a situation where we can't finalize (e.g. validator rewards are more than the total reward)
 	// ensure calling finalize (everything for that matter, except deposit/withdraw) is always zero-sum on balances
 	// @TODO to protect against math bugs, check common like: 1/2 validators voting (fail), 2/2 (success); 1/3 (f), 2/3 (s), 3/3 (s), etc.
