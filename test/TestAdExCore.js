@@ -135,6 +135,15 @@ contract('AdExCore', function(accounts) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'cannot vote with a different vote')
 		}
 
+		// cannnot time it out
+		try {
+			await core.commitmentTimeout(commitment.values(), commitment.validators, commitment.validatorRewards, { from: publisher })
+			assert.isOk(false, 'commitmentTimeout succeeded too early')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'cannot timeout that early')
+		}
+
+		// Finalize and test if balances moved correctly
 		const balBefore = await core.balanceOf(token.address, publisher)
 		const receipt = await core.commitmentFinalize(commitment.values(), commitment.validators, commitment.validatorRewards, [sig1, sig2, sig3], vote)
 
@@ -160,13 +169,14 @@ contract('AdExCore', function(accounts) {
 
 	it('commitmentTimeout', async function() {
 		const { bid } = getTestValues()
-		bid.timeout = 60
-		bid.advertiser = accounts[3]
 	
 		// prepare balances
 		await token.setBalanceTo(bid.advertiser, bid.tokenAmount.toNumber())
 		await core.deposit(token.address, bid.tokenAmount.toNumber(), { from: bid.advertiser })
 		
+		// initial values
+		const initialBal = await core.balanceOf(token.address, bid.advertiser)
+
 		// start the commitment
 		const hash = bid.hash(core.address)
 		const sig = splitSig(await ethSign(bid.advertiser, hash))
@@ -176,7 +186,7 @@ contract('AdExCore', function(accounts) {
 
 		// evaluate if started
 		assert.ok(commitmentEv, 'has commitment event')
-		assert.equal((await token.balanceOf(bid.advertiser)).toNumber(), 0, 'balance is 0 - all locked on the commitment')
+		assert.equal((await core.balanceOf(token.address, bid.advertiser)).toNumber(), initialBal.toNumber()-bid.tokenAmount, 'balance is all locked on the commitment')
 
 		// construct the commitment
 		const commitment = new Commitment({
@@ -200,20 +210,20 @@ contract('AdExCore', function(accounts) {
 		}
 
 		// move ahead in time
-		console.log(await moveTime(web3, 3000))
+		await moveTime(web3, 2*24*60*60)
 
 		// commitmentTimeout and assert success
 		const receipt = await core.commitmentTimeout(commitment.values(), commitment.validators, commitment.validatorRewards, { from: publisher })
-		assert.equal((await token.balanceOf(bid.advertiser)).toNumber(), bid.tokenAmount, 'balance is as it started')
+		const ev = receipt.logs.find(x => x.event === 'LogBidTimeout')
 
-		console.log(receipt)
+		assert.ok(ev, 'has timeout event')
+		assert.equal((await core.balanceOf(token.address, commitment.advertiser)).toNumber(), initialBal.toNumber(), 'balance is as it started')
 	})
 
 
 	// @TODO: test finalize with many validators, e.g. 40
-	// @TODO commitmentTimeout
 	// @TODO bidCancel
-	// @TODO: on finalization, test if only the validators who signed get rewarded
+	// @TODO: on finalization, test if only the validators who signed get rewarded; NOTE: we have tested this manually by replcaing one of the sigs with 0x0
 
 	// @TODO cannot withdraw more than we've deposited, even though the core has the balance
 
@@ -232,7 +242,7 @@ contract('AdExCore', function(accounts) {
 			timeout: 24*60*60,
 			tokenAddr: token.address,
 			tokenAmount: 2000,
-			nonce: Date.now(),
+			nonce: Date.now()+Math.floor(Math.random() * 10000),
 			validators: [accounts[0], accounts[1], accounts[2]],
 			validatorRewards: [10, 11, 12]
 		})
