@@ -20,4 +20,7 @@ contract AdExCoreInterface {
 
 	function deposit(address token, uint amount) external;
 	function withdraw(address token, uint amount) external;
+
+	function balanceOf(address token, address acc) view external returns (uint);
+	function getBidState(bytes32 bidId) view external returns (uint8);
 }
