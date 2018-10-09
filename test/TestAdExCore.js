@@ -60,6 +60,22 @@ contract('AdExCore', function(accounts) {
 		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
 	})
 
+	it('bidCancel', async function() {
+		const { bid } = getTestValues()
+		const hash = bid.hash(core.address)
+
+		// must not be bid.advertiser
+		const anotherAcc = accounts[0]
+		assert.notEqual(anotherAcc, bid.advertiser)
+		// @TODO: can't cancel from non advertiser
+		const receipt = await core.bidCancel(bid.values(), bid.validators, bid.validatorRewards, { from: bid.advertiser })
+		const ev = receipt.logs.find(x => x.event === 'LogBidCancel')
+
+		assert.ok(ev, 'has canceled event')
+		
+		assert.equal((await core.getBidState(hash)).toNumber(), BidState.Canceled, 'bid state is canceled')
+	})
+
 	it('commitmentStart', async function() {
 		// @TODO: can start a commitment with an invalid bid
 		// @TODO can't with an invalid signature
