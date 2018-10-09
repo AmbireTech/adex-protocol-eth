@@ -67,7 +67,14 @@ contract('AdExCore', function(accounts) {
 		// must not be bid.advertiser
 		const anotherAcc = accounts[0]
 		assert.notEqual(anotherAcc, bid.advertiser)
-		// @TODO: can't cancel from non advertiser
+
+		try {
+			await core.bidCancel(bid.values(), bid.validators, bid.validatorRewards, { from: anotherAcc })
+			t.isOk(false, 'bidCancel should fail with another account')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'bidCancel fails when not called by bid.advertiser')
+		}
+
 		const receipt = await core.bidCancel(bid.values(), bid.validators, bid.validatorRewards, { from: bid.advertiser })
 		const ev = receipt.logs.find(x => x.event === 'LogBidCancel')
 
