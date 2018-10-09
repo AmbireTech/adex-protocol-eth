@@ -61,7 +61,6 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('commitmentStart', async function() {
-		// @TODO: cannot do this twice for the same bid
 		// @TODO: can start a commitment with an invalid bid
 		// @TODO can't with an invalid signature
 		// @TODO can't start if the advertiser does not have funds
@@ -159,6 +158,58 @@ contract('AdExCore', function(accounts) {
 		//console.log(receipt)
 	})
 
+	it('commitmentTimeout', async function() {
+		const { bid } = getTestValues()
+		bid.timeout = 60
+		bid.advertiser = accounts[3]
+	
+		// prepare balances
+		await token.setBalanceTo(bid.advertiser, bid.tokenAmount.toNumber())
+		await core.deposit(token.address, bid.tokenAmount.toNumber(), { from: bid.advertiser })
+		
+		// start the commitment
+		const hash = bid.hash(core.address)
+		const sig = splitSig(await ethSign(bid.advertiser, hash))
+		const publisher = accounts[0]
+		const receiptStart = await core.commitmentStart(bid.values(), bid.validators, bid.validatorRewards, sig, 0x0, { from: publisher })
+		const commitmentEv = receiptStart.logs.find(x => x.event === 'LogBidCommitment')
+
+		// evaluate if started
+		assert.ok(commitmentEv, 'has commitment event')
+		assert.equal((await token.balanceOf(bid.advertiser)).toNumber(), 0, 'balance is 0 - all locked on the commitment')
+
+		// construct the commitment
+		const commitment = new Commitment({
+			bidId: hash,
+			tokenAddr: bid.tokenAddr,
+			tokenAmount: bid.tokenAmount,
+			validUntil: commitmentEv.args.validUntil.toNumber(),
+			advertiser: bid.advertiser,
+			publisher: publisher,
+			validators: bid.validators,
+			validatorRewards: bid.validatorRewards,
+		})
+
+
+		// too early to timeout
+		try {
+			await core.commitmentTimeout(commitment.values(), commitment.validators, commitment.validatorRewards, { from: publisher })
+			assert.isOk(false, 'commitmentTimeout succeeded too early')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert/), 'cannot timeout that early')
+		}
+
+		// move ahead in time
+		console.log(await moveTime(web3, 3000))
+
+		// commitmentTimeout and assert success
+		const receipt = await core.commitmentTimeout(commitment.values(), commitment.validators, commitment.validatorRewards, { from: publisher })
+		assert.equal((await token.balanceOf(bid.advertiser)).toNumber(), bid.tokenAmount, 'balance is as it started')
+
+		console.log(receipt)
+	})
+
+
 	// @TODO: test finalize with many validators, e.g. 40
 	// @TODO commitmentTimeout
 	// @TODO bidCancel
@@ -197,5 +248,16 @@ contract('AdExCore', function(accounts) {
 			validatorRewards: bid.validatorRewards
 		})
 		return { bid, commitment }
+	}
+
+	function moveTime(web3, time) {
+		return new Promise(function(resolve, reject) {
+			web3.currentProvider.send({
+				jsonrpc: '2.0',
+				method: 'evm_increaseTime',
+				params: [time],
+				id: 0,
+			}, (err, res) => err ? reject(err) : resolve(res))
+		})
 	}
 })
