@@ -26,6 +26,8 @@ contract AdExCore is AdExCoreInterface {
 	mapping (bytes32 => BidLibrary.State) private states;
 	// bidId => commitmentId
 	mapping (bytes32 => bytes32) private commitments;
+	// bidId => vote
+	mapping (bytes32 => bytes32) private finalizedVotes;
 
 	// Public Functions
 	function deposit(address token, uint amount)
@@ -156,6 +158,7 @@ contract AdExCore is AdExCoreInterface {
 			balanceAdd(commitment.tokenAddr, commitment.advertiser, remaining);
 		}
 		delete commitments[commitment.bidId];
+		finalizedVotes[commitment.bidId] = vote;
 
 		emit LogBidFinalize(commitment.bidId, commitmentId, vote);
 	}
@@ -166,6 +169,9 @@ contract AdExCore is AdExCoreInterface {
 	}
 	function getBidState(bytes32 bidId) view external returns (uint8) {
 		return uint8(states[bidId]);
+	}
+	function getBidVote(bytes32 bidId) view external returns (bytes32) {
+		return finalizedVotes[bidId];
 	}
 
 	// A few internal helpers
