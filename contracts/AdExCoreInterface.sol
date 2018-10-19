@@ -23,4 +23,5 @@ contract AdExCoreInterface {
 
 	function balanceOf(address token, address acc) view external returns (uint);
 	function getBidState(bytes32 bidId) view external returns (uint8);
+	function getBidVote(bytes32 bidId) view external returns (bytes32);
 }
