@@ -2,6 +2,8 @@
 
 The Ethereum implementation of the [AdEx Protocol](https://github.com/AdExNetwork/adex-protocol).
 
+This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
+
 This relies on the concept of an OCEAN, which stands for off-chain event aggregation. Everything that happens in the context of an on-chain commitment will be recorded and aggregated by pre-delegated validators, and submitted on-chain by said validators.
 
 Each validator will be rewarded for voting, and not rewarded if they did not vote.
