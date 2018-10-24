@@ -13,7 +13,7 @@ function Address(x) {
 function Bytes32(x) {
 	if (x === undefined) throw 'undefined value given for bytes32'
 	const bytes = web3.utils.toHex(x)
-	if (x.length !== 66) throw 'invalid length given for bytes32'
+	if (bytes.length !== 66) throw 'invalid length given for bytes32'
 	return bytes
 }
 
