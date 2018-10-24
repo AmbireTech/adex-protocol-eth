@@ -6,7 +6,7 @@ This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
 
 This relies on the concept of an OCEAN, which stands for off-chain event aggregation. Everything that happens in the context of an on-chain commitment will be recorded and aggregated by pre-delegated validators, and submitted on-chain by said validators.
 
-Each validator will be rewarded for voting, and not rewarded if they did not vote.
+Each validator will **only** be rewarded if they vote.
 
 While OCEAN allows any arbitrary vote value, in this implementation, we consider `0` to mean "Commitment failed" and we return the funds to the advertiser, while anything other than `0` means that it succeeded, and therefore transfer the funds to the publisher.
 
