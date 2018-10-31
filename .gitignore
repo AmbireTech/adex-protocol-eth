@@ -1,4 +1,3 @@
-build-contract/*
-build/*
+.etherlime-store/
 node_modules
 package-*.json
