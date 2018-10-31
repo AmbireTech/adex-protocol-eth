@@ -6,14 +6,12 @@
     "test": "test"
   },
   "dependencies": {
-    "ethereumjs-abi": "^0.6.5",
-    "js-sha3": "^0.8.0",
-    "truffle": "^4.1.14",
-    "web3": "^1.0.0-beta.36"
+    "etherlime": "^0.9.11",
+    "js-sha3": "^0.8.0"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "truffle test"
+    "test": "etherlime test"
   },
   "repository": {
     "type": "git",
