@@ -1,11 +1,13 @@
 pragma solidity 0.4.24;
 
 library ChannelLibrary {
+	uint constant MAX_VALIDITY = 365 days;
+
 	// Both numbers are inclusive
 	uint8 constant MIN_VALIDATOR_COUNT = 2;
 	// This is an arbitrary number, but we impose this limit to restrict on-chain load; also to ensure the *3 operation is safe
 	uint8 constant MAX_VALIDATOR_COUNT = 25;
-	
+
 	bytes32 constant struct SCHEMA_HASH = keccak256("Channel(address contract,address creator,bytes32 spec,address tokenAddr,uint tokenAmount,uint validUntil,address[] validators)")
 
 	enum State {
@@ -42,12 +44,21 @@ library ChannelLibrary {
 		));
 	}
 
-	function isValid(Channel memory channel)
+	function isValid(Channel memory channel, uint currentTime)
 		internal
 		pure
 		returns (bool)
 	{
-		// @TODO
+		if (channel.validators.length < MIN_VALIDATORS_COUNT) {
+			return false;
+		}
+		if (channel.validators.length > MAX_VALIDATORS_COUNT) {
+			return false;
+		}
+		if (channel.validUntil > currentTime + MAX_VALIDITY) {
+			return false;
+		}
+
 		return true;
 	}
 }
