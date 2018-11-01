@@ -28,6 +28,15 @@ contract AdExCore {
 	event LogChannelExpiredWithdraw(bytes32 channelId, uint amount);
 	event LogChannelWithdraw(bytes32 channelId, uint amount);
 
+	// withdrawal request is a struct, so that we can easily pass many
+	struct WithdrawalRequest {
+		ChannelLibrary.Channel channel;
+		bytes32 stateRoot;
+		bytes32[3][] signatures;
+		bytes32[] proof;
+		uint amountInTree;
+	}
+
 	// All functions are public
 	// @TODO: should we make them external
 	function channelOpen(ChannelLibrary.Channel memory channel)
@@ -64,7 +73,7 @@ contract AdExCore {
 	}
 
 	// @TODO: all args here should be in a struct
-	function channelWithdraw(ChannelLibrary.WithdrawalRequest memory request)
+	function channelWithdraw(WithdrawalRequest memory request)
 		public
 	{
 		bytes32 channelId = request.channel.hash();
@@ -91,7 +100,7 @@ contract AdExCore {
 		emit LogChannelWithdraw(channelId, toWithdraw);
 	}
 
-	function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] memory requests)
+	function channelWithdrawMany(WithdrawalRequest[] memory requests)
 		public
 	{
 		// NOTE: this is re-entrant but it seems t not be exploitable
