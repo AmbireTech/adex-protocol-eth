@@ -69,13 +69,15 @@ contract AdExCore is AdExCoreInterface {
 		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
 		bytes32 hashToSign = keccak256(abi.encode(channelId, request.state));
 		require(isSignedBySupermajority(hashToSign, request.channel.validators, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
-		
+
 		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
 		require(MerkleProof.isContained(balanceLeaf, request.proof, request.state), "BALANCELEAF_NOT_FOUND");
-		
-		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
-		withdrawnPerUser[channelId][msg.sender] = request.channel.tokenAmount;
 
+		// The user can withdraw their constantly increasing balance at any time
+		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
+		withdrawnPerUser[channelId][msg.sender] = request.amountInTree;
+
+		// Ensure that it's not possible to withdraw more than the channel deposit
 		withdrawn[channelId] = withdrawn[channelId].add(toWithdraw);
 		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
 
