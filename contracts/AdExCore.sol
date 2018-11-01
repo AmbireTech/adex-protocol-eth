@@ -2,7 +2,6 @@ pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
-import "./libs/SignatureValidator.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
 import "./libs/ChannelLibrary.sol";
@@ -68,7 +67,7 @@ contract AdExCore is AdExCoreInterface {
 
 		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
 		bytes32 hashToSign = keccak256(abi.encode(channelId, request.state));
-		require(isSignedBySupermajority(hashToSign, request.channel.validators, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
+		require(request.channel.isSignedBySupermajority(hashToSign, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
 
 		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
 		require(MerkleProof.isContained(balanceLeaf, request.proof, request.state), "BALANCELEAF_NOT_FOUND");
@@ -82,27 +81,16 @@ contract AdExCore is AdExCoreInterface {
 		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
+
 		// @TODO event
 	}
 
-	// @TODO: can we move this out?
-	function isSignedBySupermajority(bytes32 toSign, address[] memory validators, bytes32[3][] memory signatures) 
-		internal
-		pure
-		returns (bool)
+	function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] requests)
+		external
 	{
-		if (signatures.length != validators.length) {
-			return false;
+		for (uint i=0; i!=requests.length; i++) {
+			channelWithdraw(requests[i]);
 		}
-
-		uint votes = 0;
-		for (uint i=0; i<signatures.length; i++) {
-			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
-			if (SignatureValidator.isValidSignature(toSign, validators[i], signatures[i])) {
-				votes++;
-			}
-		}
-		return votes*3 >= validators.length*2;
 	}
 
 	// Views

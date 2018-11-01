@@ -1,6 +1,8 @@
 pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
+import "./SignatureValidator.sol";
+
 library ChannelLibrary {
 	uint constant MAX_VALIDITY = 365 days;
 
@@ -73,5 +75,24 @@ library ChannelLibrary {
 		}
 
 		return true;
+	}
+
+	function isSignedBySupermajority(Channel memory channel, bytes32 toSign, bytes32[3][] memory signatures) 
+		internal
+		pure
+		returns (bool)
+	{
+		if (signatures.length != channel.validators.length) {
+			return false;
+		}
+
+		uint signs = 0;
+		for (uint i=0; i<signatures.length; i++) {
+			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
+			if (SignatureValidator.isValidSignature(toSign, channel.validators[i], signatures[i])) {
+				signs++;
+			}
+		}
+		return signs*3 >= channel.validators.length*2;
 	}
 }
