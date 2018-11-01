@@ -21,9 +21,9 @@ contract AdExCore is AdExCoreInterface {
 	mapping (bytes32 => ChannelLibrary.State) private states;
 	
 	// withdrawn per channel (channelId => uint)
-	mapping (bytes32 => uint) private withdrawnPerChannel;
+	mapping (bytes32 => uint) private withdrawn;
 	// withdrawn per channel user (channelId => (account => uint))
-	mapping (bytes32 => mapping (address => uint)) private withdrawnPerChannelUser;
+	mapping (bytes32 => mapping (address => uint)) private withdrawnPerUser;
 
 
 	function channelOpen(ChannelLibrary.Channel memory channel)
@@ -48,10 +48,10 @@ contract AdExCore is AdExCoreInterface {
 		require(now > channel.validUntil, "NOT_EXPIRED");
 		require(msg.sender == channel.creator, "INVALID_CREATOR");
 		
-		uint amount = channel.tokenAmount.sub(withdrawnPerChannel[channelId]);
+		uint amount = channel.tokenAmount.sub(withdrawn[channelId]);
 
-		// should we update withdrawnPerChannel?
-		//withdrawnPerChannel[channelId] = channel.tokenAmount;
+		// should we update withdrawn?
+		//withdrawn[channelId] = channel.tokenAmount;
 		states[channelId] = ChannelLibrary.State.Expired;
 		
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, amount);
@@ -68,16 +68,16 @@ contract AdExCore is AdExCoreInterface {
 
 		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
 		bytes32 hashToSign = keccak256(abi.encode(channelId, request.state));
-		require(isSignedBySupermajority(hashToSign, request.channel.validators, request.signatures)); // channelId
+		require(isSignedBySupermajority(hashToSign, request.channel.validators, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
 		
 		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
-		require(MerkleProof.isContained(balanceLeaf, request.proof, request.state));
+		require(MerkleProof.isContained(balanceLeaf, request.proof, request.state), "BALANCELEAF_NOT_FOUND");
 		
-		uint toWithdraw = request.amountInTree.sub(withdrawnPerChannelUser[channelId][msg.sender]);
-		withdrawnPerChannelUser[channelId][msg.sender] = withdrawnPerChannelUser[channelId][msg.sender].add(toWithdraw);
+		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
+		withdrawnPerUser[channelId][msg.sender] = request.channel.tokenAmount;
 
-		withdrawnPerChannel[channelId] = withdrawnPerChannel[channelId].add(toWithdraw);
-		require(withdrawnPerChannel[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
+		withdrawn[channelId] = withdrawn[channelId].add(toWithdraw);
+		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
 		// @TODO event
