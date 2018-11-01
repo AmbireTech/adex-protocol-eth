@@ -35,7 +35,7 @@ library ChannelLibrary {
 
 	struct WithdrawalRequest {
 		Channel channel;
-		bytes32 state;
+		bytes32 stateRoot;
 		bytes32[3][] signatures;
 		bytes32[] proof;
 		uint amountInTree;

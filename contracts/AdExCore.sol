@@ -23,7 +23,13 @@ contract AdExCore {
 	// withdrawn per channel user (channelId => (account => uint))
 	mapping (bytes32 => mapping (address => uint)) private withdrawnPerUser;
 
+	// Events
+	event LogChannelOpen(bytes32 channelId);
+	event LogChannelExpiredWithdraw(bytes32 channelId, uint amount);
+	event LogChannelWithdraw(bytes32 channelId, uint amount);
 
+	// All functions are public
+	// @TODO: should we make them external
 	function channelOpen(ChannelLibrary.Channel memory channel)
 		public
 	{
@@ -36,7 +42,7 @@ contract AdExCore {
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), channel.tokenAmount);
 
-		//emit LogChannelOpen(channelId);
+		emit LogChannelOpen(channelId);
 	}
 
 	function channelWithdrawExpired(ChannelLibrary.Channel memory channel)
@@ -54,7 +60,7 @@ contract AdExCore {
 		
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
-		//emit LogChannelExpiredWithdraw(channelId, toWithdraw);
+		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
 	}
 
 	// @TODO: all args here should be in a struct
@@ -66,11 +72,11 @@ contract AdExCore {
 		require(now <= request.channel.validUntil, "EXPIRED");
 
 		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
-		bytes32 hashToSign = keccak256(abi.encode(channelId, request.state));
+		bytes32 hashToSign = keccak256(abi.encode(channelId, request.stateRoot));
 		require(request.channel.isSignedBySupermajority(hashToSign, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
 
 		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
-		require(MerkleProof.isContained(balanceLeaf, request.proof, request.state), "BALANCELEAF_NOT_FOUND");
+		require(MerkleProof.isContained(balanceLeaf, request.proof, request.stateRoot), "BALANCELEAF_NOT_FOUND");
 
 		// The user can withdraw their constantly increasing balance at any time
 		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
@@ -82,18 +88,18 @@ contract AdExCore {
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
 
-		//emit LogChannelWithdraw(channelId, toWithdraw);
+		emit LogChannelWithdraw(channelId, toWithdraw);
 	}
 
-	/*function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] requests)
-		external
+	function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] memory requests)
+		public
 	{
 		// NOTE: this is re-entrant but it seems t not be exploitable
 		// @TODO check that
 		for (uint i=0; i!=requests.length; i++) {
 			channelWithdraw(requests[i]);
 		}
-	}*/
+	}
 
 	// Views
 	function getChannelState(bytes32 channelId)
