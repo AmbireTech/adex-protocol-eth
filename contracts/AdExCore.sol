@@ -5,14 +5,13 @@ import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
 import "./libs/ChannelLibrary.sol";
-import "./AdExCoreInterface.sol";
 
 // AUDIT: Things we should look for
 // 1) every time we check the state, the function should either revert or change the state
 // 2) state transition: channelOpen locks up tokens, then all of the tokens can be withdrawn on channelExpiredWithdraw, except how many were withdrawn using channelWithdraw
 // 3) external calls (everything using SafeERC20) should be at the end
 
-contract AdExCore is AdExCoreInterface {
+contract AdExCore {
 	using SafeMath for uint;
 	using ChannelLibrary for ChannelLibrary.Channel;
 
@@ -37,7 +36,7 @@ contract AdExCore is AdExCoreInterface {
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), channel.tokenAmount);
 
-		emit LogChannelOpen(channelId);
+		//emit LogChannelOpen(channelId);
 	}
 
 	function channelWithdrawExpired(ChannelLibrary.Channel memory channel)
@@ -55,7 +54,7 @@ contract AdExCore is AdExCoreInterface {
 		
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
-		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
+		//emit LogChannelExpiredWithdraw(channelId, toWithdraw);
 	}
 
 	// @TODO: all args here should be in a struct
@@ -83,10 +82,10 @@ contract AdExCore is AdExCoreInterface {
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
 
-		emit LogChannelWithdraw(channelId, toWithdraw);
+		//emit LogChannelWithdraw(channelId, toWithdraw);
 	}
 
-	function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] requests)
+	/*function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] requests)
 		external
 	{
 		// NOTE: this is re-entrant but it seems t not be exploitable
@@ -94,7 +93,7 @@ contract AdExCore is AdExCoreInterface {
 		for (uint i=0; i!=requests.length; i++) {
 			channelWithdraw(requests[i]);
 		}
-	}
+	}*/
 
 	// Views
 	function getChannelState(bytes32 channelId)
