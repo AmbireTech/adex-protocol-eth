@@ -36,7 +36,8 @@ contract AdExCore is AdExCoreInterface {
 		states[channelId] = ChannelLibrary.State.Active;
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), channel.tokenAmount);
-		// @TODO events
+
+		emit LogChannelOpen(channelId);
 	}
 
 	function channelWithdrawExpired(ChannelLibrary.Channel memory channel)
@@ -47,14 +48,14 @@ contract AdExCore is AdExCoreInterface {
 		require(now > channel.validUntil, "NOT_EXPIRED");
 		require(msg.sender == channel.creator, "INVALID_CREATOR");
 		
-		uint amount = channel.tokenAmount.sub(withdrawn[channelId]);
+		uint toWithdraw = channel.tokenAmount.sub(withdrawn[channelId]);
 
-		// should we update withdrawn?
-		//withdrawn[channelId] = channel.tokenAmount;
+		// NOTE: we will not update withdrawn, since a WithdrawExpired does not count towards normal withdrawals
 		states[channelId] = ChannelLibrary.State.Expired;
 		
-		SafeERC20.transfer(channel.tokenAddr, msg.sender, amount);
-		// @TODO event
+		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
+
+		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
 	}
 
 	// @TODO: all args here should be in a struct
@@ -82,17 +83,33 @@ contract AdExCore is AdExCoreInterface {
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
 
-		// @TODO event
+		emit LogChannelWithdraw(channelId, toWithdraw);
 	}
 
 	function channelWithdrawMany(ChannelLibrary.WithdrawalRequest[] requests)
 		external
 	{
+		// NOTE: this is re-entrant but it seems t not be exploitable
+		// @TODO check that
 		for (uint i=0; i!=requests.length; i++) {
 			channelWithdraw(requests[i]);
 		}
 	}
 
 	// Views
-	// @TODO
+	function getChannelState(bytes32 channelId)
+		view
+		external
+		returns (uint8)
+	{
+		return uint8(states[channelId]);
+	}
+
+	function getChannelWithdrawn(bytes32 channelId)
+		view
+		external
+		returns (uint)
+	{
+		return withdrawn[channelId];
+	}
 }
