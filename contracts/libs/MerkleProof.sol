@@ -1,7 +1,8 @@
-pragma solidity 0.4.24;
+pragma solidity ^0.4.25;
+pragma experimental ABIEncoderV2;
 
 library MerkleProof {
-	function isContained(bytes32 valueHash, bytes32[] proof, bytes32 root) internal pure returns (bool) {
+	function isContained(bytes32 valueHash, bytes32[] memory proof, bytes32 root) internal pure returns (bool) {
 		bytes32 cursor = valueHash;
 
 		// NOTE: Should we end up in a situation where we compare valueHash == root if the proof is empty?
