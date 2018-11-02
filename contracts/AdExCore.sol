@@ -102,7 +102,7 @@ contract AdExCore {
 	function channelWithdrawMany(WithdrawalRequest[] memory requests)
 		public
 	{
-		for (uint i=0; i!=requests.length; i++) {
+		for (uint i=0; i<requests.length; i++) {
 			channelWithdraw(requests[i]);
 		}
 	}
