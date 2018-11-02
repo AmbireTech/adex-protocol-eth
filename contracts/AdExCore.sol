@@ -92,7 +92,7 @@ contract AdExCore {
 
 		// Ensure that it's not possible to withdraw more than the channel deposit (e.g. malicious validators sign such a state)
 		withdrawn[channelId] = withdrawn[channelId].add(toWithdraw);
-		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
+		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_CHANNEL");
 
 		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
 
