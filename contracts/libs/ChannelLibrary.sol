@@ -11,7 +11,7 @@ library ChannelLibrary {
 	// This is an arbitrary number, but we impose this limit to restrict on-chain load; also to ensure the *3 operation is safe
 	uint8 constant MAX_VALIDATOR_COUNT = 25;
 
-	bytes32 constant SCHEMA_HASH = keccak256("Channel(address contract,address creator,bytes32 spec,address tokenAddr,uint tokenAmount,uint validUntil,address[] validators)");
+	bytes32 constant SCHEMA_HASH = keccak256("Channel(address contract,address creator,address tokenAddr,uint tokenAmount,uint validUntil,address[] validators,bytes32 spec)");
 
 	enum State {
 		Unknown,
@@ -31,14 +31,6 @@ library ChannelLibrary {
 
 		// finally, arbitrary bytes32 that allows to... @TODO document that this acts as a nonce
 		bytes32 spec;
-	}
-
-	struct WithdrawalRequest {
-		Channel channel;
-		bytes32 stateRoot;
-		bytes32[3][] signatures;
-		bytes32[] proof;
-		uint amountInTree;
 	}
 
 	function hash(Channel memory channel)
