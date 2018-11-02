@@ -72,7 +72,6 @@ contract AdExCore {
 		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
 	}
 
-	// @TODO: all args here should be in a struct
 	function channelWithdraw(WithdrawalRequest memory request)
 		public
 	{
@@ -103,8 +102,6 @@ contract AdExCore {
 	function channelWithdrawMany(WithdrawalRequest[] memory requests)
 		public
 	{
-		// NOTE: this is re-entrant but it seems t not be exploitable
-		// @TODO check that
 		for (uint i=0; i!=requests.length; i++) {
 			channelWithdraw(requests[i]);
 		}
