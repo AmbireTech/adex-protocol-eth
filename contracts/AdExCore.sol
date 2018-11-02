@@ -87,11 +87,11 @@ contract AdExCore {
 		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
 		require(MerkleProof.isContained(balanceLeaf, request.proof, request.stateRoot), "BALANCELEAF_NOT_FOUND");
 
-		// The user can withdraw their constantly increasing balance at any time
+		// The user can withdraw their constantly increasing balance at any time (essentially prevent users from double spending)
 		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
 		withdrawnPerUser[channelId][msg.sender] = request.amountInTree;
 
-		// Ensure that it's not possible to withdraw more than the channel deposit
+		// Ensure that it's not possible to withdraw more than the channel deposit (e.g. malicious validators sign such a state)
 		withdrawn[channelId] = withdrawn[channelId].add(toWithdraw);
 		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_DEPOSIT");
 
