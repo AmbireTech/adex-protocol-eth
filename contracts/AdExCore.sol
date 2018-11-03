@@ -10,6 +10,7 @@ import "./libs/ChannelLibrary.sol";
 // 1) every time we check the state, the function should either revert or change the state
 // 2) state transition: channelOpen locks up tokens, then all of the tokens can be withdrawn on channelExpiredWithdraw, except how many were withdrawn using channelWithdraw
 // 3) external calls (everything using SafeERC20) should be at the end
+// 4) channel can always be 100% drained with Withdraw/ExpiredWithdraw
 
 contract AdExCore {
 	using SafeMath for uint;
