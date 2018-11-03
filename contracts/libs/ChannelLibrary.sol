@@ -56,10 +56,15 @@ library ChannelLibrary {
 		pure
 		returns (bool)
 	{
+		// NOTE: validators[] can be sybil'd by passing the same addr a few times
+		// this does not matter since you can sybil validators[] anyway, and that is mitigated off-chain
 		if (channel.validators.length < MIN_VALIDATOR_COUNT) {
 			return false;
 		}
 		if (channel.validators.length > MAX_VALIDATOR_COUNT) {
+			return false;
+		}
+		if (channel.validUntil < currentTime) {
 			return false;
 		}
 		if (channel.validUntil > currentTime + MAX_VALIDITY) {
