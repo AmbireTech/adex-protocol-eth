@@ -100,6 +100,7 @@ contract AdExCore {
 		emit LogChannelWithdraw(channelId, toWithdraw);
 	}
 
+	// NOTE: this can be removed and handled by the metatx layer
 	function channelWithdrawMany(WithdrawalRequest[] memory requests)
 		public
 	{
