@@ -25,9 +25,9 @@ contract AdExCore {
 	mapping (bytes32 => mapping (address => uint)) private withdrawnPerUser;
 
 	// Events
-	event LogChannelOpen(bytes32 channelId);
-	event LogChannelExpiredWithdraw(bytes32 channelId, uint amount);
-	event LogChannelWithdraw(bytes32 channelId, uint amount);
+	event LogChannelOpen(bytes32 indexed channelId);
+	event LogChannelExpiredWithdraw(bytes32 indexed channelId, uint amount);
+	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
 
 	// All functions are public
 	// @TODO: should we make them external
