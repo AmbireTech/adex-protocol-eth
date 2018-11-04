@@ -29,15 +29,6 @@ contract AdExCore {
 	event LogChannelExpiredWithdraw(bytes32 channelId, uint amount);
 	event LogChannelWithdraw(bytes32 channelId, uint amount);
 
-	// withdrawal request is a struct, so that we can easily pass many
-	struct WithdrawalRequest {
-		ChannelLibrary.Channel channel;
-		bytes32 stateRoot;
-		bytes32[3][] signatures;
-		bytes32[] proof;
-		uint amountInTree;
-	}
-
 	// All functions are public
 	// @TODO: should we make them external
 	function channelOpen(ChannelLibrary.Channel memory channel)
@@ -73,40 +64,31 @@ contract AdExCore {
 		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
 	}
 
-	function channelWithdraw(WithdrawalRequest memory request)
+	function channelWithdraw(ChannelLibrary.Channel memory channel, bytes32 stateRoot, bytes32[3][] memory signatures, bytes32[] memory proof, uint amountInTree)
 		public
 	{
-		bytes32 channelId = request.channel.hash();
+		bytes32 channelId = channel.hash();
 		require(states[channelId] == ChannelLibrary.State.Active, "INVALID_STATE");
-		require(now <= request.channel.validUntil, "EXPIRED");
+		require(now <= channel.validUntil, "EXPIRED");
 
 		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
-		bytes32 hashToSign = keccak256(abi.encode(channelId, request.stateRoot));
-		require(request.channel.isSignedBySupermajority(hashToSign, request.signatures), "NOT_SIGNED_BY_VALIDATORS");
+		bytes32 hashToSign = keccak256(abi.encode(channelId, stateRoot));
+		require(channel.isSignedBySupermajority(hashToSign, signatures), "NOT_SIGNED_BY_VALIDATORS");
 
-		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, request.amountInTree));
-		require(MerkleProof.isContained(balanceLeaf, request.proof, request.stateRoot), "BALANCELEAF_NOT_FOUND");
+		bytes32 balanceLeaf = keccak256(abi.encode(msg.sender, amountInTree));
+		require(MerkleProof.isContained(balanceLeaf, proof, stateRoot), "BALANCELEAF_NOT_FOUND");
 
 		// The user can withdraw their constantly increasing balance at any time (essentially prevent users from double spending)
-		uint toWithdraw = request.amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
-		withdrawnPerUser[channelId][msg.sender] = request.amountInTree;
+		uint toWithdraw = amountInTree.sub(withdrawnPerUser[channelId][msg.sender]);
+		withdrawnPerUser[channelId][msg.sender] = amountInTree;
 
 		// Ensure that it's not possible to withdraw more than the channel deposit (e.g. malicious validators sign such a state)
 		withdrawn[channelId] = withdrawn[channelId].add(toWithdraw);
-		require(withdrawn[channelId] <= request.channel.tokenAmount, "WITHDRAWING_MORE_THAN_CHANNEL");
+		require(withdrawn[channelId] <= channel.tokenAmount, "WITHDRAWING_MORE_THAN_CHANNEL");
 
-		SafeERC20.transfer(request.channel.tokenAddr, msg.sender, toWithdraw);
+		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
 		emit LogChannelWithdraw(channelId, toWithdraw);
-	}
-
-	// NOTE: this can be removed and handled by the metatx layer
-	function channelWithdrawMany(WithdrawalRequest[] memory requests)
-		public
-	{
-		for (uint i=0; i<requests.length; i++) {
-			channelWithdraw(requests[i]);
-		}
 	}
 
 	// Views
