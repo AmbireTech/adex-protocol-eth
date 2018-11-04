@@ -1,5 +1,4 @@
 pragma solidity ^0.4.25;
-pragma experimental ABIEncoderV2;
 
 interface GeneralERC20 {
 	function transfer(address to, uint256 value) external;
