@@ -1,5 +1,4 @@
 pragma solidity ^0.4.25;
-pragma experimental ABIEncoderV2;
 
 library MerkleProof {
 	function isContained(bytes32 valueHash, bytes32[] memory proof, bytes32 root) internal pure returns (bool) {
