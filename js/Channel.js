@@ -28,6 +28,7 @@ function Channel(args) {
 
 Channel.prototype.hash = function(contractAddr) {
 	// contains contractAddr, so that it's not replayable
+	if (!contractAddr) throw 'contractAddr required'
 	return new Buffer(keccak256.arrayBuffer(
 		abi.rawEncode(
 			['address', 'address', 'address', 'uint256', 'uint256', 'address[]', 'bytes32'],
@@ -45,13 +46,18 @@ Channel.prototype.toSolidityTuple = function() {
 	return [this.creator, this.tokenAddr, '0x'+this.tokenAmount.toString(16), '0x'+this.validUntil.toString(16), this.validators, this.spec]
 }
 
-Channel.prototype.hashToSign = function() {
-	// @TODO
-	// contains channelId, so that it's not replayable
+Channel.prototype.hashToSign = function(contractAddr, stateRoot) {
+	// contains the channel hash (channelId), so that it's not replayable
+	return new Buffer(keccak256.arrayBuffer(
+		abi.rawEncode(
+			['bytes32', 'bytes32'],
+			[this.hashHex(contractAddr), stateRoot]
+		)
+	))
 }
 
-Channel.prototype.hashToSignHex = function() {
-	return '0x'+this.hashToSign().toString('hex')
+Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
+	return '0x'+this.hashToSign(contractAddr, stateRoot).toString('hex')
 }
 
 module.exports = { Channel, ChannelState }
