@@ -26,7 +26,7 @@ contract AdExCore {
 
 	// Events
 	event LogChannelOpen(bytes32 indexed channelId);
-	event LogChannelExpiredWithdraw(bytes32 indexed channelId, uint amount);
+	event LogChannelWithdrawExpired(bytes32 indexed channelId, uint amount);
 	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
 
 	// All functions are public
@@ -61,7 +61,7 @@ contract AdExCore {
 		
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
-		emit LogChannelExpiredWithdraw(channelId, toWithdraw);
+		emit LogChannelWithdrawExpired(channelId, toWithdraw);
 	}
 
 	function channelWithdraw(ChannelLibrary.Channel memory channel, bytes32 stateRoot, bytes32[3][] memory signatures, bytes32[] memory proof, uint amountInTree)
