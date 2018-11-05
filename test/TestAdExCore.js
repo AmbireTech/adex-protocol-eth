@@ -48,8 +48,8 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await token.balanceOf(accounts[0]), 0, 'account balance is 0')
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
-		//assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
-		//assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
+		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
+		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
 	})
 
 	// @TODO hash match between this channel and the JS lib
