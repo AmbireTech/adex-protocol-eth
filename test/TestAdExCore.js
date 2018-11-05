@@ -8,8 +8,8 @@ const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
 // @TODO test some stuff, e.g. SignatureValidator, via the built-in web3; do not require ethers at all here, but require it in the Channel js lib
-//const { Bid, BidState } = require('../js/Bid')
-//const Commitment = require('../js/Commitment').Commitment
+
+const { Channel, ChannelState } = require('../js/Channel')
 const { providers, Contract } = require('ethers');
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
@@ -32,16 +32,24 @@ contract('AdExCore', function(accounts) {
 	it('channelOpen', async function() {
 		const tokens = 2000
 		await token.setBalanceTo(accounts[0], tokens)
-		const channel = [accounts[0], token.address, tokens, Math.floor(Date.now()/1000)+50, [accounts[0], accounts[1]], '0x0202020202020202020202020202020202020202020202020202020202020202']
-		const tx = await core.channelOpen(channel)
+		const channel = new Channel({
+			creator: accounts[0],
+			tokenAddr: token.address,
+			tokenAmount: tokens,
+			validUntil: Math.floor(Date.now()/1000)+50,
+			validators: [accounts[0], accounts[1]],
+			spec: new Buffer(32),
+		})
+		const tx = await core.channelOpen(channel.toSolidityTuple())
 		const receipt = await tx.wait()
-		assert.ok(receipt.events.find(x => x.event === 'LogChannelOpen'), 'has LogChannelOpen event')
+		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
+		assert.ok(ev, 'has LogChannelOpen event')
 
 		assert.equal(await token.balanceOf(accounts[0]), 0, 'account balance is 0')
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
-		// @TODO state has updated
-
+		//assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
+		//assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
 	})
 
 	// @TODO hash match between this channel and the JS lib
@@ -94,10 +102,11 @@ contract('AdExCore', function(accounts) {
 		const channelId = receipt.events.find(x => x.event === 'LogChannelOpen').args.channelId
 
 		// @TODO: merge computing stateRoot, hsahToSign in the JS lib
-		const stateRoot = '0x'+tree.getRoot().toString('hex')
-		const hashToSign = '0x'+keccak256(abi.rawEncode(['bytes32', 'bytes32'], [channelId, stateRoot]))
-		const sig1 = splitSig(await ethSign(hashToSign, accounts[0]))
-		const sig2 = splitSig(await ethSign(hashToSign, accounts[1]))
+		const stateRoot = tree.getRoot()
+		const hashToSign = new Buffer(keccak256.arrayBuffer(abi.rawEncode(['bytes32', 'bytes32'], [channelId, stateRoot])))
+		const hashToSignHex = '0x'+hashToSign.toString('hex')
+		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
+		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
 		// @TODO: proof is an array of Buffer, so is it alright for the other things to be buffers as well?
 		const receiptWithdraw = await (await core.channelWithdraw(channel, stateRoot, [sig1, sig2], proof, tokens/2)).wait()
