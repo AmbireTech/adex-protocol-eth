@@ -16,18 +16,25 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 contract('AdExCore', function(accounts) {
 	let token
 	let core
+	let libMock
 
 	before(async function() {
 		const tokenWeb3 = await MockToken.new()
-		//const libMockWeb3 = await MockLibs.new()
 		const coreWeb3 = await AdExCore.deployed()
-		// @TODO: WARNING: all invokations to core/token will be from account[0]
+		libMock = await MockLibs.new()
+		// WARNING: all invokations to core/token will be from account[0]
 		const signer = web3Provider.getSigner(accounts[0])
 		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 	})
 
 	// @TODO beforeEvery, set token balance?
+	it('SignatureValidator', async function() {
+		const hash = '0x0202020202020202020202020202020202020202020202020202020202020202'
+		const sig = splitSig(await ethSign(hash, accounts[0]))
+		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
+		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
+	})
 
 	it('channelOpen', async function() {
 		const tokens = 2000
@@ -45,8 +52,6 @@ contract('AdExCore', function(accounts) {
 		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
 		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
 	})
-
-	// @TODO: SignatureValidator test via the mock lib
 
 	it('channelWithdrawExpired', async function() {
 		const tokens = 2000
