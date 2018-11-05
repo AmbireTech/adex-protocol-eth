@@ -58,7 +58,6 @@ contract('AdExCore', function(accounts) {
 
 		// Ensure we can't do this too early
 		try {
-			// @TODO: can we replace all of this with just an await on the .wait() ?
 			await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
 			assert.isOk(false, 'channelWithdrawExpired succeeded too early')
 		} catch(e) {
@@ -78,7 +77,7 @@ contract('AdExCore', function(accounts) {
 		const tokens = 2000
 		await token.setBalanceTo(accounts[0], tokens)
 
-		// @TODO: merge that into the JS lib somehow
+		// @TODO: merge that into the JS lib somehow (makeBalanceTree?)
 		const MerkleTree = require('../js/merkleTree')
 		const { keccak256 } = require('js-sha3')
 		const abi = require('ethereumjs-abi')
@@ -92,10 +91,8 @@ contract('AdExCore', function(accounts) {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
-		// @TODO: merge computing stateRoot, hashToSign in the JS lib
 		const stateRoot = tree.getRoot()
-		const hashToSign = new Buffer(keccak256.arrayBuffer(abi.rawEncode(['bytes32', 'bytes32'], [channel.hashHex(core.address), stateRoot])))
-		const hashToSignHex = '0x'+hashToSign.toString('hex')
+		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
 		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
