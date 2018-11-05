@@ -11,7 +11,7 @@ function combinedHash (first, second) {
 	}
 	let sorted = Buffer.concat([first, second].sort(Buffer.compare))
 
-	return keccak256(sorted)
+	return Buffer.from(keccak256.arrayBuffer(sorted))
 }
 
 function deduplicate (buffers) {
