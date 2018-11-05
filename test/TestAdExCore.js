@@ -41,6 +41,7 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
 		// @TODO state has updated
+
 	})
 
 	// @TODO hash match between this channel and the JS lib
@@ -65,13 +66,50 @@ contract('AdExCore', function(accounts) {
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
 		// @TODO check balances, etc.
+
 	})
 
-	/*
 	it('channelWithdraw', async function() {
+		const tokens = 2000
+		await token.setBalanceTo(accounts[0], tokens)
+
+		// @TODO: merge that into the JS lib somehow
+		const MerkleTree = require('../js/merkleTree')
+		const { keccak256 } = require('js-sha3')
+		const abi = require('ethereumjs-abi')
+		const elem1 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[0], tokens/2])))
+		const elem2 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[1], tokens/4])))
+		const elem3 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[2], tokens/8])))
+		const tree = new MerkleTree([ elem1, elem2, elem3 ])
+		//console.log(tree)
+		const proof = tree.proof(elem1)
+		//console.log(tree.verify(proof, elem2)) //works; when we pass elem1 it returns false :)
+
+		// @TODO: the way we choose the validUntil time is shit, cause we moved the EVM time ahead already; we should use the EVM time everywhere rather than Date.now()
+		const channel = [accounts[0], token.address, tokens, Math.floor(Date.now()/1000)+5000, [accounts[0], accounts[1]], '0x0202020202020202020202020202020202020202020202020202020202020204']
+		const tx = await core.channelOpen(channel)
+		const receipt = await tx.wait()
+
+		// @TODO: compute channelId by the JS lib
+		const channelId = receipt.events.find(x => x.event === 'LogChannelOpen').args.channelId
+
+		// @TODO: merge computing stateRoot, hsahToSign in the JS lib
+		const stateRoot = '0x'+tree.getRoot().toString('hex')
+		const hashToSign = '0x'+keccak256(abi.rawEncode(['bytes32', 'bytes32'], [channelId, stateRoot]))
+		const sig1 = splitSig(await ethSign(hashToSign, accounts[0]))
+		const sig2 = splitSig(await ethSign(hashToSign, accounts[1]))
+
+		// @TODO: proof is an array of Buffer, so is it alright for the other things to be buffers as well?
+		const receiptWithdraw = await (await core.channelWithdraw(channel, stateRoot, [sig1, sig2], proof, tokens/2)).wait()
+
+		assert.ok(receiptWithdraw.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
+		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
+		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and the nwith many
+
 		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
+		// @TODO can't withdraw w/o enough sigs
+		// @TODO can't withdraw without a valid merkle proof: BALANCELEAF_NOT_FOUND
 	})
-	*/
 
 	function moveTime(web3, time) {
 		return new Promise(function(resolve, reject) {
