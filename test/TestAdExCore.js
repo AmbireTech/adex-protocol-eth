@@ -32,16 +32,10 @@ contract('AdExCore', function(accounts) {
 	it('channelOpen', async function() {
 		const tokens = 2000
 		await token.setBalanceTo(accounts[0], tokens)
-		const channel = new Channel({
-			creator: accounts[0],
-			tokenAddr: token.address,
-			tokenAmount: tokens,
-			validUntil: Math.floor(Date.now()/1000)+50,
-			validators: [accounts[0], accounts[1]],
-			spec: new Buffer(32),
-		})
-		const tx = await core.channelOpen(channel.toSolidityTuple())
-		const receipt = await tx.wait()
+
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 0)
+		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
 		assert.ok(ev, 'has LogChannelOpen event')
 
@@ -52,25 +46,28 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
 	})
 
-	// @TODO hash match between this channel and the JS lib
 	// @TODO: SignatureValidator test via the mock lib
 
 	it('channelWithdrawExpired', async function() {
 		const tokens = 2000
 		await token.setBalanceTo(accounts[0], tokens)
-		// @TODO: getSampleChannel or some helper? the js lib?
-		const channel = [accounts[0], token.address, tokens, Math.floor(Date.now()/1000)+50, [accounts[0], accounts[1]], '0x0202020202020202020202020202020202020202020202020202020202020203']
-		await (await core.channelOpen(channel)).wait()
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 1)
+
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
+		// Ensure we can't do this too early
 		try {
-			await (await core.channelWithdrawExpired(channel))
+			// @TODO: can we replace all of this with just an await on the .wait() ?
+			await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
 			assert.isOk(false, 'channelWithdrawExpired succeeded too early')
 		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_EXPIRED/), 'cannot timeout that early')
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_EXPIRED/), 'wrong error: '+e.message)
 		}
 
+		// Ensure we can do this when the time comes
 		await moveTime(web3, 100)
-
-		const receipt = await (await core.channelWithdrawExpired(channel)).wait()
+		const receipt = await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
 		// @TODO check balances, etc.
@@ -89,29 +86,22 @@ contract('AdExCore', function(accounts) {
 		const elem2 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[1], tokens/4])))
 		const elem3 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[2], tokens/8])))
 		const tree = new MerkleTree([ elem1, elem2, elem3 ])
-		//console.log(tree)
 		const proof = tree.proof(elem1)
 		//console.log(tree.verify(proof, elem2)) //works; when we pass elem1 it returns false :)
 
-		// @TODO: the way we choose the validUntil time is shit, cause we moved the EVM time ahead already; we should use the EVM time everywhere rather than Date.now()
-		const channel = [accounts[0], token.address, tokens, Math.floor(Date.now()/1000)+5000, [accounts[0], accounts[1]], '0x0202020202020202020202020202020202020202020202020202020202020204']
-		const tx = await core.channelOpen(channel)
-		const receipt = await tx.wait()
-
-		// @TODO: compute channelId by the JS lib
-		const channelId = receipt.events.find(x => x.event === 'LogChannelOpen').args.channelId
-
-		// @TODO: merge computing stateRoot, hsahToSign in the JS lib
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+		// @TODO: merge computing stateRoot, hashToSign in the JS lib
 		const stateRoot = tree.getRoot()
-		const hashToSign = new Buffer(keccak256.arrayBuffer(abi.rawEncode(['bytes32', 'bytes32'], [channelId, stateRoot])))
+		const hashToSign = new Buffer(keccak256.arrayBuffer(abi.rawEncode(['bytes32', 'bytes32'], [channel.hashHex(core.address), stateRoot])))
 		const hashToSignHex = '0x'+hashToSign.toString('hex')
 		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
-		// @TODO: proof is an array of Buffer, so is it alright for the other things to be buffers as well?
-		const receiptWithdraw = await (await core.channelWithdraw(channel, stateRoot, [sig1, sig2], proof, tokens/2)).wait()
+		const receipt = await (await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)).wait()
 
-		assert.ok(receiptWithdraw.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
+		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
 		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and the nwith many
 
@@ -119,6 +109,19 @@ contract('AdExCore', function(accounts) {
 		// @TODO can't withdraw w/o enough sigs
 		// @TODO can't withdraw without a valid merkle proof: BALANCELEAF_NOT_FOUND
 	})
+
+	function sampleChannel(creator, amount, validUntil, nonce) {
+		const spec = new Buffer(32)
+		spec.writeUInt32BE(nonce)
+		return new Channel({
+			creator,
+			tokenAddr: token.address,
+			tokenAmount: amount,
+			validUntil,
+			validators: [accounts[0], accounts[1]],
+			spec,
+		})
+	}
 
 	function moveTime(web3, time) {
 		return new Promise(function(resolve, reject) {
