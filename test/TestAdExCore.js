@@ -7,8 +7,6 @@ const splitSig = require('../js/splitSig')
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-// @TODO test some stuff, e.g. SignatureValidator, via the built-in web3; do not require ethers at all here, but require it in the Channel js lib
-
 const { Channel, ChannelState } = require('../js/Channel')
 const { providers, Contract } = require('ethers');
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
@@ -75,6 +73,7 @@ contract('AdExCore', function(accounts) {
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
 		// @TODO check balances, etc.
+		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
 
 	})
 
@@ -112,6 +111,11 @@ contract('AdExCore', function(accounts) {
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+
+		// @TODO: some of these will be separate tests
+		// @TODO: if the balance leaf updates, the user can only withdraw the difference to the previous withdraw
+		// @TODO if you use a balance leaf with less than the lsat withdraw you did, it will revert
+		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
 	})
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
