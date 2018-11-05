@@ -18,6 +18,8 @@ contract('AdExCore', function(accounts) {
 	let core
 	let libMock
 
+	const tokens = 2000
+
 	before(async function() {
 		const tokenWeb3 = await MockToken.new()
 		const coreWeb3 = await AdExCore.deployed()
@@ -26,6 +28,9 @@ contract('AdExCore', function(accounts) {
 		const signer = web3Provider.getSigner(accounts[0])
 		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+	})
+	beforeEach(async function() {
+		await token.setBalanceTo(accounts[0], tokens)
 	})
 
 	// @TODO beforeEvery, set token balance?
@@ -37,9 +42,6 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelOpen', async function() {
-		const tokens = 2000
-		await token.setBalanceTo(accounts[0], tokens)
-
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 0)
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
@@ -54,8 +56,6 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelWithdrawExpired', async function() {
-		const tokens = 2000
-		await token.setBalanceTo(accounts[0], tokens)
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 1)
 
@@ -79,9 +79,6 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelWithdraw', async function() {
-		const tokens = 2000
-		await token.setBalanceTo(accounts[0], tokens)
-
 		// @TODO: merge that into the JS lib somehow (makeBalanceTree?)
 		const MerkleTree = require('../js/merkleTree')
 		const { keccak256 } = require('js-sha3')
