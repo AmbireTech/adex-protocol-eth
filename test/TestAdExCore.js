@@ -12,8 +12,6 @@ const ethSign = promisify(web3.eth.sign.bind(web3))
 const { providers, Contract } = require('ethers');
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
-console.log(AdExCore)
-
 contract('AdExCore', function(accounts) {
 	let token
 	let core
@@ -28,14 +26,25 @@ contract('AdExCore', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 	})
 
-	// @TODO
+	// @TODO beforeEvery, set token balance?
 
 	it('channelOpen', async function() {
 		const tokens = 2000
 		await token.setBalanceTo(accounts[0], tokens)
 		const tx = await core.channelOpen([accounts[0], token.address, tokens, 1543622400, [accounts[0],accounts[1]],"0x0202020202020202020202020202020202020202020202020202020202020202"])
-		console.log(await tx.wait())
+		const receipt = await tx.wait()
+		assert.ok(receipt.events.find(x => x.event === 'LogChannelOpen'), 'has LogChannelOpen event')
+
+		assert.equal(await token.balanceOf(accounts[0]), 0, 'account balance is 0')
+		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 	})
+
+	/*it('channelExpiredWithdraw', async function() {
+	})
+
+	it('channelWithdraw', async function() {
+	})
+	*/
 
 	function moveTime(web3, time) {
 		return new Promise(function(resolve, reject) {
