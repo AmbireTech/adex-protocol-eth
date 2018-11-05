@@ -91,20 +91,25 @@ contract('AdExCore', function(accounts) {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
 		const stateRoot = tree.getRoot()
 		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
 		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
-		const receipt = await (await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)).wait()
+		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
+		const receipt = await tx.wait()
 
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
 		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
-		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and the nwith many
+		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
 		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
 		// @TODO can't withdraw w/o enough sigs
 		// @TODO can't withdraw without a valid merkle proof: BALANCELEAF_NOT_FOUND
+		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
+		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 	})
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
