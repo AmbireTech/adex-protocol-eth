@@ -10,8 +10,6 @@ library ChannelLibrary {
 	// This is an arbitrary number, but we impose this limit to restrict on-chain load; also to ensure the *3 operation is safe
 	uint8 constant MAX_VALIDATOR_COUNT = 25;
 
-	bytes32 constant SCHEMA_HASH = keccak256("Channel(address contract,address creator,address tokenAddr,uint tokenAmount,uint validUntil,address[] validators,bytes32 spec)");
-
 	enum State {
 		Unknown,
 		Active,
@@ -39,7 +37,6 @@ library ChannelLibrary {
 	{
 		// In this version of solidity, we can no longer keccak256() directly
 		return keccak256(abi.encode(
-			SCHEMA_HASH,
 			address(this),
 			channel.creator,
 			channel.tokenAddr,
