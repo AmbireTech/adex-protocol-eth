@@ -60,4 +60,10 @@ Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
 	return '0x'+this.hashToSign(contractAddr, stateRoot).toString('hex')
 }
 
+Channel.getBalanceLeaf = function(acc, amnt) {
+	return new Buffer(keccak256.arrayBuffer(
+		abi.rawEncode(['address', 'uint256'], [acc, amnt])
+	))
+}
+
 module.exports = { Channel, ChannelState }

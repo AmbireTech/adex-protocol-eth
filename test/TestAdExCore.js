@@ -8,7 +8,8 @@ const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const { Channel, ChannelState } = require('../js/Channel')
-const { providers, Contract } = require('ethers');
+const MerkleTree = require('../js/merkleTree')
+const { providers, Contract } = require('ethers')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('AdExCore', function(accounts) {
@@ -78,13 +79,9 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelWithdraw', async function() {
-		// @TODO: merge that into the JS lib somehow (makeBalanceTree?)
-		const MerkleTree = require('../js/merkleTree')
-		const { keccak256 } = require('js-sha3')
-		const abi = require('ethereumjs-abi')
-		const elem1 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[0], tokens/2])))
-		const elem2 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[1], tokens/4])))
-		const elem3 = Buffer.from(keccak256.arrayBuffer(abi.rawEncode(['address', 'uint'], [accounts[2], tokens/8])))
+		const elem1 = Channel.getBalanceLeaf(accounts[0], tokens/2)
+		const elem2 = Channel.getBalanceLeaf(accounts[1], tokens/4)
+		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
 		const tree = new MerkleTree([ elem1, elem2, elem3 ])
 		const proof = tree.proof(elem1)
 		//console.log(tree.verify(proof, elem2)) //works; when we pass elem1 it returns false :)
