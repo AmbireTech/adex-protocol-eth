@@ -2,13 +2,10 @@ const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 const MockLibs = artifacts.require('./mocks/Libs')
 
-const splitSig = require('../js/splitSig')
-
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-const { Channel, ChannelState } = require('../js/Channel')
-const MerkleTree = require('../js/merkleTree')
+const { Channel, ChannelState, MerkleTree, splitSig } = require('../js')
 const { providers, Contract } = require('ethers')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
