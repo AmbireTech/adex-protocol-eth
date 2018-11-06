@@ -32,7 +32,6 @@ contract('AdExCore', function(accounts) {
 		await token.setBalanceTo(accounts[0], tokens)
 	})
 
-	// @TODO beforeEvery, set token balance?
 	it('SignatureValidator', async function() {
 		const hash = '0x0202020202020202020202020202020202020202020202020202020202020202'
 		const sig = splitSig(await ethSign(hash, accounts[0]))
@@ -62,7 +61,7 @@ contract('AdExCore', function(accounts) {
 
 		// Ensure we can't do this too early
 		try {
-			await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
+			await core.channelWithdrawExpired(channel.toSolidityTuple())
 			assert.isOk(false, 'channelWithdrawExpired succeeded too early')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_EXPIRED/), 'wrong error: '+e.message)
@@ -79,12 +78,12 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelWithdraw', async function() {
+		// Prepare the tree and sign the state root
 		const elem1 = Channel.getBalanceLeaf(accounts[0], tokens/2)
 		const elem2 = Channel.getBalanceLeaf(accounts[1], tokens/4)
 		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
 		const tree = new MerkleTree([ elem1, elem2, elem3 ])
 		const proof = tree.proof(elem1)
-		//console.log(tree.verify(proof, elem2)) //works; when we pass elem1 it returns false :)
 
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
@@ -95,6 +94,23 @@ contract('AdExCore', function(accounts) {
 		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
+		// Can't withdraw an amount that is not in the tree
+		try {
+			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens)
+			assert.isOk(false, 'channelWithdraw should not have succeeded')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert BALANCELEAF_NOT_FOUND/), 'wrong error: '+e.message)
+		}
+
+		// Can't withdraw w/o valid signatures
+		try {
+			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig1], proof, tokens)
+			assert.isOk(false, 'channelWithdraw should not have succeeded')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_SIGNED_BY_VALIDATORS/), 'wrong error: '+e.message)
+		}
+
+		// Can withdraw with the proper values
 		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
 		const receipt = await tx.wait()
 
@@ -103,8 +119,6 @@ contract('AdExCore', function(accounts) {
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
 		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
-		// @TODO can't withdraw w/o enough sigs
-		// @TODO can't withdraw without a valid merkle proof: BALANCELEAF_NOT_FOUND
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
