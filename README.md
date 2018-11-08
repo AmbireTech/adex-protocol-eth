@@ -4,7 +4,7 @@ The Ethereum implementation of the [AdEx Protocol](https://github.com/AdExNetwor
 
 This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
 
-This relies on the concept of an OCEAN, which stands for off-chain event aggregation and OUTPACE (off-chain unidirectional trustless payment channel)
+This relies on the concept of OCEAN, which stands for off-chain event aggregation and OUTPACE (off-chain unidirectional trustless payment channel)
 
 ### Please note
 
