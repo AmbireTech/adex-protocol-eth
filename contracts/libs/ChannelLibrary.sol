@@ -75,6 +75,8 @@ library ChannelLibrary {
 		pure
 		returns (bool)
 	{
+		// NOTE: each element of signatures[] must signed by the elem with the same index in validators[]
+		// In case someone didn't sign, pass SignatureMode.NO_SIG
 		if (signatures.length != channel.validators.length) {
 			return false;
 		}

@@ -72,6 +72,7 @@ contract('AdExCore', function(accounts) {
 		// @TODO check balances, etc.
 		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
 
+		// @TODO can't do this twice
 	})
 
 	it('channelWithdraw', async function() {
@@ -120,10 +121,11 @@ contract('AdExCore', function(accounts) {
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 
-		// @TODO: some of these will be separate tests
 		// @TODO: if the balance leaf updates, the user can only withdraw the difference to the previous withdraw
 		// @TODO if you use a balance leaf with less than the lsat withdraw you did, it will revert
 		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
+		// @TODO should the byzantine cases of channelWithdraw be in a separate test? (validators trying to attack)
+		// @TODO can't withdraw more than the entire channel deposit, even if validators allow it
 	})
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
