@@ -1,4 +1,4 @@
-pragma solidity 0.4.24;
+pragma solidity ^0.4.25;
 
 library SignatureValidator {
 	enum SignatureMode {
@@ -14,7 +14,7 @@ library SignatureValidator {
 	/// @param signer Address of the signer.
 	/// @param signature ECDSA signature along with the mode [{mode}{v}, {r}, {s}]
 	/// @return Returns whether signature is from a specified user.
-	function isValidSignature(bytes32 hash, address signer, bytes32[3] signature) internal pure returns (bool) {
+	function isValidSignature(bytes32 hash, address signer, bytes32[3] memory signature) internal pure returns (bool) {
 		SignatureMode mode = SignatureMode(uint8(signature[0][0]));
 
 		if (mode == SignatureMode.NO_SIG) {
