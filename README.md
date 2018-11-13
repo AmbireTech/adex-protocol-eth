@@ -4,19 +4,11 @@ The Ethereum implementation of the [AdEx Protocol](https://github.com/AdExNetwor
 
 This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
 
-This relies on the concept of an OCEAN, which stands for off-chain event aggregation. Everything that happens in the context of an on-chain commitment will be recorded and aggregated by pre-delegated validators, and submitted on-chain by said validators.
-
-Each validator will **only** be rewarded if they vote.
-
-While OCEAN allows any arbitrary vote value, in this implementation, we consider `0` to mean "Commitment failed" and we return the funds to the advertiser, while anything other than `0` means that it succeeded, and therefore transfer the funds to the publisher.
-
-A vote is only respected if >2/3 of the validators signed on that same vote.
-
-There is a minimum number of validators - 2. Ideally, that will be set to 3, but we need 2 for practical/compatibility reasons with the existing dApp.
+This relies on the concept of [OCEAN](https://github.com/AdExNetwork/adex-protocol/blob/master/README.md), which stands for off-chain event aggregation and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md) (off-chain unidirectional trustless payment channel)
 
 ### Please note
 
-If >=2/3 signatures are not collected for a commitment, it will time out and be reverted completely. This means that even if some of the validators did vote, they will not get rewarded.
+Every channel will eventually expire (after `validUntil`), allowing the non-withdrawn portion of the initial deposit to be received back by whoever opened the channel.
 
 ## Deployment
 
@@ -26,3 +18,4 @@ This will be deployed to Ropsten first, and a month after (in time for devcon4) 
 
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
 * @decanus for SignatureValidator
+* @ConnextProject for `merkletree.js`
