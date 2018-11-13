@@ -4,15 +4,18 @@ The Ethereum implementation of the [AdEx Protocol](https://github.com/AdExNetwor
 
 This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
 
-This relies on the concept of [OCEAN](https://github.com/AdExNetwork/adex-protocol/blob/master/README.md), which stands for off-chain event aggregation and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md) (off-chain unidirectional trustless payment channel)
+This relies on the concept of [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md) (off-chain unidirectional trustless payment channel)
 
 ### Please note
 
-Every channel will eventually expire (after `validUntil`), allowing the non-withdrawn portion of the initial deposit to be received back by whoever opened the channel.
+* Every channel will eventually expire (after `validUntil`), allowing the non-withdrawn portion of the initial deposit to be received back by whoever opened the channel.
+* Channels can be created with any ERC20 token; if the underlying token of a channel is insecure or malicious, that also compromises the channel as well; this is out of scope of this contract, since this is a fundamental issue with any system that uses ERC20's; needless to say, the user needs to be aware of what token they're using/earning
+* For more details on how OUTPACE channels work, please read the specs: [AdEx Protocol](https://github.com/AdExNetwork/adex-protocol) and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md).
+
 
 ## Deployment
 
-This will be deployed to Ropsten first, and a month after (in time for devcon4) we should have it on mainnet as well.
+This will be deployed to Ropsten first, and a month after we should have it on mainnet as well.
 
 ## Credits
 
