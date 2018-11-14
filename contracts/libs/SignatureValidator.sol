@@ -28,7 +28,7 @@ library SignatureValidator {
 		} else if (mode == SignatureMode.TREZOR) {
 			hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n\x20", hash));
 		} else if (mode == SignatureMode.ADEX) {
-			hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n108By signing this message, you acknowledge signing an AdEx bid with the hash:\n"));
+			hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n108By signing this message, you acknowledge signing an AdEx bid with the hash:\n", hash));
 		}
 
 		return ecrecover(hash, v, signature[1], signature[2]) == signer;
