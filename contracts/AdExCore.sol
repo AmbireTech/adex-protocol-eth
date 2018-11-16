@@ -30,7 +30,6 @@ contract AdExCore {
 	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
 
 	// All functions are public
-	// @TODO: should we make them external
 	function channelOpen(ChannelLibrary.Channel memory channel)
 		public
 	{
@@ -71,7 +70,6 @@ contract AdExCore {
 		require(states[channelId] == ChannelLibrary.State.Active, "INVALID_STATE");
 		require(now <= channel.validUntil, "EXPIRED");
 
-		// @TODO: should we move isSignedBySupermajority to the library, and maybe within the request?
 		bytes32 hashToSign = keccak256(abi.encode(channelId, stateRoot));
 		require(channel.isSignedBySupermajority(hashToSign, signatures), "NOT_SIGNED_BY_VALIDATORS");
 
