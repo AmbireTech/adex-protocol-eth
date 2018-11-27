@@ -15,7 +15,11 @@ This relies on the concept of [OUTPACE](https://github.com/AdExNetwork/adex-prot
 
 ## Deployment
 
-This will be deployed to Ropsten first, and a month after we should have it on mainnet as well.
+This will be deployed to a testnet first, and a month after we should have it on mainnet as well.
+
+### Kovan
+
+https://kovan.etherscan.io/address/0xe6aa464334a067f52e44f7b6dabb91804371376c#readContract
 
 ## Credits
 
