@@ -111,9 +111,12 @@ contract('AdExCore', function(accounts) {
 		// Can withdraw with the proper values
 		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
 		const receipt = await tx.wait()
-
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
 		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
+
+		const channelId = channel.hash(core.address)
+		assert.equal(await core.withdrawn(channelId), tokens/2, 'channel has the right withdrawn value')
+		assert.equal(await core.withdrawnPerUser(channelId, accounts[0]), tokens/2, 'channel hsa right withdrawnPerUser')
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
 		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
