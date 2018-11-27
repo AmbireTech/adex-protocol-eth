@@ -47,7 +47,7 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
 		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
-		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
+		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
 	})
 
 	it('channelWithdrawExpired', async function() {
@@ -70,7 +70,7 @@ contract('AdExCore', function(accounts) {
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
 		// @TODO check balances, etc.
-		assert.equal(await core.getChannelState(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
+		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
 
 		// @TODO can't do this twice
 	})
