@@ -17,12 +17,12 @@ contract AdExCore {
 	using ChannelLibrary for ChannelLibrary.Channel;
 
  	// channelId => channelState
-	mapping (bytes32 => ChannelLibrary.State) private states;
+	mapping (bytes32 => ChannelLibrary.State) public states;
 	
 	// withdrawn per channel (channelId => uint)
-	mapping (bytes32 => uint) private withdrawn;
+	mapping (bytes32 => uint) public withdrawn;
 	// withdrawn per channel user (channelId => (account => uint))
-	mapping (bytes32 => mapping (address => uint)) private withdrawnPerUser;
+	mapping (bytes32 => mapping (address => uint)) public withdrawnPerUser;
 
 	// Events
 	event LogChannelOpen(bytes32 indexed channelId);
@@ -87,22 +87,5 @@ contract AdExCore {
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
 		emit LogChannelWithdraw(channelId, toWithdraw);
-	}
-
-	// Views
-	function getChannelState(bytes32 channelId)
-		view
-		external
-		returns (uint8)
-	{
-		return uint8(states[channelId]);
-	}
-
-	function getChannelWithdrawn(bytes32 channelId)
-		view
-		external
-		returns (uint)
-	{
-		return withdrawn[channelId];
 	}
 }
