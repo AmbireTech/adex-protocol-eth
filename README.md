@@ -21,6 +21,14 @@ This will be deployed to a testnet first, and a month after we should have it on
 
 https://kovan.etherscan.io/address/0xe6aa464334a067f52e44f7b6dabb91804371376c#readContract
 
+### Verifying on etherscan
+
+```
+truffle compile
+cat build/contracts/AdExCore.json | jq '.bytecode' # this is the bytecode you have to deploy
+./scripts/bundle.sh contracts/AdExCore.sol # this will output a bundled .sol code
+```
+
 ## Credits
 
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
