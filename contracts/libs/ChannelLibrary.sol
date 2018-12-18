@@ -6,9 +6,9 @@ library ChannelLibrary {
 	uint constant MAX_VALIDITY = 365 days;
 
 	// Both numbers are inclusive
-	uint8 constant MIN_VALIDATOR_COUNT = 2;
+	uint constant MIN_VALIDATOR_COUNT = 2;
 	// This is an arbitrary number, but we impose this limit to restrict on-chain load; also to ensure the *3 operation is safe
-	uint8 constant MAX_VALIDATOR_COUNT = 25;
+	uint constant MAX_VALIDATOR_COUNT = 25;
 
 	enum State {
 		Unknown,
