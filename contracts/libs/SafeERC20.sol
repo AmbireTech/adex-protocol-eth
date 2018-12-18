@@ -7,7 +7,6 @@ interface GeneralERC20 {
 }
 
 library SafeERC20 {
-	// definitely not a pure fn but the compiler complains otherwise
 	function checkSuccess()
 		private
 		pure
