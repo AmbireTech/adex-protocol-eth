@@ -102,7 +102,8 @@ contract('AdExCore', function(accounts) {
 
 		// Can't withdraw w/o valid signatures
 		try {
-			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig1], proof, tokens)
+			const invalidSigs = [sig1, sig1] // using sig1 for both values
+			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, invalidSigs, proof, tokens)
 			assert.isOk(false, 'channelWithdraw should not have succeeded')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_SIGNED_BY_VALIDATORS/), 'wrong error: '+e.message)
