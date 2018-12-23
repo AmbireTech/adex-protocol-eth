@@ -11,7 +11,6 @@ contract Identity {
 	// The next allowed nonce
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
-	mapping (address => mapping (address => uint)) feeEarnings;
 
 	enum PrivilegeLevel {
 		None,
@@ -39,20 +38,41 @@ contract Identity {
 	}
 
 	function execute(Transaction[] memory transactions) public {
+		address feeTokenAddr = transactions[0].feeTokenAddr;
+		uint feeTokenAmount = 0;
 		for (uint i=0; i<transactions.length; i++) {
+			Transaction memory transaction = transactions[i];
+			bytes32 hash = txHash(transaction);
+			address signer = SignatureValidator.recoverAddr(hash, transaction.signature);
+
+			require(transaction.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
+			require(transaction.nonce == nonce, 'WRONG_NONCE');
+			require(privileges[signer] >= uint8(PrivilegeLevel.Predefines), 'INSUFFICIENT_PRIVILEGE');
+
+			nonce++;
+			feeTokenAmount = feeTokenAmount.add(transaction.feeTokenAmount);
 			// setPrivilege: .Transactions
 			// default (normal tx): .Transactions
 		}
+		if (feeTokenAmount > 0) {
+			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
+		}
 	}
 
-	/*
-	   flawed cause those tokens are not locked up
-	function withdraw(address tokenAddr) {
-		uint toWithdraw = feeEarnings[msg.sender][tokenAddr];
-		feeEarnings[msg.sender][tokenAddr] = 0;
-		SafeERC20.transfer(tokenAddr, msg.sender, toWithdraw);
-	}*/
-
+	function txHash(Transaction memory transaction)
+		internal
+		view
+		returns (bytes32)
+	{
+		return keccak256(abi.encode(
+			address(this),
+			transaction.nonce,
+			transaction.to,
+			transaction.data,
+			transaction.feeTokenAddr,
+			transaction.feeTokenAmount
+		));
+	}
 	// 1 privilege: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired 
 	// 2 privilege: setAddrPrivilege (where invoke with 0 means delete)
 	// 3 privilege: serves to ensure address is withdrawalable to
