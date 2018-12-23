@@ -33,8 +33,9 @@ contract Identity {
 		bytes32[3] signature;
 	}
 
-	constructor(address _addr, uint8 _priv) public {
-		privileges[_addr] = _priv;
+	constructor(address addr, uint8 priv) public {
+		privileges[addr] = priv;
+		// @TODO: deployer fees
 	}
 
 	function execute(Transaction[] memory transactions) public {
@@ -47,16 +48,20 @@ contract Identity {
 
 			require(transaction.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
 			require(transaction.nonce == nonce, 'WRONG_NONCE');
-			require(privileges[signer] >= uint8(PrivilegeLevel.Predefines), 'INSUFFICIENT_PRIVILEGE');
+			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
 
 			nonce++;
 			feeTokenAmount = feeTokenAmount.add(transaction.feeTokenAmount);
-			// setPrivilege: .Transactions
-			// default (normal tx): .Transactions
+			// @TODO
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
 		}
+	}
+
+	function setAddrPrivilege(address addr, uint8 priv) external {
+		require(msg.sender == address(this));
+		privileges[addr] = priv;
 	}
 
 	function txHash(Transaction memory transaction)
@@ -73,13 +78,8 @@ contract Identity {
 			transaction.feeTokenAmount
 		));
 	}
-	// 1 privilege: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired 
-	// 2 privilege: setAddrPrivilege (where invoke with 0 means delete)
-	// 3 privilege: serves to ensure address is withdrawalable to
 
-	// @TODO things that need high privilege: setPrivilege
-	// @TODO should channels withdraw directly to the withdrawal addr or to the identity?
-	// @TODO: low privilege things/predefines
+	// privilege 1: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired ,
+	// @TODO low privilege things/predefines
 	// @TODO transaction scheduling
-	// @TODO think of gas costs, how to optimize fee payments; we can do it by requiring the same fee token to be used on one execute()
 }
