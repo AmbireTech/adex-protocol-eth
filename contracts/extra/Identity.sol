@@ -52,7 +52,9 @@ contract Identity {
 
 			nonce++;
 			feeTokenAmount = feeTokenAmount.add(transaction.feeTokenAmount);
-			// @TODO
+
+			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
+			require(transaction.to.call(transaction.data));
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
@@ -79,7 +81,7 @@ contract Identity {
 		));
 	}
 
-	// privilege 1: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired ,
+	// privilege 1: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
 	// @TODO low privilege things/predefines
 	// @TODO transaction scheduling
 }
