@@ -11,6 +11,7 @@ contract Identity {
 	// The next allowed nonce
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
+	mapping (address => mapping (address => uint)) feeEarnings;
 
 	enum PrivilegeLevel {
 		None,
@@ -43,6 +44,15 @@ contract Identity {
 			// default (normal tx): .Transactions
 		}
 	}
+
+	/*
+	   flawed cause those tokens are not locked up
+	function withdraw(address tokenAddr) {
+		uint toWithdraw = feeEarnings[msg.sender][tokenAddr];
+		feeEarnings[msg.sender][tokenAddr] = 0;
+		SafeERC20.transfer(tokenAddr, msg.sender, toWithdraw);
+	}*/
+
 	// 1 privilege: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired 
 	// 2 privilege: setAddrPrivilege (where invoke with 0 means delete)
 	// 3 privilege: serves to ensure address is withdrawalable to
@@ -51,5 +61,5 @@ contract Identity {
 	// @TODO should channels withdraw directly to the withdrawal addr or to the identity?
 	// @TODO: low privilege things/predefines
 	// @TODO transaction scheduling
-	// @TODO think of gas costs, how to optimize fee payments; perhaps earnedFees[relayer][token] mapping
+	// @TODO think of gas costs, how to optimize fee payments; we can do it by requiring the same fee token to be used on one execute()
 }
