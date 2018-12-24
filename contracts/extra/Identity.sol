@@ -27,24 +27,27 @@ contract Identity {
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
 	// @TODO read other implementations of metatx
 	struct Transaction {
+		address identityContract;
 		uint nonce;
 		address to;
 		bytes data;
 		// @TODO should we have an amount?
 		address feeTokenAddr;
 		uint feeTokenAmount;
-		bytes32[3] signature;
 	}
 	// routine authorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
 	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
 	// while the fee will be paid only once per authorization, the authorization can be used until validUntil
 	// while the routines are safe, there is implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
+		address identityContract;
 		address relayer;
 		uint validUntil;
 		address feeTokenAddr;
 		uint feeTokenAmount;
-		bytes32[3] signature;
+	}
+	struct RoutineOperation {
+		// @TODO
 	}
 
 	constructor(address addr, uint8 privLevel) public {
@@ -53,14 +56,15 @@ contract Identity {
 		// @TODO: or, alternatively, handle deploy fees in the factory
 	}
 
-	function execute(Transaction[] memory transactions) public {
+	function execute(Transaction[] memory transactions, bytes32[3][] memory signatures) public {
 		address feeTokenAddr = transactions[0].feeTokenAddr;
 		uint feeTokenAmount = 0;
 		for (uint i=0; i<transactions.length; i++) {
 			Transaction memory transaction = transactions[i];
-			bytes32 hash = txHash(transaction);
-			address signer = SignatureValidator.recoverAddr(hash, transaction.signature);
+			bytes32 hash = keccak256(abi.encode(transaction));
+			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
+			require(transaction.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
 			require(transaction.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
 			require(transaction.nonce == nonce, 'WRONG_NONCE');
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
@@ -82,22 +86,7 @@ contract Identity {
 		privileges[addr] = priv;
 	}
 
-	function txHash(Transaction memory transaction)
-		internal
-		view
-		returns (bytes32)
-	{
-		return keccak256(abi.encode(
-			address(this),
-			transaction.nonce,
-			transaction.to,
-			transaction.data,
-			transaction.feeTokenAddr,
-			transaction.feeTokenAmount
-		));
-	}
-
-	// privilege 1: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
+	// routines: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
 	// @TODO low privilege things/predefines
 	// @TODO transaction scheduling
 	// design #1: one authorization, for a time period, with a fee; predefined calls; withdraws
