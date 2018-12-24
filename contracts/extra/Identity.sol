@@ -56,6 +56,11 @@ contract Identity {
 		// @TODO: or, alternatively, handle deploy fees in the factory
 	}
 
+	modifier onlyIdentity() {
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		_;
+	}
+
 	function execute(Transaction[] memory transactions, bytes32[3][] memory signatures) public {
 		address feeTokenAddr = transactions[0].feeTokenAddr;
 		uint feeTokenAmount = 0;
@@ -81,8 +86,10 @@ contract Identity {
 		}
 	}
 
-	function setAddrPrivilege(address addr, uint8 priv) external {
-		require(msg.sender == address(this));
+	function setAddrPrivilege(address addr, uint8 priv)
+		external
+		onlyIdentity
+	{
 		privileges[addr] = priv;
 	}
 
