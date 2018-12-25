@@ -116,7 +116,6 @@ contract Identity {
 			RoutineOperation memory op = operations[i];
 			if (op.mode == 0) {
 				// Channel: Withdraw
-				// @TODO: can we take the selector into a const?
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
 				require(authorization.outpace.call(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == 1) {
