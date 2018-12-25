@@ -1,4 +1,5 @@
 const Identity = artifacts.require('Identity')
+const MockToken = artifacts.require('./mocks/Token')
 
 const { Transaction, RoutineAuthorization } = require('../js/Transaction')
 const { splitSig } = require('../js')
@@ -13,12 +14,20 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 contract('Identity', function(accounts) {
 	let id
 	let idInterface = new Interface(Identity._json.abi)
+	let token
 
 	before(async function() {
 		// 3 is the relayer, 4 is the acc
 		const signer = web3Provider.getSigner(accounts[3])
 		const idWeb3 = await Identity.new(accounts[4], 3)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+		const tokenWeb3 = await MockToken.new()
+		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+	})
+
+	beforeEach(async function() {
+		console.log('beforeeach id: ',id.address)
+		await token.setBalanceTo(id.address, 10000)
 	})
 
 	it('relay a tx', async function() {
@@ -57,7 +66,16 @@ contract('Identity', function(accounts) {
 		})
 		const hash = authorization.hashHex();
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const op = [2, ['0x0000000000000000000000000000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000000000000000000000000000000']] // @TODO
+		// @TODO convenience method to generate a op
+		const op = [
+			2,
+			// remove the sig via slice(2+8) and prepend '0x'
+			'0x'+idInterface.functions.withdraw.encode([
+				token.address,
+				userAcc,
+				1,
+			]).slice(2+8)
+		];
 		const receipt = await (await id.executeRoutines(authorization.toSolidityTuple(), sig, [op])).wait()
 		console.log(receipt)
 	})
