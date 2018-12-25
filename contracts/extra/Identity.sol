@@ -9,6 +9,10 @@ import "../interfaces/AdExCoreInterface.sol";
 contract Identity {
 	using SafeMath for uint;
 
+	// Constants
+	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCoreInterface(0x0).channelWithdraw.selector;
+	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCoreInterface(0x0).channelWithdrawExpired.selector;
+
 	// The next allowed nonce
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
@@ -114,10 +118,10 @@ contract Identity {
 				// Channel: Withdraw
 				// @TODO: can we take the selector into a const?
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				require(authorization.outpace.call(AdExCoreInterface(authorization.outpace).channelWithdraw.selector, op.data));
+				require(authorization.outpace.call(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				require(authorization.outpace.call(AdExCoreInterface(authorization.outpace).channelWithdrawExpired.selector, op.data));
+				require(authorization.outpace.call(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				// @TODO split op.data, validate that the withdraw address is valid, and proceed
