@@ -44,6 +44,7 @@ contract('Identity', function(accounts) {
 		})
 		const hash = relayerTx.hashHex();
 		const sig = splitSig(await ethSign(hash, userAcc))
+		// @TODO: set gasLimit manually
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		//console.log(receipt)
@@ -72,6 +73,7 @@ contract('Identity', function(accounts) {
 			2,
 			opData,
 		]
+		// @TODO: warn about gasLimit in docs, since estimateGas apparently does not calculate properly
 		const receipt = await (await id.executeRoutines(
 			authorization.toSolidityTuple(),
 			sig,
