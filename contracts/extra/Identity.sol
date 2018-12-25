@@ -131,15 +131,14 @@ contract Identity {
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				(success,) = authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_SELECTOR, op.data)); //, 'CHANNEL_WITHDRAW_FAILED');
+				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				(success,) = authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data)); // 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
+				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
-				// @TODO: rather than calling into the contract, we can do it directly here via abi.decode
-				Identity id = this;
-				(success,) = authorization.identityContract.call(abi.encodeWithSelector(id.withdraw.selector, op.data)); //, 'WITHDRAW_CALL_FAILED');
+				// @TODO: rather than calling into the contract, perhaps we can do it directly here via abi.decode; although msg.sender won't be right up
+				(success,) = authorization.identityContract.call(abi.encodePacked(this.withdraw.selector, op.data));
 			} else {
 				require(false, 'INVALID_MODE');
 			}

@@ -66,17 +66,20 @@ contract('Identity', function(accounts) {
 		const hash = authorization.hashHex();
 		const sig = splitSig(await ethSign(hash, userAcc))
 		// @TODO convenience method to generate a op
+		let opData = idInterface.functions.withdraw.encode([token.address, userAcc, 100])
+		opData = '0x'+opData.slice(10)
 		const op = [
 			2,
-			// remove the sig via slice(2+8) and prepend '0x'
-			'0x'+idInterface.functions.withdraw.encode([
-				token.address,
-				userAcc,
-				2,
-			]).slice(2+8)
-		];
-		const receipt = await (await id.executeRoutines(authorization.toSolidityTuple(), sig, [op])).wait()
-		console.log(receipt.events)
+			opData,
+		]
+		const receipt = await (await id.executeRoutines(
+			authorization.toSolidityTuple(),
+			sig,
+			[op],
+			{ gasLimit: 500000 }
+		)).wait()
+		console.log(receipt)
+		assert.equal(await token.balanceOf(userAcc), 100, 'user has the right balance')
 		// @TODO fee gets paid only once
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
