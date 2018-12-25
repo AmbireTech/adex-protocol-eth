@@ -8,10 +8,15 @@ import "../libs/SignatureValidator.sol";
 contract Identity {
 	using SafeMath for uint;
 
+	// Pre-set method sigs
+	// @TODO: .function.selector
+	bytes4 public CHANNEL_WITHDRAW_SIG = bytes4(keccak256("channelWithdraw((),)"));
+	bytes4 public CHANNEL_WITHDRAW_EXPIRED_SIG = bytes4(keccak256("channelWithdrawExpired()"));
+
 	// The next allowed nonce
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
-
+	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) private routineAuthorizationPaidFees;
 
 	enum PrivilegeLevel {
@@ -42,12 +47,14 @@ contract Identity {
 	struct RoutineAuthorization {
 		address identityContract;
 		address relayer;
+		address outpace;
 		uint validUntil;
 		address feeTokenAddr;
 		uint feeTokenAmount;
 	}
 	struct RoutineOperation {
-		// @TODO
+		uint op;
+		bytes data;
 	}
 
 	constructor(address addr, uint8 privLevel) public {
@@ -61,7 +68,9 @@ contract Identity {
 		_;
 	}
 
-	function execute(Transaction[] memory transactions, bytes32[3][] memory signatures) public {
+	function execute(Transaction[] memory transactions, bytes32[3][] memory signatures)
+		public
+	{
 		address feeTokenAddr = transactions[0].feeTokenAddr;
 		uint feeTokenAmount = 0;
 		for (uint i=0; i<transactions.length; i++) {
@@ -93,9 +102,27 @@ contract Identity {
 		privileges[addr] = priv;
 	}
 
+	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] signature, RoutineOperation[] memory operations)
+		public
+	{
+		bytes32 hash = keccak256(abi.encode(authorization));
+		address signer = SignatureValidator.recoverAddr(hash, signature);
+		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
+		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
+		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
+		for (uint i=0; i<operations.length; i++) {
+			RoutineOperation memory op = operations[i];
+
+		}
+		// @TODO pay out fee
+	}
+
 	// routines: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
 	// @TODO low privilege things/predefines
 	// @TODO transaction scheduling
 	// design #1: one authorization, for a time period, with a fee; predefined calls; withdraws
 	// design #2: part of the Transaction: certain calls will be allowed with lower privilege keys
+	// choosing design #1 for now: operations: ChannelWithdraw, ChannelWithdrawExpired, Withdraw; abi.encodePacked, keccak256(), bytes4
+	// bytes4(keccak256("fillOrder((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes),uint256,bytes)"))
+	// bytes to bytes32??
 }
