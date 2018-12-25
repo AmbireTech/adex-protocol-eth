@@ -76,7 +76,7 @@ contract Identity {
 		for (uint i=0; i<transactions.length; i++) {
 			Transaction memory transaction = transactions[i];
 			//bytes32 hash = keccak256(abi.encode(transaction));
-			// @TODO: riperoni, fix this
+			// @TODO: riperoni, fix this; without `bytes`-typed fields, it's the same
 			bytes32 hash = keccak256(abi.encode(transaction.identityContract, transaction.nonce, transaction.feeTokenAddr, transaction.feeTokenAmount, transaction.to, transaction.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
