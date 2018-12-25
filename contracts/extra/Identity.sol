@@ -54,7 +54,7 @@ contract Identity {
 	}
 	struct RoutineOperation {
 		uint mode;
-		bytes data;
+		bytes32[] data;
 	}
 
 	constructor(address addr, uint8 privLevel) public {
@@ -123,8 +123,11 @@ contract Identity {
 				require(authorization.outpace.call(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
-				// @TODO split op.data, validate that the withdraw address is valid, and proceed
-				//SafeERC20.transfer()
+				address tokenAddr = address(op.data[0]);
+				address to = address(op.data[1]);
+				uint amount = uint(op.data[2]);
+				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
 				require(false, 'INVALID_MODE');
 			}
@@ -134,13 +137,4 @@ contract Identity {
 			SafeERC20.transfer(authorization.feeTokenAddr, msg.sender, authorization.feeTokenAmount);
 		}
 	}
-
-	// routines: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
-	// @TODO low privilege things/predefines
-	// @TODO transaction scheduling
-	// design #1: one authorization, for a time period, with a fee; predefined calls; withdraws
-	// design #2: part of the Transaction: certain calls will be allowed with lower privilege keys
-	// choosing design #1 for now: operations: ChannelWithdraw, ChannelWithdrawExpired, Withdraw; abi.encodePacked, keccak256(), bytes4
-	// bytes4(keccak256("fillOrder((address,address,address,address,uint256,uint256,uint256,uint256,uint256,uint256,bytes,bytes),uint256,bytes)"))
-	// bytes to bytes32??
 }
