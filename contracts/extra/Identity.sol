@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
 import "../libs/SafeMath.sol";
@@ -91,7 +91,8 @@ contract Identity {
 
 			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
 			// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
-			require(txn.to.call.value(txn.value)(txn.data));
+			(bool success,) = txn.to.call.value(txn.value)(txn.data);
+			require(success);
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
@@ -114,7 +115,7 @@ contract Identity {
 		SafeERC20.transfer(tokenAddr, to, amount);
 	}
 
-	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] signature, RoutineOperation[] memory operations)
+	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] memory signature, RoutineOperation[] memory operations)
 		public
 	{
 		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
@@ -129,15 +130,15 @@ contract Identity {
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				require(authorization.outpace.call(CHANNEL_WITHDRAW_SELECTOR, op.data), 'CHANNEL_WITHDRAW_FAILED');
+				authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_SELECTOR, op.data)); //, 'CHANNEL_WITHDRAW_FAILED');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				require(authorization.outpace.call(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data), 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
+				authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data)); // 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				// @TODO: rather than calling into the contract, we can do it directly here via abi.decode
 				Identity id = this;
-				require(authorization.identityContract.call(id.withdraw.selector, op.data), 'WITHDRAW_CALL_FAILED');
+				authorization.identityContract.call(abi.encodeWithSelector(id.withdraw.selector, op.data)); //, 'WITHDRAW_CALL_FAILED');
 			} else {
 				require(false, 'INVALID_MODE');
 			}

@@ -72,7 +72,7 @@ contract('Identity', function(accounts) {
 			'0x'+idInterface.functions.withdraw.encode([
 				token.address,
 				userAcc,
-				1,
+				2,
 			]).slice(2+8)
 		];
 		const receipt = await (await id.executeRoutines(authorization.toSolidityTuple(), sig, [op])).wait()

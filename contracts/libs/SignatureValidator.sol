@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
 library SignatureValidator {
 	enum SignatureMode {
@@ -13,7 +13,7 @@ library SignatureValidator {
 		SignatureMode mode = SignatureMode(uint8(signature[0][0]));
 
 		if (mode == SignatureMode.NO_SIG) {
-			return 0x0;
+			return address(0x0);
 		}
 
 		uint8 v = uint8(signature[0][1]);
