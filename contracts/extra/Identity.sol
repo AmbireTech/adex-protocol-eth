@@ -4,14 +4,10 @@ pragma experimental ABIEncoderV2;
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/SignatureValidator.sol";
+import "../interfaces/AdExCoreInterface.sol";
 
 contract Identity {
 	using SafeMath for uint;
-
-	// Pre-set method sigs
-	// @TODO: .function.selector
-	bytes4 public CHANNEL_WITHDRAW_SIG = bytes4(keccak256("channelWithdraw((),)"));
-	bytes4 public CHANNEL_WITHDRAW_EXPIRED_SIG = bytes4(keccak256("channelWithdrawExpired()"));
 
 	// The next allowed nonce
 	uint public nonce = 0;
@@ -53,7 +49,7 @@ contract Identity {
 		uint feeTokenAmount;
 	}
 	struct RoutineOperation {
-		uint op;
+		uint mode;
 		bytes data;
 	}
 
@@ -113,7 +109,20 @@ contract Identity {
 		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
-
+			if (op.mode == 0) {
+				// Channel: Withdraw
+				// @TODO: can we take the selector into a const?
+				require(authorization.outpace.call(AdExCoreInterface(authorization.outpace).channelWithdraw.selector, op.data));
+			} else if (op.mode == 1) {
+				// Channel: Withdraw Expired
+				require(authorization.outpace.call(AdExCoreInterface(authorization.outpace).channelWithdrawExpired.selector, op.data));
+			} else if (op.mode == 2) {
+				// Withdraw from identity
+				// @TODO split op.data, validate that the withdraw address is valid, and proceed
+				//SafeERC20.transfer()
+			} else {
+				require(false, 'INVALID_MODE');
+			}
 		}
 		// @TODO pay out fee
 	}
