@@ -14,5 +14,9 @@ function Bytes32(b) {
 	if (!(b.length === 32 && Buffer.isBuffer(b))) throw '32 byte Buffer expected'
 	return b
 }
+function Bytes(b) {
+	if (!Buffer.isBuffer(b)) throw 'Buffer expected'
+	return b
+}
 
-module.exports = { Uint256, Bytes32, Address }
+module.exports = { Uint256, Bytes32, Address, Bytes }
