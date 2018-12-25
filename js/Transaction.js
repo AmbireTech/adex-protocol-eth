@@ -1,0 +1,33 @@
+const abi = require('ethereumjs-abi')
+const keccak256 = require('js-sha3').keccak256
+const ensure = require('./ensureTypes')
+
+function Transaction(args) {
+	this.identityContract = ensure.Address(args.identityContract)
+	this.nonce = ensure.Uint256(args.nonce)
+	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
+	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
+	this.to = ensure.Address(args.to)
+	this.data = ensure.Bytes(args.data)
+	Object.freeze(this)
+	return this
+}
+
+Transaction.prototype.hash = function() {
+	const buf = abi.rawEncode(
+		['address', 'uint256', 'address', 'uint256', 'address', 'bytes'],
+		[this.identityContract, this.nonce, this.feeTokenAddr, this.feeTokenAmount, this.to, this.data],
+	)
+	return new Buffer(keccak256.arrayBuffer(buf))
+}
+
+Transaction.prototype.hashHex = function() {
+	return '0x'+this.hash().toString('hex')
+}
+
+Transaction.prototype.toSolidityTuple = function() {
+	// etherjs doesn't seem to want BN.js instances; hex is the lowest common denominator for web3/ethers
+	return [this.identityContract, '0x'+this.nonce.toString(16), this.feeTokenAddr, '0x'+this.feeTokenAmount.toString(16), this.to, '0x'+this.data.toString('hex')]
+}
+
+module.exports = { Transaction }

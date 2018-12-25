@@ -34,11 +34,11 @@ contract Identity {
 	struct Transaction {
 		address identityContract;
 		uint nonce;
-		address to;
-		bytes data;
 		// @TODO should we have an amount?
 		address feeTokenAddr;
 		uint feeTokenAmount;
+		address to;
+		bytes data;
 	}
 	// routine authorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
 	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
@@ -60,7 +60,7 @@ contract Identity {
 	constructor(address addr, uint8 privLevel) public {
 		privileges[addr] = privLevel;
 		// @TODO: deployer fees
-		// @TODO: or, alternatively, handle deploy fees in the factory
+		// @TODO: or, alternatively, handle deploy fees in the factory; although that will be tough cause msg.sender needs to be this contract
 	}
 
 	modifier onlyIdentity() {
@@ -75,7 +75,9 @@ contract Identity {
 		uint feeTokenAmount = 0;
 		for (uint i=0; i<transactions.length; i++) {
 			Transaction memory transaction = transactions[i];
-			bytes32 hash = keccak256(abi.encode(transaction));
+			//bytes32 hash = keccak256(abi.encode(transaction));
+			// riperoni
+			bytes32 hash = keccak256(abi.encode(transaction.identityContract, transaction.nonce, transaction.feeTokenAddr, transaction.feeTokenAmount, transaction.to, transaction.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
 			require(transaction.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
