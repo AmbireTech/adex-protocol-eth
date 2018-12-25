@@ -15,6 +15,9 @@ function Bytes32(b) {
 	return b
 }
 function Bytes(b) {
+	if (typeof(b) === 'string' && b.startsWith('0x')) {
+		b = new Buffer(b.slice(2), 'hex')
+	}
 	if (!Buffer.isBuffer(b)) throw 'Buffer expected'
 	return b
 }
