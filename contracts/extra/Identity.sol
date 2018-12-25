@@ -34,10 +34,10 @@ contract Identity {
 	struct Transaction {
 		address identityContract;
 		uint nonce;
-		// @TODO should we have an amount?
 		address feeTokenAddr;
 		uint feeTokenAmount;
 		address to;
+		uint value;
 		bytes data;
 	}
 	// routine authorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
@@ -77,7 +77,7 @@ contract Identity {
 			Transaction memory transaction = transactions[i];
 			//bytes32 hash = keccak256(abi.encode(transaction));
 			// @TODO: riperoni, fix this; without `bytes`-typed fields, it's the same
-			bytes32 hash = keccak256(abi.encode(transaction.identityContract, transaction.nonce, transaction.feeTokenAddr, transaction.feeTokenAmount, transaction.to, transaction.data));
+			bytes32 hash = keccak256(abi.encode(transaction.identityContract, transaction.nonce, transaction.feeTokenAddr, transaction.feeTokenAmount, transaction.to, transaction.value, transaction.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
 			require(transaction.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
@@ -90,7 +90,7 @@ contract Identity {
 
 			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
 			// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
-			require(transaction.to.call(transaction.data));
+			require(transaction.to.call.value(transaction.value)(transaction.data));
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);

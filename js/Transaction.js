@@ -8,6 +8,7 @@ function Transaction(args) {
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
 	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
 	this.to = ensure.Address(args.to)
+	this.value = ensure.Uint256(args.value)
 	this.data = ensure.Bytes(args.data)
 	Object.freeze(this)
 	return this
@@ -15,8 +16,8 @@ function Transaction(args) {
 
 Transaction.prototype.hash = function() {
 	const buf = abi.rawEncode(
-		['address', 'uint256', 'address', 'uint256', 'address', 'bytes'],
-		[this.identityContract, this.nonce, this.feeTokenAddr, this.feeTokenAmount, this.to, this.data],
+		['address', 'uint256', 'address', 'uint256', 'address', 'uint256', 'bytes'],
+		[this.identityContract, this.nonce, this.feeTokenAddr, this.feeTokenAmount, this.to, this.value, this.data],
 	)
 	return new Buffer(keccak256.arrayBuffer(buf))
 }
@@ -27,7 +28,7 @@ Transaction.prototype.hashHex = function() {
 
 Transaction.prototype.toSolidityTuple = function() {
 	// etherjs doesn't seem to want BN.js instances; hex is the lowest common denominator for web3/ethers
-	return [this.identityContract, '0x'+this.nonce.toString(16), this.feeTokenAddr, '0x'+this.feeTokenAmount.toString(16), this.to, '0x'+this.data.toString('hex')]
+	return [this.identityContract, '0x'+this.nonce.toString(16), this.feeTokenAddr, '0x'+this.feeTokenAmount.toString(16), this.to, '0x'+this.value.toString(16), '0x'+this.data.toString('hex')]
 }
 
 
