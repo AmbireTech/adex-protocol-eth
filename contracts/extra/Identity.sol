@@ -13,7 +13,7 @@ contract Identity {
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
 	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => bool) private routineAuthorizationPaidFees;
+	mapping (bytes32 => bool) private routinePaidFees;
 
 	enum PrivilegeLevel {
 		None,
@@ -102,9 +102,10 @@ contract Identity {
 	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] signature, RoutineOperation[] memory operations)
 		public
 	{
+		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
+		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
 		bytes32 hash = keccak256(abi.encode(authorization));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
 		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
 		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
@@ -112,6 +113,7 @@ contract Identity {
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: can we take the selector into a const?
+				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
 				require(authorization.outpace.call(AdExCoreInterface(authorization.outpace).channelWithdraw.selector, op.data));
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
@@ -124,7 +126,10 @@ contract Identity {
 				require(false, 'INVALID_MODE');
 			}
 		}
-		// @TODO pay out fee
+		if (!routinePaidFees[hash]) {
+			routinePaidFees[hash] = true;
+			SafeERC20.transfer(authorization.feeTokenAddr, msg.sender, authorization.feeTokenAmount);
+		}
 	}
 
 	// routines: withdraw (but check privilege of withdraw to addr), withdraw from channel, withdraw expired, perhaps opening channels (with predefined validators)
