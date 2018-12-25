@@ -68,29 +68,29 @@ contract Identity {
 		_;
 	}
 
-	function execute(Transaction[] memory transactions, bytes32[3][] memory signatures)
+	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
 		public
 	{
-		address feeTokenAddr = transactions[0].feeTokenAddr;
+		address feeTokenAddr = txns[0].feeTokenAddr;
 		uint feeTokenAmount = 0;
-		for (uint i=0; i<transactions.length; i++) {
-			Transaction memory transaction = transactions[i];
-			//bytes32 hash = keccak256(abi.encode(transaction));
+		for (uint i=0; i<txns.length; i++) {
+			Transaction memory txn = txns[i];
+			//bytes32 hash = keccak256(abi.encode(txn));
 			// @TODO: riperoni, fix this; without `bytes`-typed fields, it's the same
-			bytes32 hash = keccak256(abi.encode(transaction.identityContract, transaction.nonce, transaction.feeTokenAddr, transaction.feeTokenAmount, transaction.to, transaction.value, transaction.data));
+			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeTokenAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
-			require(transaction.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
-			require(transaction.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
-			require(transaction.nonce == nonce, 'WRONG_NONCE');
+			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
+			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
+			require(txn.nonce == nonce, 'WRONG_NONCE');
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
 
 			nonce++;
-			feeTokenAmount = feeTokenAmount.add(transaction.feeTokenAmount);
+			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
 			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
 			// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
-			require(transaction.to.call.value(transaction.value)(transaction.data));
+			require(txn.to.call.value(txn.value)(txn.data));
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
