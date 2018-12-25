@@ -26,7 +26,6 @@ contract('Identity', function(accounts) {
 	})
 
 	beforeEach(async function() {
-		console.log('beforeeach id: ',id.address)
 		await token.setBalanceTo(id.address, 10000)
 	})
 
@@ -61,7 +60,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: accounts[3],
 			outpace: accounts[3], // @TODO deploy an outpace
-			feeTokenAddr: accounts[0], // @TODO temp
+			feeTokenAddr: token.address,
 			feeTokenAmount: 0, // @TODO temp
 		})
 		const hash = authorization.hashHex();
@@ -77,7 +76,9 @@ contract('Identity', function(accounts) {
 			]).slice(2+8)
 		];
 		const receipt = await (await id.executeRoutines(authorization.toSolidityTuple(), sig, [op])).wait()
-		console.log(receipt)
+		console.log(receipt.events)
+		// @TODO fee gets paid only once
+		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
 
 	// UTILS
