@@ -1,6 +1,6 @@
 const Identity = artifacts.require('Identity')
 
-const { Transaction } = require('../js/Transaction')
+const { Transaction, RoutineAuthorization } = require('../js/Transaction')
 const { splitSig } = require('../js')
 
 const promisify = require('util').promisify
@@ -39,6 +39,27 @@ contract('Identity', function(accounts) {
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		//console.log(receipt)
+		//console.log(receipt.gasUsed.toString(10))
+		// @TODO test if setAddrPrivilege CANNOT be invoked from anyone else
+		// @TODO test wrong nonce
+		// @TODO test a few consequtive transactions
+		// @TODO test wrong sig
+	})
+
+	it('relay routine operations', async function() {
+		const userAcc = accounts[4]
+		const authorization = new RoutineAuthorization({
+			identityContract: id.address,
+			relayer: accounts[3],
+			outpace: accounts[3], // @TODO deploy an outpace
+			feeTokenAddr: accounts[0], // @TODO temp
+			feeTokenAmount: 0, // @TODO temp
+		})
+		const hash = authorization.hashHex();
+		const sig = splitSig(await ethSign(hash, userAcc))
+		const op = [2, ['0x0000000000000000000000000000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000000000000000000000000000000', '0x0000000000000000000000000000000000000000000000000000000000000000']] // @TODO
+		const receipt = await (await id.executeRoutines(authorization.toSolidityTuple(), sig, [op])).wait()
+		console.log(receipt)
 	})
 
 	// UTILS
