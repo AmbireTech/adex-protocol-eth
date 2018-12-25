@@ -30,6 +30,7 @@ contract Identity {
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
+	// Even though the contract cannot receive ETH, we are able to send ETH (.value), cause ETH might've been sent to the contract address before it's deployed
 	// @TODO read other implementations of metatx
 	struct Transaction {
 		address identityContract;
@@ -54,7 +55,7 @@ contract Identity {
 	}
 	struct RoutineOperation {
 		uint mode;
-		bytes32[] data;
+		bytes data;
 	}
 
 	constructor(address addr, uint8 privLevel) public {
@@ -105,6 +106,14 @@ contract Identity {
 		privileges[addr] = priv;
 	}
 
+	function withdraw(address tokenAddr, address to, uint amount)
+		external
+		onlyIdentity
+	{
+		require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+		SafeERC20.transfer(tokenAddr, to, amount);
+	}
+
 	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] signature, RoutineOperation[] memory operations)
 		public
 	{
@@ -116,25 +125,24 @@ contract Identity {
 		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
+			// @TODO: preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				require(authorization.outpace.call(CHANNEL_WITHDRAW_SELECTOR, op.data));
+				require(authorization.outpace.call(CHANNEL_WITHDRAW_SELECTOR, op.data), 'CHANNEL_WITHDRAW_FAILED');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				require(authorization.outpace.call(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
+				require(authorization.outpace.call(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data), 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
-				address tokenAddr = address(op.data[0]);
-				address to = address(op.data[1]);
-				uint amount = uint(op.data[2]);
-				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-				SafeERC20.transfer(tokenAddr, to, amount);
+				// @TODO: rather than calling into the contract, we can do it directly here via abi.decode
+				Identity id = this;
+				require(authorization.identityContract.call(id.withdraw.selector, op.data), 'WITHDRAW_CALL_FAILED');
 			} else {
 				require(false, 'INVALID_MODE');
 			}
 		}
-		if (!routinePaidFees[hash]) {
+		if (!routinePaidFees[hash] && authorization.feeTokenAmount > 0) {
 			routinePaidFees[hash] = true;
 			SafeERC20.transfer(authorization.feeTokenAddr, msg.sender, authorization.feeTokenAmount);
 		}
