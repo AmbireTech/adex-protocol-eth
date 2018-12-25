@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
 interface GeneralERC20 {
 	function transfer(address to, uint256 value) external;
