@@ -126,22 +126,24 @@ contract Identity {
 		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
+			bool success;
 			// @TODO: preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_SELECTOR, op.data)); //, 'CHANNEL_WITHDRAW_FAILED');
+				(success,) = authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_SELECTOR, op.data)); //, 'CHANNEL_WITHDRAW_FAILED');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data)); // 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
+				(success,) = authorization.outpace.call(abi.encodeWithSelector(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data)); // 'CHANNEL_WITHDRAW_EXPIRED_FAILED');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				// @TODO: rather than calling into the contract, we can do it directly here via abi.decode
 				Identity id = this;
-				authorization.identityContract.call(abi.encodeWithSelector(id.withdraw.selector, op.data)); //, 'WITHDRAW_CALL_FAILED');
+				(success,) = authorization.identityContract.call(abi.encodeWithSelector(id.withdraw.selector, op.data)); //, 'WITHDRAW_CALL_FAILED');
 			} else {
 				require(false, 'INVALID_MODE');
 			}
+			require(success, 'CALL_NOT_SUCCESSFUL');
 		}
 		if (!routinePaidFees[hash] && authorization.feeTokenAmount > 0) {
 			routinePaidFees[hash] = true;
