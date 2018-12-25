@@ -99,6 +99,7 @@ contract Identity {
 		external
 		onlyIdentity
 	{
+		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
 		privileges[addr] = priv;
 	}
 
