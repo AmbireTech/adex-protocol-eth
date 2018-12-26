@@ -27,6 +27,7 @@ contract Identity {
 	}
 
 	// Events
+	// @TODO
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -127,7 +128,7 @@ contract Identity {
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
 			bool success;
-			// @TODO: preserve original error from the call
+			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
