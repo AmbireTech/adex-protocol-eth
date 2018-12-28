@@ -47,29 +47,33 @@ contract('Identity', function(accounts) {
 
 		const feeAmnt = 250
 		const signer = web3Provider.getSigner(relayerAddr)
-		const idWeb3 = await Identity.new(accounts[4], 3, token.address, accounts[0], feeAmnt, { from: relayerAddr })
+		const idWeb3 = await Identity.new(accounts[4], 3, token.address, relayerAddr, feeAmnt, { from: relayerAddr })
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 
-		assert.equal(await token.balanceOf(accounts[0]), feeAmnt, 'fee is paid out')
+		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
 
 	it('relay a tx', async function() {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
+		const initialBal = await token.balanceOf(relayerAddr)
+		// @TODO: multiple transactions
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: 0,
-			feeTokenAddr: accounts[0], // @TODO temp
-			feeTokenAmount: 0, // @TODO temp
+			feeTokenAddr: token.address,
+			feeTokenAmount: 15,
 			to: id.address,
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 		})
-		const hash = relayerTx.hashHex();
+		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
+
 		// @TODO: set gasLimit manually
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
+
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
-		//console.log(receipt)
+		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
 		//console.log(receipt.gasUsed.toString(10))
 		// @TODO test if setAddrPrivilege CANNOT be invoked from anyone else
 		// @TODO test wrong nonce
@@ -85,7 +89,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0, // @TODO temp
 		})
-		const hash = authorization.hashHex();
+		const hash = authorization.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
 		const op = [
 			2,
