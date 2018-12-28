@@ -1,8 +1,8 @@
 const channelLib = require('./Channel')
-const transactionLib = require('./Transaction')
+const identityLib = require('./Identity')
 module.exports = {
 	...channelLib,
-	...transactionLib,
+	...identityLib,
 	MerkleTree: require('./MerkleTree'),
 	splitSig: require('./splitSig'),
 }

@@ -1,8 +1,7 @@
 const Identity = artifacts.require('Identity')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization } = require('../js/Transaction')
-const { splitSig } = require('../js')
+const { Transaction, RoutineAuthorization, splitSig } = require('../js')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
