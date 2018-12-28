@@ -15,24 +15,45 @@ contract('Identity', function(accounts) {
 	let idInterface = new Interface(Identity._json.abi)
 	let token
 
-	before(async function() {
-		// 3 is the relayer, 4 is the acc
-		const signer = web3Provider.getSigner(accounts[3])
+	const relayerAddr = accounts[3]
+	const userAcc = accounts[4]
 
+	before(async function() {
+		const signer = web3Provider.getSigner(accounts[0])
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
-		// @TODO: test fee token reward
-		const idWeb3 = await Identity.new(accounts[4], 3, token.address, accounts[0], 0)
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 	})
 
-	beforeEach(async function() {
-		await token.setBalanceTo(id.address, 10000)
+	it('deploy an Identity', async function() {
+		// Calculate the id.address in advance
+		// really, we need to concat 0xd694{address}00
+		// same as require('rlp').encode([relayerAddr, 0x00]) or ethers.utils.RPL.encode([relayerAddr, ... (dunno what)])
+		// @TODO: move this out into js/Identity
+		const rlpEncodedInput = Buffer.concat([
+			// rpl encoding values
+			new Uint8Array([0xd6, 0x94]),
+			// sender
+			Buffer.from(relayerAddr.slice(2), 'hex'),
+			// nonce (0x80 is equivalent to nonce 0)
+			new Uint8Array([0x80]),
+		])
+		const keccak256 = require('js-sha3').keccak256
+		const digest = new Buffer(keccak256.arrayBuffer(rlpEncodedInput))
+		// could use ethers.utils.getAddress
+		const idAddr = '0x'+digest.slice(-20).toString('hex')
+
+		// set the balance so that we can pay out the fee when deploying
+		await token.setBalanceTo(idAddr, 10000)
+
+		const feeAmnt = 250
+		const signer = web3Provider.getSigner(relayerAddr)
+		const idWeb3 = await Identity.new(accounts[4], 3, token.address, accounts[0], feeAmnt, { from: relayerAddr })
+		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+
+		assert.equal(await token.balanceOf(accounts[0]), feeAmnt, 'fee is paid out')
 	})
 
 	it('relay a tx', async function() {
-		const userAcc = accounts[4]
-
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
 		const relayerTx = new Transaction({
@@ -57,7 +78,6 @@ contract('Identity', function(accounts) {
 	})
 
 	it('relay routine operations', async function() {
-		const userAcc = accounts[4]
 		const authorization = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: accounts[3],
