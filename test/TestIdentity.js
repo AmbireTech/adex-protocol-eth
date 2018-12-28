@@ -68,12 +68,13 @@ contract('Identity', function(accounts) {
 		const sig = splitSig(await ethSign(hash, userAcc))
 		// @TODO convenience method to generate a op
 		let opData = idInterface.functions.withdraw.encode([token.address, userAcc, 150])
-		opData = '0x'+opData.slice(10)
+		opData = '0x'+opData.slice(10) // 2 for the prefix, 8 for 4 bytes
 		const op = [
 			2,
 			opData,
 		]
 		// @TODO: warn about gasLimit in docs, since estimateGas apparently does not calculate properly
+		// https://docs.ethers.io/ethers.js/html/api-contract.html#overrides
 		const receipt = await (await id.executeRoutines(
 			authorization.toSolidityTuple(),
 			sig,
@@ -83,6 +84,7 @@ contract('Identity', function(accounts) {
 		assert.equal(receipt.events.length, 1, 'has an event emitted')
 		assert.equal(await token.balanceOf(userAcc), 150, 'user has the right balance')
 		// @TODO fee gets paid only once
+		// @TODO can't call after it's no longer valid
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
 
