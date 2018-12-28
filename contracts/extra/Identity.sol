@@ -138,6 +138,7 @@ contract Identity {
 				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
+				// @TODO: can we use abi.dcode() here?
 				(success,) = authorization.identityContract.call(abi.encodePacked(this.withdraw.selector, op.data));
 			} else {
 				require(false, 'INVALID_MODE');
