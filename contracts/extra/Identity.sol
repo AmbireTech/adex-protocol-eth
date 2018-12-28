@@ -65,11 +65,6 @@ contract Identity {
 		// @TODO: or, alternatively, handle deploy fees in the factory; although that will be tough cause msg.sender needs to be this contract
 	}
 
-	modifier onlyIdentity() {
-		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		_;
-	}
-
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
 		public
 	{
@@ -102,8 +97,8 @@ contract Identity {
 
 	function setAddrPrivilege(address addr, uint8 priv)
 		external
-		onlyIdentity
 	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
 		privileges[addr] = priv;
 	}
