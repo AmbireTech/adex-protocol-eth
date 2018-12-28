@@ -90,7 +90,7 @@ contract Identity {
 			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
 			// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
 			(bool success,) = txn.to.call.value(txn.value)(txn.data);
-			require(success);
+			require(success, 'CALL_FAILED');
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
@@ -121,11 +121,11 @@ contract Identity {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
 				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-				require(success, 'WITHDRAW_NOT_SUCCESSFUL');
+				require(success, 'WITHDRAW_FAILED');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
 				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-				require(success, 'WITHDRAW_EXPIRED_NOT_SUCCESSFUL');
+				require(success, 'WITHDRAW_EXPIRED_FAILED');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
