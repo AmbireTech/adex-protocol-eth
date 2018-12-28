@@ -60,10 +60,11 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address addr, uint8 privLevel) public {
+	constructor(address addr, uint8 privLevel, address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount) public {
 		privileges[addr] = privLevel;
-		// @TODO: deployer fees
-		// @TODO: or, alternatively, handle deploy fees in the factory; although that will be tough cause msg.sender needs to be this contract
+		if (feeTokenAmount > 0) {
+			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
+		}
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
