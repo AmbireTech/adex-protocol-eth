@@ -61,5 +61,9 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 	return [this.identityContract, this.relayer, this.outpace, '0x'+this.validUntil.toString(16), this.feeTokenAddr, '0x'+this.feeTokenAmount.toString(16)]
 }
 
+RoutineAuthorization.encodeWithdraw = function(tokenAddr, to, amount) {
+	return abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])
+}
+
 
 module.exports = { Transaction, RoutineAuthorization }

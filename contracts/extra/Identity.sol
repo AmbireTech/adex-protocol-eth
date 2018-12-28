@@ -108,14 +108,6 @@ contract Identity {
 		privileges[addr] = priv;
 	}
 
-	function withdraw(address tokenAddr, address to, uint amount)
-		external
-		onlyIdentity
-	{
-		require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-		SafeERC20.transfer(tokenAddr, to, amount);
-	}
-
 	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] memory signature, RoutineOperation[] memory operations)
 		public
 	{
@@ -127,7 +119,7 @@ contract Identity {
 		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
-			bool success;
+			bool success = true;
 			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
@@ -138,8 +130,9 @@ contract Identity {
 				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
-				// @TODO: can we use abi.dcode() here?
-				(success,) = authorization.identityContract.call(abi.encodePacked(this.withdraw.selector, op.data));
+				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
+				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
 				require(false, 'INVALID_MODE');
 			}
