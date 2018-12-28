@@ -18,10 +18,12 @@ contract('Identity', function(accounts) {
 	before(async function() {
 		// 3 is the relayer, 4 is the acc
 		const signer = web3Provider.getSigner(accounts[3])
-		const idWeb3 = await Identity.new(accounts[4], 3)
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+		// @TODO: test fee token reward
+		const idWeb3 = await Identity.new(accounts[4], 3, token.address, accounts[0], 0)
+		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 	})
 
 	beforeEach(async function() {
