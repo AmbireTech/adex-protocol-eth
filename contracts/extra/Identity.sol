@@ -42,10 +42,11 @@ contract Identity {
 		uint value;
 		bytes data;
 	}
+
 	// routine authorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
 	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
 	// while the fee will be paid only once per authorization, the authorization can be used until validUntil
-	// while the routines are safe, there is implied trust as the relayer may run executeRoutines without any routines to claim the fee
+	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
 		address identityContract;
 		address relayer;
@@ -108,21 +109,22 @@ contract Identity {
 	{
 		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
+		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(authorization));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
 		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
-		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
 		for (uint i=0; i<operations.length; i++) {
 			RoutineOperation memory op = operations[i];
-			bool success = true;
 			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
+				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
+				require(success, 'WITHDRAW_NOT_SUCCESSFUL');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				(success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
+				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
+				require(success, 'WITHDRAW_EXPIRED_NOT_SUCCESSFUL');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
@@ -131,7 +133,6 @@ contract Identity {
 			} else {
 				require(false, 'INVALID_MODE');
 			}
-			require(success, 'CALL_NOT_SUCCESSFUL');
 		}
 		if (!routinePaidFees[hash] && authorization.feeTokenAmount > 0) {
 			routinePaidFees[hash] = true;
