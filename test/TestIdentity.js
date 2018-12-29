@@ -34,19 +34,17 @@ contract('Identity', function(accounts) {
 		const keccak256 = require('js-sha3').keccak256
 		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
 		const deployTx = factory.getDeployTransaction(userAcc, 3, token.address, relayerAddr, feeAmnt)
-		/*const seed = utils.randomBytes(256)
-		const r = new Buffer(keccak256.arrayBuffer(seed))
+		const seed = utils.randomBytes(256)
+		// https://github.com/ensdomains/CurveArithmetics/blob/master/test/data/secp256k1.js
+		const GxLiteral = '0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798'
+		// starting with 0 guarantees we fit in lowSmax
+		const s = '0x0'+new Buffer(keccak256.arrayBuffer(seed)).toString('hex').slice(1)
 		const sig = {
-			r: '0x0'+r.toString('hex').slice(0, 63),
-			s: '0x0'+new Buffer(keccak256.arrayBuffer(r)).toString('hex').slice(0, 63),
+			r: GxLiteral,
+			s: s,
 			recoveryParam: 0,
 			v: 27,
-		}*/
-		let randomS = utils.keccak256(utils.randomBytes(3))
-		randomS = '0' + randomS.substring(3, randomS.length)
-		// https://github.com/ensdomains/CurveArithmetics/blob/master/test/data/secp256k1.js 
-		// concatting: '0x', Gx, randomS, 0x1b (27)
-		const sig = '0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'+randomS+'1b'
+		}
 		const deployTxRaw = utils.serializeTransaction({
 			...deployTx,
 			gasPrice: 1 * 10**9,
@@ -56,9 +54,8 @@ contract('Identity', function(accounts) {
 		const deployTxParsed = utils.parseTransaction(deployTxRaw)
 		// end of generating a deploy transaction
 
-		// @TODO: (r, s) ranges
-		const deployAddr = deployTxParsed.from
 		// fund the deploy addr with enough eth to deploy
+		const deployAddr = deployTxParsed.from
 		await web3.eth.sendTransaction({ from: relayerAddr, to: deployAddr, value: deployTxParsed.gasLimit * deployTxParsed.gasPrice })
 		//console.log(deployTxRaw)
 
