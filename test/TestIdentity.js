@@ -44,8 +44,15 @@ contract('Identity', function(accounts) {
 		}*/
 		let randomS = utils.keccak256(utils.randomBytes(3))
 		randomS = '0' + randomS.substring(3, randomS.length)
+		// https://github.com/ensdomains/CurveArithmetics/blob/master/test/data/secp256k1.js 
+		// concatting: '0x', Gx, randomS, 0x1b (27)
 		const sig = '0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'+randomS+'1b'
-		const deployTxRaw = utils.serializeTransaction({...deployTx, gasPrice: 1 * 10**9, gasLimit: 4*1000*1000 }, sig)
+		const deployTxRaw = utils.serializeTransaction({
+			...deployTx,
+			gasPrice: 1 * 10**9,
+			// usually takes about 2.4m
+			gasLimit: 3*1000*1000,
+		}, sig)
 		const deployTxParsed = utils.parseTransaction(deployTxRaw)
 		// end of generating a deploy transaction
 
@@ -53,7 +60,6 @@ contract('Identity', function(accounts) {
 		const deployAddr = deployTxParsed.from
 		// fund the deploy addr with enough eth to deploy
 		await web3.eth.sendTransaction({ from: relayerAddr, to: deployAddr, value: deployTxParsed.gasLimit * deployTxParsed.gasPrice })
-
 		//console.log(deployTxRaw)
 
 		// Calculate the id.address in advance
@@ -75,6 +81,7 @@ contract('Identity', function(accounts) {
 		await token.setBalanceTo(idAddr, 10000)
 		// deploy the contract, whcih should also pay out the fee
 		const deployReceipt = await web3.eth.sendSignedTransaction(deployTxRaw)
+		//console.log(deployReceipt.from, deployAddr)
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 
