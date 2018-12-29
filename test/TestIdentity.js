@@ -19,9 +19,13 @@ contract('Identity', function(accounts) {
 	const userAcc = accounts[4]
 
 	before(async function() {
-		const signer = web3Provider.getSigner(accounts[0])
+		const signer = web3Provider.getSigner(relayerAddr)
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
+		const idWeb3 = await Identity.new(userAcc, 3, token.address, relayerAddr, 0)
+		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+		await token.setBalanceTo(id.address, 10000)
 	})
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
@@ -54,10 +58,8 @@ contract('Identity', function(accounts) {
 		assert.equal(deployData.idContractAddr.toLowerCase(), deployReceipt.contractAddress.toLowerCase(), 'contract address matches')
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
-
-		// set id to an ethersjs contract
-		const signer = web3Provider.getSigner(relayerAddr)
-		id = new Contract(deployData.idContractAddr, Identity._json.abi, signer)
+		// this is what we should do if we want to instantiate an ethers Contract
+		//id = new Contract(deployData.idContractAddr, Identity._json.abi, signer)
 	})
 
 	it('relay a tx', async function() {
@@ -69,7 +71,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			nonce: 0,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 15,
+			feeTokenAmount: 25,
 			to: id.address,
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 		})
