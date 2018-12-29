@@ -86,7 +86,7 @@ contract('Identity', function(accounts) {
 		//console.log(receipt.gasUsed.toString(10))
 		// @TODO test if setAddrPrivilege CANNOT be invoked from anyone else
 		// @TODO test wrong nonce
-		// @TODO test a few consequtive transactions
+		// @TODO test a few consencutive transactions
 		// @TODO test wrong sig
 	})
 
@@ -120,15 +120,5 @@ contract('Identity', function(accounts) {
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
 
-	// UTILS
-	function moveTime(web3, time) {
-		return new Promise(function(resolve, reject) {
-			web3.currentProvider.send({
-				jsonrpc: '2.0',
-				method: 'evm_increaseTime',
-				params: [time],
-				id: 0,
-			}, (err, res) => err ? reject(err) : resolve(res))
-		})
-	}
+	// @TODO: open a channel through the identity, withdraw it through routine authorizations
 })
