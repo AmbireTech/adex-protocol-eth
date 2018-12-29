@@ -39,7 +39,7 @@ contract('Identity', function(accounts) {
 			// deploy fee will be feeAmnt to relayerAddr
 			token.address, relayerAddr, feeAmnt
 		)
-		const seed = randomBytes(256)
+		const seed = randomBytes(64)
 		const deployData = getIdentityDeployData(seed, deployTx)
 
 		// set the balance so that we can pay out the fee when deploying

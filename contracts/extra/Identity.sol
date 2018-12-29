@@ -87,10 +87,7 @@ contract Identity {
 			nonce++;
 			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
-			// @TODO perhaps look at the gnosis external_call: https://github.com/gnosis/MultiSigWallet/blob/master/contracts/MultiSigWallet.sol#L244
-			// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
-			(bool success,) = txn.to.call.value(txn.value)(txn.data);
-			require(success, 'CALL_FAILED');
+			require(executeCall(txn.to, txn.value, txn.data), 'CALL_FAILED');
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
@@ -120,11 +117,11 @@ contract Identity {
 			if (op.mode == 0) {
 				// Channel: Withdraw
 				// @TODO: security: if authorization.outpace is malicious somehow, it can re-enter and maaaybe double spend the fee? think about it
-				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
+				bool success = executeCall(authorization.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 				require(success, 'WITHDRAW_FAILED');
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				(bool success,) = authorization.outpace.call(abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
+				bool success = executeCall(authorization.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 				require(success, 'WITHDRAW_EXPIRED_FAILED');
 			} else if (op.mode == 2) {
 				// Withdraw from identity
@@ -138,6 +135,20 @@ contract Identity {
 		if (!routinePaidFees[hash] && authorization.feeTokenAmount > 0) {
 			routinePaidFees[hash] = true;
 			SafeERC20.transfer(authorization.feeTokenAddr, msg.sender, authorization.feeTokenAmount);
+		}
+	}
+
+	// copied from https://github.com/uport-project/uport-identity/blob/develop/contracts/Proxy.sol
+	// there's also
+	// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
+	// https://github.com/austintgriffith/bouncer-proxy/blob/master/BouncerProxy/BouncerProxy.sol
+	// https://github.com/gnosis/safe-contracts/blob/7e2eeb3328bb2ae85c36bc11ea6afc14baeb663c/contracts/base/Executor.sol
+	function executeCall(address to, uint256 value, bytes memory data)
+		internal
+		returns (bool success)
+	{
+		assembly {
+			success := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
 		}
 	}
 }
