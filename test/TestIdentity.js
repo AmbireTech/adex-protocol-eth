@@ -25,6 +25,37 @@ contract('Identity', function(accounts) {
 	})
 
 	it('deploy an Identity', async function() {
+		const feeAmnt = 250
+
+		// Generating a deploy transaction
+		// @TODO: move this out into js/Identity
+		// @TODO Is it OK to assume 0 for v, should we look into: https://bitcoin.stackexchange.com/questions/38351/ecdsa-v-r-s-what-is-v and https://github.com/ethereum/EIPs/issues/155 and https://blog.sigmaprime.io/solidity-security.html#one-time-addresses
+		const { ContractFactory, utils } = require('ethers')
+		const keccak256 = require('js-sha3').keccak256
+		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
+		const deployTx = factory.getDeployTransaction(userAcc, 3, token.address, relayerAddr, feeAmnt)
+		/*const seed = utils.randomBytes(256)
+		const r = new Buffer(keccak256.arrayBuffer(seed))
+		const sig = {
+			r: '0x0'+r.toString('hex').slice(0, 63),
+			s: '0x0'+new Buffer(keccak256.arrayBuffer(r)).toString('hex').slice(0, 63),
+			recoveryParam: 0,
+			v: 27,
+		}*/
+		let randomS = utils.keccak256(utils.randomBytes(3))
+		randomS = '0' + randomS.substring(3, randomS.length)
+		const sig = '0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'+randomS+'1b'
+		const deployTxRaw = utils.serializeTransaction({...deployTx, gasPrice: 1 * 10**9, gasLimit: 4*1000*1000 }, sig)
+		const deployTxParsed = utils.parseTransaction(deployTxRaw)
+		// end of generating a deploy transaction
+
+		// @TODO: (r, s) ranges
+		const deployAddr = deployTxParsed.from
+		// fund the deploy addr with enough eth to deploy
+		await web3.eth.sendTransaction({ from: relayerAddr, to: deployAddr, value: deployTxParsed.gasLimit * deployTxParsed.gasPrice })
+
+		//console.log(deployTxRaw)
+
 		// Calculate the id.address in advance
 		// really, we need to concat 0xd694{address}00
 		// same as require('rlp').encode([relayerAddr, 0x00]) or ethers.utils.RPL.encode([relayerAddr, ... (dunno what)])
@@ -33,24 +64,23 @@ contract('Identity', function(accounts) {
 			// rpl encoding values
 			new Uint8Array([0xd6, 0x94]),
 			// sender
-			Buffer.from(relayerAddr.slice(2), 'hex'),
+			Buffer.from(deployAddr.slice(2), 'hex'),
 			// nonce (0x80 is equivalent to nonce 0)
 			new Uint8Array([0x80]),
 		])
-		const keccak256 = require('js-sha3').keccak256
 		const digest = new Buffer(keccak256.arrayBuffer(rlpEncodedInput))
 		// could use ethers.utils.getAddress
 		const idAddr = '0x'+digest.slice(-20).toString('hex')
-
 		// set the balance so that we can pay out the fee when deploying
 		await token.setBalanceTo(idAddr, 10000)
-
-		const feeAmnt = 250
-		const signer = web3Provider.getSigner(relayerAddr)
-		const idWeb3 = await Identity.new(accounts[4], 3, token.address, relayerAddr, feeAmnt, { from: relayerAddr })
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
-
+		// deploy the contract, whcih should also pay out the fee
+		const deployReceipt = await web3.eth.sendSignedTransaction(deployTxRaw)
+		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
+
+		// set id to an ethersjs contract
+		const signer = web3Provider.getSigner(relayerAddr)
+		id = new Contract(idAddr, Identity._json.abi, signer)	
 	})
 
 	it('relay a tx', async function() {
