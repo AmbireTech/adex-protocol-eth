@@ -20,11 +20,11 @@ function getIdentityDeployData(seed, deployTx) {
 		// @TODO not hardcoded
 		gasLimit: 3*1000*1000,
 	}, sig)
-	const txParsed = utils.parseTransaction(txRaw)
+	const tx = utils.parseTransaction(txRaw)
 	return {
 		txRaw,
-		txParsed,
-		idContractAddr: getContractAddrWithZeroNonce(txParsed.from),
+		tx,
+		idContractAddr: getContractAddrWithZeroNonce(tx.from),
 	}
 }
 
