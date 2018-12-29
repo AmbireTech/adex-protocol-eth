@@ -48,13 +48,13 @@ contract('Identity', function(accounts) {
 		// fund the deployer with ETH
 		await web3.eth.sendTransaction({
 			from: relayerAddr,
-			to: deployData.txParsed.from,
-			value: deployData.txParsed.gasLimit * deployData.txParsed.gasPrice,
+			to: deployData.tx.from,
+			value: deployData.tx.gasLimit * deployData.tx.gasPrice,
 		})
 
 		// deploy the contract, whcih should also pay out the fee
 		const deployReceipt = await web3.eth.sendSignedTransaction(deployData.txRaw)
-		assert.equal(deployData.txParsed.from.toLowerCase(), deployReceipt.from.toLowerCase(), 'from matches')
+		assert.equal(deployData.tx.from.toLowerCase(), deployReceipt.from.toLowerCase(), 'from matches')
 		assert.equal(deployData.idContractAddr.toLowerCase(), deployReceipt.contractAddress.toLowerCase(), 'contract address matches')
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
