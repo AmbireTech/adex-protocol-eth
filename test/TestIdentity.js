@@ -163,14 +163,17 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
-		const balBefore = (await token.balanceOf(id.address)).toNumber()
+		const balBefore = (await token.balanceOf(userAcc)).toNumber()
 		await (await id.executeRoutines(
 			authorization.toSolidityTuple(),
 			splitSig(await ethSign(authorization.hashHex(), userAcc)),
-			[[ 0, withdrawData ]],
+			[
+				[ 0, withdrawData ],
+				[ 2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt) ],
+			],
 			{ gasLimit: 900000 }
 		)).wait()
-		const balAfter = (await token.balanceOf(id.address)).toNumber()
+		const balAfter = (await token.balanceOf(userAcc)).toNumber()
 		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn matches')
 		// @TODO: more assertions?
 	})
