@@ -2,7 +2,7 @@ const Identity = artifacts.require('Identity')
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Channel, Transaction, RoutineAuthorization, splitSig, getIdentityDeployData } = require('../js')
+const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData, Channel, MerkleTree } = require('../js')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -98,7 +98,7 @@ contract('Identity', function(accounts) {
 	it('relay routine operations', async function() {
 		const authorization = new RoutineAuthorization({
 			identityContract: id.address,
-			relayer: accounts[3],
+			relayer: relayerAddr,
 			outpace: coreAddr,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0, // @TODO temp
@@ -127,8 +127,9 @@ contract('Identity', function(accounts) {
 
 	// @TODO: open a channel through the identity, withdraw it through routine authorizations
 	it('open a channel, withdraw via routines', async function() {
+		const tokenAmnt = 500
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(id.address, 500, blockTime+1000, 0)
+		const channel = sampleChannel(id.address, tokenAmnt, blockTime+1000, 0)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -139,11 +140,37 @@ contract('Identity', function(accounts) {
 		})
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
+		await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
 		//console.log(receipt.gasUsed.toString(10))
-		// @TODO run an routine operation to withdraw from the channel, then from the identity to a wallet
 
+		// Prepare all the data needed for withdrawal
+		const elem1 = Channel.getBalanceLeaf(id.address, tokenAmnt)
+		const tree = new MerkleTree([ elem1 ])
+		const proof = tree.proof(elem1)
+		const stateRoot = tree.getRoot()
+		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
+		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
+		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		const withdrawData = coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt])
+		console.log(proof, stateRoot)
+
+		// Routine authorization to withdraw
+		const authorization = new RoutineAuthorization({
+			identityContract: id.address,
+			relayer: relayerAddr,
+			outpace: coreAddr,
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
+		})
+		console.log(await token.balanceOf(id.address))
+		await (await id.executeRoutines(
+			authorization.toSolidityTuple(),
+			splitSig(await ethSign(authorization.hashHex(), userAcc)),
+			[[ 0, withdrawData ]],
+			{ gasLimit: 900000 }
+		)).wait()
+		console.log(await token.balanceOf(id.address))
 	})
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
