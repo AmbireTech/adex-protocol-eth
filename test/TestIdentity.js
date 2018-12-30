@@ -86,12 +86,10 @@ contract('Identity', function(accounts) {
 
 		// Non-authorized address does not work
 		const invalidSig = splitSig(await ethSign(hash, evilAcc))
-		try {
-			await id.execute([relayerTx.toSolidityTuple()], [invalidSig])
-			assert.isOk(false, 'execute should have failed with INSUFFICIENT_PRIVILEGE')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(
+			id.execute([relayerTx.toSolidityTuple()], [invalidSig]),
+			'INSUFFICIENT_PRIVILEGE'
+		)
 
 		// Do the execute() correctly, verify if it worked
 		// @TODO: set gasLimit manually
@@ -103,20 +101,10 @@ contract('Identity', function(accounts) {
 		//console.log(receipt.gasUsed.toString(10))
 
 		// setAddrPrivilege can only be invoked by the contract
-		try {
-			await id.setAddrPrivilege(userAcc, 0)
-			assert.isOk(false, 'setAddrPrivilege should have failed with ONLY_IDENTITY_CAN_CALL')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert ONLY_IDENTITY_CAN_CALL/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(id.setAddrPrivilege(userAcc, 0), 'ONLY_IDENTITY_CAN_CALL')
 
 		// A nonce can only be used once
-		try {
-			await id.execute([relayerTx.toSolidityTuple()], [sig])
-			assert.isOk(false, 'execute should have failed with WRONG_NONCE')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert WRONG_NONCE/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
 	})
 
 	it('relay routine operations', async function() {
@@ -162,21 +150,14 @@ contract('Identity', function(accounts) {
 
 		// Does not work with an invalid sig
 		const invalidSig = splitSig(await ethSign(hash, evilAcc))
-		try {
-			await id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op])
-			assert.isOk(false, 'executeRoutines should have failed with INSUFFICIENT_PRIVILEGE')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op]), 'INSUFFICIENT_PRIVILEGE')
 
 		// Does not allow withdrawals to an unauthorized addr
 		const evilOp = [2, RoutineAuthorization.encodeWithdraw(token.address, evilAcc, toWithdraw)]
-		try {
-			await id.executeRoutines(authorization.toSolidityTuple(), sig, [evilOp])
-			assert.isOk(false, 'executeRoutines should have failed with INSUFFICIENT_PRIVILEGE_WITHDRAW')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE_WITHDRAW/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(
+			id.executeRoutines(authorization.toSolidityTuple(), sig, [evilOp]),
+			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
+		)
 		// @TODO can't call after it's no longer valid
 	})
 
@@ -234,6 +215,15 @@ contract('Identity', function(accounts) {
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
 		// @TODO: more assertions?
 	})
+
+	async function expectEVMError(promise, errString) {
+		try {
+			await promise;
+			assert.isOk(false, 'should have failed with '+errString)
+		} catch(e) {
+			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
+		}
+	}
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
 		const spec = new Buffer(32)
