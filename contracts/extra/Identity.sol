@@ -4,14 +4,14 @@ pragma experimental ABIEncoderV2;
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/SignatureValidator.sol";
-import "../interfaces/AdExCoreInterface.sol";
+import "../AdExCore.sol";
 
 contract Identity {
 	using SafeMath for uint;
 
 	// Constants
-	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCoreInterface(0x0).channelWithdraw.selector;
-	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCoreInterface(0x0).channelWithdrawExpired.selector;
+	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCore(0x0).channelWithdraw.selector;
+	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCore(0x0).channelWithdrawExpired.selector;
 
 	// The next allowed nonce
 	uint public nonce = 0;
@@ -32,7 +32,6 @@ contract Identity {
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
 	// Even though the contract cannot receive ETH, we are able to send ETH (.value), cause ETH might've been sent to the contract address before it's deployed
-	// @TODO read other implementations of metatx
 	struct Transaction {
 		address identityContract;
 		uint nonce;
