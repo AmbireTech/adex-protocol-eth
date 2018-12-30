@@ -171,7 +171,6 @@ contract('Identity', function(accounts) {
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
 
-	// @TODO: open a channel through the identity, withdraw it through routine authorizations
 	it('open a channel, withdraw via routines', async function() {
 		const tokenAmnt = 500
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
