@@ -71,7 +71,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
 		const initialBal = await token.balanceOf(relayerAddr)
-		// @TODO: multiple transactions
+		// @TODO: multiple transactions (a few consecutive)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -81,18 +81,40 @@ contract('Identity', function(accounts) {
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 		})
 		const hash = relayerTx.hashHex()
-		const sig = splitSig(await ethSign(hash, userAcc))
 
+		// Non-authorized address does not work
+		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
+		try {
+			await id.execute([relayerTx.toSolidityTuple()], [invalidSig])
+			assert.isOk(false, 'execute should have failed')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
+		}
+
+		// Do the execute() correctly, verify if it worked
 		// @TODO: set gasLimit manually
+		const sig = splitSig(await ethSign(hash, userAcc))
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
 		//console.log(receipt.gasUsed.toString(10))
-		// @TODO test if setAddrPrivilege CANNOT be invoked from anyone else
-		// @TODO test wrong nonce
-		// @TODO test a few consencutive transactions
-		// @TODO test wrong sig
+
+		// setAddrPrivilege can only be invoked by the contract
+		try {
+			await id.setAddrPrivilege(userAcc, 0)
+			assert.isOk(false, 'setAddrPrivilege should have failed')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert ONLY_IDENTITY_CAN_CALL/), 'wrong error: '+e.message)
+		}
+
+		// A nonce can only be used once
+		try {
+			await id.execute([relayerTx.toSolidityTuple()], [sig])
+			assert.isOk(false, 'execute should have failed')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert WRONG_NONCE/), 'wrong error: '+e.message)
+		}
 	})
 
 	it('relay routine operations', async function() {
@@ -134,7 +156,16 @@ contract('Identity', function(accounts) {
 		await (await execRoutines()).wait()
 		assert.equal(await token.balanceOf(userAcc), initialUserBal.toNumber() + toWithdraw*2, 'user has the right balance after second withdrawal')
 		assert.equal(await token.balanceOf(relayerAddr), initialRelayerBal.toNumber() + fee, 'relayer has received the fee only once')
-		// @TODO can't work with an invalid sig
+
+		// Does not work with an invalid sig
+		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
+		try {
+			await id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op])
+			assert.isOk(false, 'executeRoutines should have failed')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
+		}
+
 		// @TODO can't call after it's no longer valid
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
