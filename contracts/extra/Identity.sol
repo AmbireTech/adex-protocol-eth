@@ -27,7 +27,7 @@ contract Identity {
 	}
 
 	// Events
-	// @TODO
+	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -61,6 +61,7 @@ contract Identity {
 
 	constructor(address addr, uint8 privLevel, address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount) public {
 		privileges[addr] = privLevel;
+		emit LogPrivilegeChanged(addr, privLevel);
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
 		}
@@ -95,12 +96,13 @@ contract Identity {
 		}
 	}
 
-	function setAddrPrivilege(address addr, uint8 priv)
+	function setAddrPrivilege(address addr, uint8 privLevel)
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
-		privileges[addr] = priv;
+		privileges[addr] = privLevel;
+		emit LogPrivilegeChanged(addr, privLevel);
 	}
 
 	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] memory signature, RoutineOperation[] memory operations)

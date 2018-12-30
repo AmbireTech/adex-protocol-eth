@@ -98,6 +98,7 @@ contract('Identity', function(accounts) {
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
+		assert.ok(receipt.events.find(x => x.event == 'LogPrivilegeChanged'), 'LogPrivilegeChanged event found')
 		//console.log(receipt.gasUsed.toString(10))
 
 		// setAddrPrivilege can only be invoked by the contract
