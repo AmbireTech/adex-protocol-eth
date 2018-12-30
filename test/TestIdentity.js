@@ -114,14 +114,14 @@ contract('Identity', function(accounts) {
 		// note: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
 		const fee = 20
-		const authorization = new RoutineAuthorization({
+		const auth = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			feeTokenAddr: token.address,
 			feeTokenAmount: fee,
 		})
-		const hash = authorization.hashHex()
+		const hash = auth.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
 		const op = [
 			2,
@@ -133,7 +133,7 @@ contract('Identity', function(accounts) {
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
 		const execRoutines = id.executeRoutines.bind(
 			id,
-			authorization.toSolidityTuple(),
+			auth.toSolidityTuple(),
 			sig,
 			[op],
 			{ gasLimit: 500000 }
@@ -153,14 +153,23 @@ contract('Identity', function(accounts) {
 
 		// Does not work with an invalid sig
 		const invalidSig = splitSig(await ethSign(hash, evilAcc))
-		await expectEVMError(id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op]), 'INSUFFICIENT_PRIVILEGE')
+		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), invalidSig, [op]), 'INSUFFICIENT_PRIVILEGE')
 
 		// Does not allow withdrawals to an unauthorized addr
 		const evilOp = [2, RoutineAuthorization.encodeWithdraw(token.address, evilAcc, toWithdraw)]
 		await expectEVMError(
-			id.executeRoutines(authorization.toSolidityTuple(), sig, [evilOp]),
+			id.executeRoutines(auth.toSolidityTuple(), sig, [evilOp]),
 			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
 		)
+
+		// We can't tamper with authentication params (outpace in this case)
+		const evilTuple = auth.toSolidityTuple()
+		evilTuple[2] = token.address // set any other address
+		await expectEVMError(
+			id.executeRoutines(evilTuple, sig, [op]),
+			'INSUFFICIENT_PRIVILEGE'
+		)
+
 		// @TODO can't call after it's no longer valid
 	})
 
@@ -193,8 +202,8 @@ contract('Identity', function(accounts) {
 		// @TODO more elegant way to do this
 		const withdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]).slice(10)
 
-		// Routine authorization to withdraw
-		const authorization = new RoutineAuthorization({
+		// Routine auth to withdraw
+		const auth = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
@@ -203,8 +212,8 @@ contract('Identity', function(accounts) {
 		})
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
 		const routineReceipt = await (await id.executeRoutines(
-			authorization.toSolidityTuple(),
-			splitSig(await ethSign(authorization.hashHex(), userAcc)),
+			auth.toSolidityTuple(),
+			splitSig(await ethSign(auth.hashHex(), userAcc)),
 			[
 				[ 0, withdrawData ],
 				// @TODO: op1, withdraw expired
