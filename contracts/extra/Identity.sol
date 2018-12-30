@@ -77,6 +77,7 @@ contract Identity {
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
+		// since this can only be invoked by PrivilegeLevels.Transaction, maybe if we make sure we can't invoke setAddrPrivilege(addr, level) where addr == signer, it may be sufficient
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
 	}
