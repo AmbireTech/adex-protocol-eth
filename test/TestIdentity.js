@@ -72,6 +72,7 @@ contract('Identity', function(accounts) {
 
 		const initialBal = await token.balanceOf(relayerAddr)
 		// @TODO: multiple transactions (a few consecutive)
+		// @TODO consider testing that using multiple feeTokenAddr's will fail
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -86,7 +87,7 @@ contract('Identity', function(accounts) {
 		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
 		try {
 			await id.execute([relayerTx.toSolidityTuple()], [invalidSig])
-			assert.isOk(false, 'execute should have failed')
+			assert.isOk(false, 'execute should have failed with INSUFFICIENT_PRIVILEGE')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
 		}
@@ -103,7 +104,7 @@ contract('Identity', function(accounts) {
 		// setAddrPrivilege can only be invoked by the contract
 		try {
 			await id.setAddrPrivilege(userAcc, 0)
-			assert.isOk(false, 'setAddrPrivilege should have failed')
+			assert.isOk(false, 'setAddrPrivilege should have failed with ONLY_IDENTITY_CAN_CALL')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert ONLY_IDENTITY_CAN_CALL/), 'wrong error: '+e.message)
 		}
@@ -111,7 +112,7 @@ contract('Identity', function(accounts) {
 		// A nonce can only be used once
 		try {
 			await id.execute([relayerTx.toSolidityTuple()], [sig])
-			assert.isOk(false, 'execute should have failed')
+			assert.isOk(false, 'execute should have failed with WRONG_NONCE')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert WRONG_NONCE/), 'wrong error: '+e.message)
 		}
@@ -161,7 +162,7 @@ contract('Identity', function(accounts) {
 		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
 		try {
 			await id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op])
-			assert.isOk(false, 'executeRoutines should have failed')
+			assert.isOk(false, 'executeRoutines should have failed with INSUFFICIENT_PRIVILEGE')
 		} catch(e) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
 		}
