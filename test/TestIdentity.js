@@ -72,11 +72,12 @@ contract('Identity', function(accounts) {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
 		const initialBal = await token.balanceOf(relayerAddr)
+		const initialNonce = (await id.nonce()).toNumber()
 		// @TODO: multiple transactions (a few consecutive)
 		// @TODO consider testing that using multiple feeTokenAddr's will fail
 		const relayerTx = new Transaction({
 			identityContract: id.address,
-			nonce: (await id.nonce()).toNumber(),
+			nonce: initialNonce,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 25,
 			to: id.address,
@@ -99,6 +100,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
 		assert.ok(receipt.events.find(x => x.event == 'LogPrivilegeChanged'), 'LogPrivilegeChanged event found')
+		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
 		//console.log(receipt.gasUsed.toString(10))
 
 		// setAddrPrivilege can only be invoked by the contract

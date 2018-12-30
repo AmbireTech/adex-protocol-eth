@@ -33,10 +33,13 @@ contract Identity {
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
 	// Even though the contract cannot receive ETH, we are able to send ETH (.value), cause ETH might've been sent to the contract address before it's deployed
 	struct Transaction {
+		// replay protection
 		address identityContract;
 		uint nonce;
+		// tx fee, in tokens
 		address feeTokenAddr;
 		uint feeTokenAmount;
+		// all the regular txn data
 		address to;
 		uint value;
 		bytes data;
@@ -59,12 +62,23 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address addr, uint8 privLevel, address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount) public {
+	constructor(address addr, uint8 privLevel, address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount)
+		public
+	{
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
 		}
+	}
+
+	function setAddrPrivilege(address addr, uint8 privLevel)
+		external
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
+		privileges[addr] = privLevel;
+		emit LogPrivilegeChanged(addr, privLevel);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
@@ -86,7 +100,7 @@ contract Identity {
 			require(txn.nonce == nonce, 'WRONG_NONCE');
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
 
-			nonce++;
+			nonce = nonce.add(1);
 			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
 			require(executeCall(txn.to, txn.value, txn.data), 'CALL_FAILED');
@@ -96,20 +110,11 @@ contract Identity {
 		}
 	}
 
-	function setAddrPrivilege(address addr, uint8 privLevel)
-		external
-	{
-		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
-		privileges[addr] = privLevel;
-		emit LogPrivilegeChanged(addr, privLevel);
-	}
-
 	function executeRoutines(RoutineAuthorization memory authorization, bytes32[3] memory signature, RoutineOperation[] memory operations)
 		public
 	{
-		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
+		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(authorization.validUntil <= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(authorization));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
