@@ -2,7 +2,7 @@ const Identity = artifacts.require('Identity')
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData } = require('../js')
+const { Channel, Transaction, RoutineAuthorization, splitSig, getIdentityDeployData } = require('../js')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -26,7 +26,7 @@ contract('Identity', function(accounts) {
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const coreWeb3 = await AdExCore.deployed()
-		const coreAddr = coreWeb3.address
+		coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
 		const idWeb3 = await Identity.new(userAcc, 3, token.address, relayerAddr, 0)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
@@ -74,7 +74,7 @@ contract('Identity', function(accounts) {
 		// @TODO: multiple transactions
 		const relayerTx = new Transaction({
 			identityContract: id.address,
-			nonce: 0,
+			nonce: (await id.nonce()).toNumber(),
 			feeTokenAddr: token.address,
 			feeTokenAmount: 25,
 			to: id.address,
@@ -99,7 +99,7 @@ contract('Identity', function(accounts) {
 		const authorization = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: accounts[3],
-			outpace: accounts[3], // @TODO deploy an outpace
+			outpace: coreAddr,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0, // @TODO temp
 		})
@@ -127,6 +127,37 @@ contract('Identity', function(accounts) {
 
 	// @TODO: open a channel through the identity, withdraw it through routine authorizations
 	it('open a channel, withdraw via routines', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(id.address, 500, blockTime+1000, 0)
+		const relayerTx = new Transaction({
+			identityContract: id.address,
+			nonce: (await id.nonce()).toNumber(),
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
+			to: coreAddr,
+			data: coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()]),
+		})
+		const hash = relayerTx.hashHex()
+		const sig = splitSig(await ethSign(hash, userAcc))
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
+		// getting this far, we should have a channel open; now let's withdraw from it
+		//console.log(receipt.gasUsed.toString(10))
+		// @TODO run an routine operation to withdraw from the channel, then from the identity to a wallet
 
 	})
+
+	function sampleChannel(creator, amount, validUntil, nonce) {
+		const spec = new Buffer(32)
+		spec.writeUInt32BE(nonce)
+		return new Channel({
+			creator,
+			tokenAddr: token.address,
+			tokenAmount: amount,
+			validUntil,
+			validators: [accounts[0], accounts[1]],
+			spec,
+		})
+	}
+
+
 })
