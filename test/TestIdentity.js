@@ -1,4 +1,5 @@
 const Identity = artifacts.require('Identity')
+const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData } = require('../js')
@@ -11,9 +12,11 @@ const { Interface, randomBytes } = require('ethers').utils
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('Identity', function(accounts) {
+	const idInterface = new Interface(Identity._json.abi)
+	const coreInterface = new Interface(AdExCore._json.abi)
 	let id
-	let idInterface = new Interface(Identity._json.abi)
 	let token
+	let coreAddr
 
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
@@ -22,6 +25,8 @@ contract('Identity', function(accounts) {
 		const signer = web3Provider.getSigner(relayerAddr)
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+		const coreWeb3 = await AdExCore.deployed()
+		const coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
 		const idWeb3 = await Identity.new(userAcc, 3, token.address, relayerAddr, 0)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
@@ -121,4 +126,7 @@ contract('Identity', function(accounts) {
 	})
 
 	// @TODO: open a channel through the identity, withdraw it through routine authorizations
+	it('open a channel, withdraw via routines', async function() {
+
+	})
 })
