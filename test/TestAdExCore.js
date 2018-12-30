@@ -57,12 +57,7 @@ contract('AdExCore', function(accounts) {
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Ensure we can't do this too early
-		try {
-			await core.channelWithdrawExpired(channel.toSolidityTuple())
-			assert.isOk(false, 'channelWithdrawExpired succeeded too early')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_EXPIRED/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'NOT_EXPIRED')
 
 		// Ensure we can do this when the time comes
 		await moveTime(web3, 100)
@@ -93,21 +88,17 @@ contract('AdExCore', function(accounts) {
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
 		// Can't withdraw an amount that is not in the tree
-		try {
-			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens)
-			assert.isOk(false, 'channelWithdraw should not have succeeded')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert BALANCELEAF_NOT_FOUND/), 'wrong error: '+e.message)
-		}
+		await expectEVMError(
+			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens),
+			'BALANCELEAF_NOT_FOUND'
+		)
 
 		// Can't withdraw w/o valid signatures
-		try {
-			const invalidSigs = [sig1, sig1] // using sig1 for both values
-			await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, invalidSigs, proof, tokens)
-			assert.isOk(false, 'channelWithdraw should not have succeeded')
-		} catch(e) {
-			assert.isOk(e.message.match(/VM Exception while processing transaction: revert NOT_SIGNED_BY_VALIDATORS/), 'wrong error: '+e.message)
-		}
+		const invalidSigs = [sig1, sig1] // using sig1 for both values
+		await expectEVMError(
+			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, invalidSigs, proof, tokens),
+			'NOT_SIGNED_BY_VALIDATORS'
+		)
 
 		// Can withdraw with the proper values
 		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
@@ -144,7 +135,14 @@ contract('AdExCore', function(accounts) {
 			spec,
 		})
 	}
-
+	async function expectEVMError(promise, errString) {
+		try {
+			await promise;
+			assert.isOk(false, 'should have failed with '+errString)
+		} catch(e) {
+			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
+		}
+	}
 	function moveTime(web3, time) {
 		return new Promise(function(resolve, reject) {
 			web3.currentProvider.send({
