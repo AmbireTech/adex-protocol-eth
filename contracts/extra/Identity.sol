@@ -17,7 +17,7 @@ contract Identity {
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
 	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => bool) private routinePaidFees;
+	mapping (bytes32 => bool) public routinePaidFees;
 
 	enum PrivilegeLevel {
 		None,
