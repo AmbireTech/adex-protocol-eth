@@ -42,9 +42,9 @@ contract Identity {
 		bytes data;
 	}
 
-	// routine authorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
+	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
 	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
-	// while the fee will be paid only once per authorization, the authorization can be used until validUntil
+	// while the fee will be paid only ONCE per authorization, the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
 		address identityContract;
@@ -73,8 +73,10 @@ contract Identity {
 		uint feeTokenAmount = 0;
 		for (uint i=0; i<txns.length; i++) {
 			Transaction memory txn = txns[i];
+			// If we use the naive abi.encode(txn) and have a field of type `bytes`,
+			// there is a discrepancy between ethereumjs-abi and solidity
+			// if we enter every field individually, in order, there is no discrepancy
 			//bytes32 hash = keccak256(abi.encode(txn));
-			// @TODO: riperoni, fix this; without `bytes`-typed fields, it's the same
 			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeTokenAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
@@ -106,7 +108,7 @@ contract Identity {
 	{
 		require(authorization.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(authorization.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
-		require(now >= authorization.validUntil, 'AUTHORIZATION_EXPIRED');
+		require(authorization.validUntil <= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(authorization));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
 		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
