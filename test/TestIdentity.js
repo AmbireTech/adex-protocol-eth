@@ -96,34 +96,45 @@ contract('Identity', function(accounts) {
 	})
 
 	it('relay routine operations', async function() {
+		const toWithdraw = 150
+		const fee = 20
 		const authorization = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 20,
+			feeTokenAmount: fee,
 		})
 		const hash = authorization.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
 		const op = [
 			2,
-			RoutineAuthorization.encodeWithdraw(token.address, userAcc, 150),
+			RoutineAuthorization.encodeWithdraw(token.address, userAcc, toWithdraw),
 		]
 		// @TODO: warn about gasLimit in docs, since estimateGas apparently does not calculate properly
 		// https://docs.ethers.io/ethers.js/html/api-contract.html#overrides
-		const receipt = await (await id.executeRoutines(
+		const initialUserBal = await token.balanceOf(userAcc)
+		const initialRelayerBal = await token.balanceOf(relayerAddr)
+		const execRoutines = id.executeRoutines.bind(
+			id,
 			authorization.toSolidityTuple(),
 			sig,
 			[op],
 			{ gasLimit: 500000 }
-		)).wait()
+		)
+		const receipt = await (await execRoutines()).wait()
+		//console.log(receipt.gasUsed.toString(10))
+
 		// Transfer (withdraw), Transfer (fee)
 		assert.equal(receipt.events.length, 2, 'has right number of events')
-		assert.equal(await token.balanceOf(userAcc), 150, 'user has the right balance after withdrawal')
-		// @TODO: check if the fee is paid
-		//console.log(receipt.gasUsed.toString(10))
+		assert.equal(await token.balanceOf(userAcc), initialUserBal.toNumber() + toWithdraw, 'user has the right balance after withdrawal')
+		assert.equal(await token.balanceOf(relayerAddr), initialRelayerBal.toNumber() + fee, 'relayer has received the fee')
+
+		// Do it again to make sure the fee is not paid out twice
+		await (await execRoutines()).wait()
+		assert.equal(await token.balanceOf(userAcc), initialUserBal.toNumber() + toWithdraw*2, 'user has the right balance after second withdrawal')
+		assert.equal(await token.balanceOf(relayerAddr), initialRelayerBal.toNumber() + fee, 'relayer has received the fee only once')
 		// @TODO can't work with an invalid sig
-		// @TODO fee gets paid only once
 		// @TODO can't call after it's no longer valid
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
