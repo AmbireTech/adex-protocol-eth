@@ -152,8 +152,8 @@ contract('Identity', function(accounts) {
 		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
 		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
-		const withdrawData = coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt])
-		console.log(proof, stateRoot)
+		// @TODO more elegant way to do this
+		const withdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]).slice(10)
 
 		// Routine authorization to withdraw
 		const authorization = new RoutineAuthorization({
@@ -163,14 +163,16 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
-		console.log(await token.balanceOf(id.address))
+		const balBefore = (await token.balanceOf(id.address)).toNumber()
 		await (await id.executeRoutines(
 			authorization.toSolidityTuple(),
 			splitSig(await ethSign(authorization.hashHex(), userAcc)),
 			[[ 0, withdrawData ]],
 			{ gasLimit: 900000 }
 		)).wait()
-		console.log(await token.balanceOf(id.address))
+		const balAfter = (await token.balanceOf(id.address)).toNumber()
+		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn matches')
+		// @TODO: more assertions?
 	})
 
 	function sampleChannel(creator, amount, validUntil, nonce) {
