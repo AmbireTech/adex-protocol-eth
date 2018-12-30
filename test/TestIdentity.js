@@ -174,7 +174,7 @@ contract('Identity', function(accounts) {
 			{ gasLimit: 900000 }
 		)).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
-		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn matches')
+		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn is right')
 		// @TODO: more assertions?
 	})
 
