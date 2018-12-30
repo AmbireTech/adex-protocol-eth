@@ -89,6 +89,9 @@ contract Identity {
 		uint feeTokenAmount = 0;
 		for (uint i=0; i<txns.length; i++) {
 			Transaction memory txn = txns[i];
+			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
+			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
+			require(txn.nonce == nonce, 'WRONG_NONCE');
 			// If we use the naive abi.encode(txn) and have a field of type `bytes`,
 			// there is a discrepancy between ethereumjs-abi and solidity
 			// if we enter every field individually, in order, there is no discrepancy
@@ -96,9 +99,6 @@ contract Identity {
 			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeTokenAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
-			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
-			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
-			require(txn.nonce == nonce, 'WRONG_NONCE');
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
 
 			nonce = nonce.add(1);
