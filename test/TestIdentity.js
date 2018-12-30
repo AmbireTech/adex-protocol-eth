@@ -20,6 +20,7 @@ contract('Identity', function(accounts) {
 
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
+	const evilAcc = accounts[5]
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -84,7 +85,7 @@ contract('Identity', function(accounts) {
 		const hash = relayerTx.hashHex()
 
 		// Non-authorized address does not work
-		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
+		const invalidSig = splitSig(await ethSign(hash, evilAcc))
 		try {
 			await id.execute([relayerTx.toSolidityTuple()], [invalidSig])
 			assert.isOk(false, 'execute should have failed with INSUFFICIENT_PRIVILEGE')
@@ -119,6 +120,7 @@ contract('Identity', function(accounts) {
 	})
 
 	it('relay routine operations', async function() {
+		// note: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
 		const fee = 20
 		const authorization = new RoutineAuthorization({
@@ -159,7 +161,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(relayerAddr), initialRelayerBal.toNumber() + fee, 'relayer has received the fee only once')
 
 		// Does not work with an invalid sig
-		const invalidSig = splitSig(await ethSign(hash, accounts[5]))
+		const invalidSig = splitSig(await ethSign(hash, evilAcc))
 		try {
 			await id.executeRoutines(authorization.toSolidityTuple(), invalidSig, [op])
 			assert.isOk(false, 'executeRoutines should have failed with INSUFFICIENT_PRIVILEGE')
@@ -167,8 +169,15 @@ contract('Identity', function(accounts) {
 			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE/), 'wrong error: '+e.message)
 		}
 
+		// Does not allow withdrawals to an unauthorized addr
+		const evilOp = [2, RoutineAuthorization.encodeWithdraw(token.address, evilAcc, toWithdraw)]
+		try {
+			await id.executeRoutines(authorization.toSolidityTuple(), sig, [evilOp])
+			assert.isOk(false, 'executeRoutines should have failed with INSUFFICIENT_PRIVILEGE_WITHDRAW')
+		} catch(e) {
+			assert.isOk(e.message.match(/VM Exception while processing transaction: revert INSUFFICIENT_PRIVILEGE_WITHDRAW/), 'wrong error: '+e.message)
+		}
 		// @TODO can't call after it's no longer valid
-		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
 	})
 
 	it('open a channel, withdraw via routines', async function() {
