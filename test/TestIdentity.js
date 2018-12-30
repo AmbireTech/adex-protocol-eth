@@ -101,7 +101,7 @@ contract('Identity', function(accounts) {
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 0, // @TODO temp
+			feeTokenAmount: 20,
 		})
 		const hash = authorization.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
@@ -117,9 +117,12 @@ contract('Identity', function(accounts) {
 			[op],
 			{ gasLimit: 500000 }
 		)).wait()
-		assert.equal(receipt.events.length, 1, 'has an event emitted')
-		assert.equal(await token.balanceOf(userAcc), 150, 'user has the right balance')
+		// Transfer (withdraw), Transfer (fee)
+		assert.equal(receipt.events.length, 2, 'has right number of events')
+		assert.equal(await token.balanceOf(userAcc), 150, 'user has the right balance after withdrawal')
+		// @TODO: check if the fee is paid
 		//console.log(receipt.gasUsed.toString(10))
+		// @TODO can't work with an invalid sig
 		// @TODO fee gets paid only once
 		// @TODO can't call after it's no longer valid
 		// @TODO can't trick it into calling something disallowed; esp during withdraw FROM identity
@@ -140,7 +143,7 @@ contract('Identity', function(accounts) {
 		})
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
 		//console.log(receipt.gasUsed.toString(10))
 
@@ -164,17 +167,20 @@ contract('Identity', function(accounts) {
 			feeTokenAmount: 0,
 		})
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
-		await (await id.executeRoutines(
+		const routineReceipt = await (await id.executeRoutines(
 			authorization.toSolidityTuple(),
 			splitSig(await ethSign(authorization.hashHex(), userAcc)),
 			[
 				[ 0, withdrawData ],
+				// @TODO: op1, withdraw expired
 				[ 2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt) ],
 			],
 			{ gasLimit: 900000 }
 		)).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
 		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn is right')
+		// Transfer, ChannelWithdraw, Transfer
+		assert.equal(routineReceipt.events.length, 3, 'right number of events')
 		// @TODO: more assertions?
 	})
 
