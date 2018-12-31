@@ -2,8 +2,7 @@ const { ContractFactory, utils } = require('ethers')
 const keccak256 = require('js-sha3').keccak256
 
 function getIdentityDeployData(seed, deployTx) {
-	// @TODO Is it OK to assume 0 for v, should we look into: https://bitcoin.stackexchange.com/questions/38351/ecdsa-v-r-s-what-is-v and https://github.com/ethereum/EIPs/issues/155 and https://blog.sigmaprime.io/solidity-security.html#one-time-addresses
-	// https://github.com/ensdomains/CurveArithmetics/blob/master/test/data/secp256k1.js
+	// For more values of the secp256k1 curve, see https://github.com/ensdomains/CurveArithmetics/blob/master/test/data/secp256k1.js
 	const GxLiteral = '0x79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798'
 	// starting with 0 guarantees we fit in lowSmax
 	const s = '0x0'+new Buffer(keccak256.arrayBuffer(seed)).toString('hex').slice(1)
