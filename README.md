@@ -4,7 +4,7 @@ The Ethereum implementation of the [AdEx Protocol](https://github.com/AdExNetwor
 
 This replaces [adex-core](https://github.com/AdExNetwork/adex-core).
 
-This relies on the concept of [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md) (off-chain unidirectional trustless payment channel)
+This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md) (off-chain unidirectional trustless payment channel) and a gas abstraction layer called [AdEx Identity](https://github.com/AdExNetwork/adex-protocol/issues/10).
 
 ### Please note
 
