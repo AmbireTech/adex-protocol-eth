@@ -14,10 +14,10 @@ function getIdentityDeployData(seed, deployTx) {
 		v: 27,
 	}
 	const txRaw = utils.serializeTransaction({
-		...deployTx,
-		gasPrice: deployTx.hasOwnProperty('gasPrice') ? deployTx.gasPrice : 1*10**9,
+		gasPrice: 1*10**9,
 		// usually takes about 2.4m; so this leaves ~400k if the deploy fee token is expensive
-		gasLimit: deployTx.hasOwnProperty('gasLimit') ? deployTx.gasLimit : 2800*1000,
+		gasLimit: 2800*1000,
+		...deployTx,
 	}, sig)
 	const tx = utils.parseTransaction(txRaw)
 	return {
