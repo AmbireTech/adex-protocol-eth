@@ -146,6 +146,7 @@ contract Identity {
 		}
 	}
 
+	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
 	// copied from https://github.com/uport-project/uport-identity/blob/develop/contracts/Proxy.sol
 	// there's also
 	// https://github.com/gnosis/MultiSigWallet/commit/e1b25e8632ca28e9e9e09c81bd20bf33fdb405ce
