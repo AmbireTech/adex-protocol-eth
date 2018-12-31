@@ -15,7 +15,10 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 
 ## Deployment
 
-This will be deployed to a testnet first, and a month after we should have it on mainnet as well.
+The contract `AdExCore` will be deployed to a testnet first (Kovan), and a month after we should have it on mainnet as well.
+
+The contract `extra/Identity` is supposed to be deployed separately for each user through a counterfactual method described in [AdEx Identity](https://github.com/AdExNetwork/adex-protocol/issues/10).
+
 
 ### Kovan
 
