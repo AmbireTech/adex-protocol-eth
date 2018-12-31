@@ -1,9 +1,10 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.2;
 
 interface GeneralERC20 {
 	function transfer(address to, uint256 value) external;
 	function transferFrom(address from, address to, uint256 value) external;
 	function approve(address spender, uint256 value) external;
+	function balanceOf(address spender) external view returns (uint);
 }
 
 library SafeERC20 {
