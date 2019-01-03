@@ -11,6 +11,8 @@ const { providers, Contract, ContractFactory } = require('ethers')
 const { Interface, randomBytes } = require('ethers').utils
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
+const DAY = 24 * 60 * 60 * 1000
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(AdExCore._json.abi)
@@ -118,6 +120,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
+			validUntil: Math.round((Date.now() + DAY) / 1000),
 			feeTokenAddr: token.address,
 			feeTokenAmount: fee,
 		})
@@ -207,6 +210,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
+			validUntil: Math.round((Date.now() + DAY) / 1000),
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
