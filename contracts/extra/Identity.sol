@@ -116,7 +116,7 @@ contract Identity {
 	{
 		require(auth.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
 		require(auth.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
-		require(auth.validUntil <= now, 'AUTHORIZATION_EXPIRED');
+		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
 		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
