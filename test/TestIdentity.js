@@ -11,7 +11,7 @@ const { providers, Contract, ContractFactory } = require('ethers')
 const { Interface, randomBytes } = require('ethers').utils
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
-const DAY = 24 * 60 * 60 * 1000
+const DAY_SECONDS = 24 * 60 * 60
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
@@ -116,11 +116,12 @@ contract('Identity', function(accounts) {
 		// note: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
 		const fee = 20
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const auth = new RoutineAuthorization({
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: Math.round((Date.now() + DAY) / 1000),
+			validUntil: blockTime + DAY_SECONDS,
 			feeTokenAddr: token.address,
 			feeTokenAmount: fee,
 		})
@@ -173,13 +174,20 @@ contract('Identity', function(accounts) {
 			'INSUFFICIENT_PRIVILEGE'
 		)
 
-		// @TODO can't call after it's no longer valid
+		// We can no longer call after the authorization has expired
+		await moveTime(web3, DAY_SECONDS+10)
+		await expectEVMError(
+			id.executeRoutines(auth.toSolidityTuple(), sig, [op]),
+			'AUTHORIZATION_EXPIRED'
+		)
 	})
 
 	it('open a channel, withdraw via routines', async function() {
 		const tokenAmnt = 500
-		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(id.address, tokenAmnt, blockTime+1000, 0)
+		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
+		// so we need to workaround with + DAY_SECONDS
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
+		const channel = sampleChannel(id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -210,7 +218,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: Math.round((Date.now() + DAY) / 1000),
+			validUntil: blockTime + DAY_SECONDS,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
@@ -253,6 +261,15 @@ contract('Identity', function(accounts) {
 			spec,
 		})
 	}
-
+	function moveTime(web3, time) {
+		return new Promise(function(resolve, reject) {
+			web3.currentProvider.send({
+				jsonrpc: '2.0',
+				method: 'evm_increaseTime',
+				params: [time],
+				id: 0,
+			}, (err, res) => err ? reject(err) : resolve(res))
+		})
+	}
 
 })
