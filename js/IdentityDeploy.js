@@ -33,11 +33,11 @@ function getContractAddrWithZeroNonce(deployAddr) {
 	// @TODO: move this out into js/Identity
 	const rlpEncodedInput = Buffer.concat([
 		// rpl encoding values
-		new Uint8Array([0xd6, 0x94]),
+		Buffer.from(new Uint8Array([0xd6, 0x94])),
 		// sender
 		Buffer.from(deployAddr.slice(2), 'hex'),
 		// nonce (0x80 is equivalent to nonce 0)
-		new Uint8Array([0x80]),
+		Buffer.from(new Uint8Array([0x80])),
 	])
 	const digest = new Buffer(keccak256.arrayBuffer(rlpEncodedInput))
 	return utils.getAddress('0x'+digest.slice(-20).toString('hex'))
