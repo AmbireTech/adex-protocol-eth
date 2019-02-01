@@ -46,26 +46,27 @@ Channel.prototype.toSolidityTuple = function() {
 	return [this.creator, this.tokenAddr, '0x'+this.tokenAmount.toString(16), '0x'+this.validUntil.toString(16), this.validators, this.spec]
 }
 
-Channel.prototype.hashToSign = function(contractAddr, stateRoot) {
+Channel.prototype.hashToSign = function(contractAddr, balanceRoot) {
 	// contains the channel hash (channelId), so that it's not replayable
 	return new Buffer(keccak256.arrayBuffer(
 		abi.rawEncode(
 			['bytes32', 'bytes32'],
-			[this.hashHex(contractAddr), stateRoot]
+			[this.hashHex(contractAddr), balanceRoot]
 		)
 	))
 }
 
-Channel.prototype.getSignableStateRoot = function (channel, balanceRoot) {
-	return Buffer.from(
-		keccak256.arrayBuffer(
-			abi.rawEncode(['bytes32', 'bytes32'], [ channel, balanceRoot ])
-		)
-	)
-}
-
 Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
 	return '0x'+this.hashToSign(contractAddr, stateRoot).toString('hex')
+}
+
+// This is the same as .hashToSign, .hashToSignHex, but it only takes the channelId rather than (the whole channel + contract addr)
+Channel.prototype.getSignableStateRoot = function (channelId, balanceRoot) {
+	return Buffer.from(
+		keccak256.arrayBuffer(
+			abi.rawEncode(['bytes32', 'bytes32'], [ channelId, balanceRoot ])
+		)
+	)
 }
 
 Channel.getBalanceLeaf = function(acc, amnt) {
