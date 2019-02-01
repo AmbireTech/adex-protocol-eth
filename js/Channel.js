@@ -48,12 +48,7 @@ Channel.prototype.toSolidityTuple = function() {
 
 Channel.prototype.hashToSign = function(contractAddr, balanceRoot) {
 	// contains the channel hash (channelId), so that it's not replayable
-	return new Buffer(keccak256.arrayBuffer(
-		abi.rawEncode(
-			['bytes32', 'bytes32'],
-			[this.hashHex(contractAddr), balanceRoot]
-		)
-	))
+	return Channel.getSignableStateRoot(this.hashHex(contractAddr), balanceRoot)
 }
 
 Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
