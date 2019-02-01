@@ -55,7 +55,7 @@ Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
 	return '0x'+this.hashToSign(contractAddr, stateRoot).toString('hex')
 }
 
-// This is the same as .hashToSign, .hashToSignHex, but it only takes the channelId rather than (the whole channel + contract addr)
+// This returns the same as .hashToSign, .hashToSignHex, but it takes the channelId rather than (the whole channel + contract addr)
 Channel.getSignableStateRoot = function(channelId, balanceRoot) {
 	return Buffer.from(
 		keccak256.arrayBuffer(
