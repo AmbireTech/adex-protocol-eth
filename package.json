@@ -15,7 +15,8 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "truffle test"
+    "test": "truffle test",
+    "prepublish": "solc --abi contracts/AdExCore.sol -o temp && mkdir -p abi && mv temp/AdEXCore.abi abi/ && rm -r temp/"
   },
   "repository": {
     "type": "git",
