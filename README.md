@@ -32,6 +32,17 @@ cat build/contracts/AdExCore.json | jq '.bytecode' # this is the bytecode you ha
 ./scripts/bundle.sh contracts/AdExCore.sol # this will output a bundled .sol code
 ```
 
+### Gas usage, from the tests
+
+```
+channelOpen: 69859
+channelWithdrawExpired: 70374
+channelWithdraw: 135515
+execute: 89252
+execRoutines: 113876
+channelOpen, through execute: 114312
+```
+
 ## Credits
 
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
