@@ -16,7 +16,7 @@
   "devDependencies": {},
   "scripts": {
     "test": "truffle test",
-    "preversion": "solc --abi contracts/AdExCore.sol -o temp && mkdir -p abi && mv temp/AdEXCore.abi abi/ && rm -r temp/"
+    "preversion": "solc --abi contracts/AdExCore.sol -o temp && mkdir -p abi && mv temp/AdEXCore.abi abi/AdEXCore.json && rm -r temp/"
   },
   "repository": {
     "type": "git",
