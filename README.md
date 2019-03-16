@@ -35,12 +35,12 @@ cat build/contracts/AdExCore.json | jq '.bytecode' # this is the bytecode you ha
 ### Gas usage, from the tests
 
 ```
-channelOpen: 69859
-channelWithdrawExpired: 70374
-channelWithdraw: 135515
-execute: 89252
-execRoutines: 113876
-channelOpen, through execute: 114312
+channelOpen: 69961
+channelWithdrawExpired: 70470
+channelWithdraw: 137117
+execute: 89900
+execRoutines: 114440
+channelOpen, through execute: 115086
 ```
 
 ## Credits
