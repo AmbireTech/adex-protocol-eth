@@ -1,4 +1,4 @@
-pragma solidity ^0.5.2;
+pragma solidity ^0.5.6;
 pragma experimental ABIEncoderV2;
 
 import "../libs/SafeMath.sol";
