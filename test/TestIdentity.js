@@ -31,7 +31,7 @@ contract('Identity', function(accounts) {
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new(userAcc, 3, token.address, relayerAddr, 0)
+		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3])
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
 	})
@@ -42,10 +42,10 @@ contract('Identity', function(accounts) {
 		// Generating a deploy transaction
 		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
 		const deployTx = factory.getDeployTransaction(
-			// userAcc will have privilege 3 (everything)
-			userAcc, 3,
 			// deploy fee will be feeAmnt to relayerAddr
-			token.address, relayerAddr, feeAmnt
+			token.address, relayerAddr, feeAmnt,
+			// userAcc will have privilege 3 (everything)
+			[userAcc], [3],
 		)
 		const seed = randomBytes(64)
 		const deployData = getIdentityDeployData(seed, deployTx)
