@@ -62,11 +62,14 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address addr, uint8 privLevel, address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount)
+	constructor(address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount, address[] memory addrs, uint8[] memory privLevels)
 		public
 	{
-		privileges[addr] = privLevel;
-		emit LogPrivilegeChanged(addr, privLevel);
+		uint len = privLevels.length;
+		for (uint i=0; i<len; i++) {
+			privileges[addrs[i]] = privLevels[i];
+			emit LogPrivilegeChanged(addrs[i], privLevels[i]);
+		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
 		}
@@ -87,7 +90,8 @@ contract Identity {
 	{
 		address feeTokenAddr = txns[0].feeTokenAddr;
 		uint feeTokenAmount = 0;
-		for (uint i=0; i<txns.length; i++) {
+		uint len = txns.length;
+		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
 			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
@@ -120,7 +124,8 @@ contract Identity {
 		bytes32 hash = keccak256(abi.encode(auth));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
 		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
-		for (uint i=0; i<operations.length; i++) {
+		uint len = operations.length;
+		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
 			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
