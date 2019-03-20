@@ -34,6 +34,8 @@ cat build/contracts/AdExCore.json | jq '.bytecode' # this is the bytecode you ha
 
 ### Gas usage, from the tests
 
+Measured with solc v0.5.6, commit d80fa80424ef7b8932399424f8d919d67b135a30
+
 ```
 channelOpen: 69961
 channelWithdrawExpired: 70470
