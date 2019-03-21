@@ -8,8 +8,8 @@ import "../AdExCore.sol";
 import "../libs/ChannelLibrary.sol";
 
 contract ValidatorRegistry {
-	//function whitelisted(address) view external returns (bool);
-	mapping (address => bool) public whitelisted;
+	// The contract will probably just use a mapping, but this is a generic interface
+	function whitelisted(address) view external returns (bool);
 }
 
 contract Identity {
