@@ -5,6 +5,12 @@ import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/SignatureValidator.sol";
 import "../AdExCore.sol";
+import "../libs/ChannelLibrary.sol";
+
+contract ValidatorRegistry {
+	// The contract will probably just use a mapping, but this is a generic interface
+	function whitelisted(address) view external returns (bool);
+}
 
 contract Identity {
 	using SafeMath for uint;
@@ -12,12 +18,14 @@ contract Identity {
 	// Constants
 	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCore(0x0).channelWithdraw.selector;
 	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCore(0x0).channelWithdrawExpired.selector;
+	bytes4 private CHANNEL_OPEN_SELECTOR = AdExCore(0x0).channelOpen.selector;
 
 	// The next allowed nonce
 	uint public nonce = 0;
 	mapping (address => uint8) public privileges;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
+	address public registryAddr;
 
 	enum PrivilegeLevel {
 		None,
@@ -62,9 +70,10 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount, address[] memory addrs, uint8[] memory privLevels)
+	constructor(address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount, address[] memory addrs, uint8[] memory privLevels, address regAddr)
 		public
 	{
+		registryAddr = regAddr;
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
@@ -141,6 +150,19 @@ contract Identity {
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
 				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
 				SafeERC20.transfer(tokenAddr, to, amount);
+			} else if (op.mode == 3) {
+				// Channel: open
+				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
+				// Ensure all validators are whitelisted
+				uint validatorsLen = channel.validators.length;
+				for (uint j=0; j<validatorsLen; j++) {
+					require(
+						ValidatorRegistry(registryAddr).whitelisted(channel.validators[j]),
+						"VALIDATOR_NOT_WHITELISTED"
+					);
+				}
+				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
+				require(success, 'OPEN_FAILED');
 			} else {
 				require(false, 'INVALID_MODE');
 			}
