@@ -13,6 +13,9 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 
+// @TODO remove this when we implement the ValidatorRegistry
+const NULL_ADDR = '0x0000000000000000000000000000000000000000'
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(AdExCore._json.abi)
@@ -31,7 +34,7 @@ contract('Identity', function(accounts) {
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3])
+		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3], NULL_ADDR)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
 	})
@@ -46,6 +49,8 @@ contract('Identity', function(accounts) {
 			token.address, relayerAddr, feeAmnt,
 			// userAcc will have privilege 3 (everything)
 			[userAcc], [3],
+			// @TODO: change that when we implement the registry
+			NULL_ADDR,
 		)
 		const seed = randomBytes(64)
 		const deployData = getIdentityDeployData(seed, deployTx)
