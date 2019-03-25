@@ -15,14 +15,14 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 
 ## Deployment
 
-The contract `AdExCore` will be deployed to a testnet first (Kovan), and a month after we should have it on mainnet as well.
-
 The contract `extra/Identity` is supposed to be deployed separately for each user through a counterfactual method described in [AdEx Identity](https://github.com/AdExNetwork/adex-protocol/issues/10).
 
+The contract `AdExCore` from version v2.3.0, compiled with solc v0.5.6 is deployed here:
 
-### Kovan
+* Mainnet: https://etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
+* Goerli: https://goerli.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
+* Kovan: https://kovan.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 
-https://kovan.etherscan.io/address/0xe6aa464334a067f52e44f7b6dabb91804371376c#readContract
 
 ### Verifying on etherscan
 
