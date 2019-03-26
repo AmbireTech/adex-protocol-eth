@@ -1,6 +1,6 @@
 {
   "name": "adex-protocol-eth",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "AdEx protocol on Ethereum",
   "directories": {
     "test": "test"
