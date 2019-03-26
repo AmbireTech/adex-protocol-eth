@@ -9,7 +9,7 @@
   "dependencies": {
     "bn.js": "^4.11.8",
     "ethereumjs-abi": "^0.6.5",
-    "ethers": "^4.0.7",
+    "ethers": "^4.0.27",
     "js-sha3": "^0.8.0",
     "truffle": "^5.0.6"
   },
