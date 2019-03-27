@@ -82,7 +82,8 @@ library ChannelLibrary {
 		}
 
 		uint signs = 0;
-		for (uint i=0; i<signatures.length; i++) {
+		uint sigLen = signatures.length;
+		for (uint i=0; i<sigLen; i++) {
 			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
 			if (SignatureValidator.isValidSignature(toSign, channel.validators[i], signatures[i])) {
 				signs++;
