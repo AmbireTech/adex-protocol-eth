@@ -250,7 +250,12 @@ contract('Identity', function(accounts) {
 			await promise;
 			assert.isOk(false, 'should have failed with '+errString)
 		} catch(e) {
-			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
+			assert.isOk(
+				e.message.match(
+					new RegExp('VM Exception while processing transaction: revert '+errString)
+				),
+				'wrong error: '+e.message + ', Expected ' + errString
+			)
 		}
 	}
 
