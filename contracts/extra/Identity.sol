@@ -34,6 +34,13 @@ contract Identity {
 		Withdraw
 	}
 
+	enum ChannelMode {
+		Withdraw,
+		WithdrawExpired,
+		WithdrawIdentity,
+		Open
+	}
+
 	// Events
 	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
 
@@ -66,7 +73,7 @@ contract Identity {
 		uint feeTokenAmount;
 	}
 	struct RoutineOperation {
-		uint mode;
+		uint8 mode;
 		bytes data;
 	}
 
@@ -141,20 +148,20 @@ contract Identity {
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
 			// @TODO: is it possible to preserve original error from the call
-			if (op.mode == 0) {
+			if (op.mode == uint8(ChannelMode.Withdraw)) {
 				// Channel: Withdraw
 				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 				require(success, 'WITHDRAW_FAILED');
-			} else if (op.mode == 1) {
+			} else if (op.mode == uint8(ChannelMode.WithdrawExpired)) {
 				// Channel: Withdraw Expired
 				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 				require(success, 'WITHDRAW_EXPIRED_FAILED');
-			} else if (op.mode == 2) {
+			} else if (op.mode == uint8(ChannelMode.WithdrawIdentity)) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
 				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
 				SafeERC20.transfer(tokenAddr, to, amount);
-			} else if (op.mode == 3) {
+			} else if (op.mode == uint8(ChannelMode.Open)) {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
 				// Ensure all validators are whitelisted
