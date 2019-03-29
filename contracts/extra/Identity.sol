@@ -88,6 +88,7 @@ contract Identity {
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+
 		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
 		// since this can only be invoked by PrivilegeLevels.Transaction, maybe if we make sure we can't invoke setAddrPrivilege(addr, level) where addr == signer, it may be sufficient
 		privileges[addr] = privLevel;
@@ -105,6 +106,7 @@ contract Identity {
 			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
 			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
 			require(txn.nonce == nonce, 'WRONG_NONCE');
+
 			// If we use the naive abi.encode(txn) and have a field of type `bytes`,
 			// there is a discrepancy between ethereumjs-abi and solidity
 			// if we enter every field individually, in order, there is no discrepancy
@@ -112,12 +114,14 @@ contract Identity {
 			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeTokenAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
-			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
+			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 
 			nonce = nonce.add(1);
 			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
 			require(executeCall(txn.to, txn.value, txn.data), 'CALL_FAILED');
+			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
+			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 		}
 		if (feeTokenAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);

@@ -115,6 +115,31 @@ contract('Identity', function(accounts) {
 
 		// A nonce can only be used once
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
+
+
+		const relayerNextTx = new Transaction({
+			identityContract: id.address,
+			nonce: (await id.nonce()).toNumber(),
+			feeTokenAddr: token.address,
+			feeTokenAmount: 5,
+			to: id.address,
+			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1]),
+		})
+		const newHash = relayerNextTx.hashHex()
+		const newSig = splitSig(await ethSign(newHash, userAcc))
+		await expectEVMError(id.execute([relayerNextTx.toSolidityTuple()], [newSig]), 'PRIVILEGE_NOT_DOWNGRADED')
+
+		const relayerTxEvil = new Transaction({
+			identityContract: id.address,
+			nonce: (await id.nonce()).toNumber(),
+			feeTokenAddr: token.address,
+			feeTokenAmount: 25,
+			to: id.address,
+			data: idInterface.functions.setAddrPrivilege.encode([evilAcc, 4]),
+		})
+		const hashEvil = relayerTxEvil.hashHex()
+		const sigEvil = splitSig(await ethSign(hashEvil, evilAcc))
+		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'INSUFFICIENT_PRIVILEGE_TRANSACTION')
 	})
 
 	it('relay routine operations', async function() {
@@ -250,7 +275,12 @@ contract('Identity', function(accounts) {
 			await promise;
 			assert.isOk(false, 'should have failed with '+errString)
 		} catch(e) {
-			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
+			assert.isOk(
+				e.message.match(
+					new RegExp('VM Exception while processing transaction: revert '+errString)
+				),
+				'wrong error: '+e.message + ', Expected ' + errString
+			)
 		}
 	}
 
