@@ -96,7 +96,7 @@ contract('Identity', function(accounts) {
 		const invalidSig = splitSig(await ethSign(hash, evilAcc))
 		await expectEVMError(
 			id.execute([relayerTx.toSolidityTuple()], [invalidSig]),
-			'INSUFFICIENT_PRIVILEGE'
+			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
 		)
 
 		// Do the execute() correctly, verify if it worked
@@ -275,10 +275,9 @@ contract('Identity', function(accounts) {
 			await promise;
 			assert.isOk(false, 'should have failed with '+errString)
 		} catch(e) {
-			assert.isOk(
-				e.message.match(
-					new RegExp('VM Exception while processing transaction: revert '+errString)
-				),
+			assert.equal(
+				e.message,
+				'VM Exception while processing transaction: revert '+errString,
 				'wrong error: '+e.message + ', Expected ' + errString
 			)
 		}
