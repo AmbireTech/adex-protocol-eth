@@ -130,16 +130,38 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerNextTx.toSolidityTuple()], [newSig]), 'PRIVILEGE_NOT_DOWNGRADED')
 
 		const relayerTxEvil = new Transaction({
-			identityContract: id.address,
+			identityContract: accounts[1],
 			nonce: (await id.nonce()).toNumber(),
 			feeTokenAddr: token.address,
 			feeTokenAmount: 25,
 			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([evilAcc, 4]),
+			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 		})
 		const hashEvil = relayerTxEvil.hashHex()
-		const sigEvil = splitSig(await ethSign(hashEvil, evilAcc))
-		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'INSUFFICIENT_PRIVILEGE_TRANSACTION')
+		const sigEvil = splitSig(await ethSign(hashEvil, userAcc))
+		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'TRANSACTION_NOT_FOR_CONTRACT')
+
+		const relayerTxs = [
+			new Transaction({
+				identityContract: id.address,
+				nonce: (await id.nonce()).toNumber(),
+				feeTokenAddr: token.address,
+				feeTokenAmount: 5,
+				to: id.address,
+				data: idInterface.functions.setAddrPrivilege.encode([userAcc, 3]),
+			}),
+			new Transaction({
+				identityContract: id.address,
+				nonce: (await id.nonce()).toNumber() + 1,
+				feeTokenAddr: accounts[1],
+				feeTokenAmount: 5,
+				to: id.address,
+				data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
+			})
+		]
+		const hashes = [ relayerTxs[0].hashHex(), relayerTxs[1].hashHex() ]
+		const sigs = [ splitSig(await ethSign(hashes[0], userAcc)), splitSig(await ethSign(hashes[1], userAcc)) ]
+		await expectEVMError(id.execute([relayerTxs[0].toSolidityTuple(), relayerTxs[1].toSolidityTuple()], sigs), 'EXECUTE_NEEDS_SINGLE_TOKEN')
 	})
 
 	it('relay routine operations', async function() {
