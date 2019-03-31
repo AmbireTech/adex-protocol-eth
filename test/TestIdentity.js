@@ -3,7 +3,7 @@ const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData, Channel, MerkleTree } = require('../js')
+const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -20,6 +20,7 @@ const NULL_ADDR = '0x0000000000000000000000000000000000000000'
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(AdExCore._json.abi)
+	let identityFactory
 	let id
 	let token
 	let coreAddr
@@ -38,32 +39,11 @@ contract('Identity', function(accounts) {
 		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3], NULL_ADDR)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
-	})
 
-	it('deploy an Identity via CREATE2', async function() {
+		// This IdentityFactory is used to test counterfactual deployment
 		const idFactoryWeb3 = await IdentityFactory.new()
-		const signer = web3Provider.getSigner(relayerAddr)
-		const identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
-
-		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
-		const feeAmnt = 250
-		const deployTx = factory.getDeployTransaction(
-			// deploy fee will be feeAmnt to relayerAddr
-			token.address, relayerAddr, 0,
-			// userAcc will have privilege 3 (everything)
-			[userAcc], [3],
-			// @TODO: change that when we implement the registry
-			NULL_ADDR,
-		)
-
-		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
-		const { generateAddress2 } = require('ethereumjs-util')
-		const expectedAddr = getAddress('0x'+generateAddress2(idFactoryWeb3.address, salt, deployTx.data).toString('hex'))
-
-		const receipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
-		assert.equal(receipt.logs[0].address, expectedAddr, 'contract address matches')
+		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 	})
-
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
@@ -78,27 +58,20 @@ contract('Identity', function(accounts) {
 			// @TODO: change that when we implement the registry
 			NULL_ADDR,
 		)
-		const seed = randomBytes(64)
-		const deployData = getIdentityDeployData(seed, deployTx)
+		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
+		const { generateAddress2 } = require('ethereumjs-util')
+		const expectedAddr = getAddress('0x'+generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex'))
 
 		// set the balance so that we can pay out the fee when deploying
-		await token.setBalanceTo(deployData.idContractAddr, 10000)
+		await token.setBalanceTo(expectedAddr, 10000)
 
-		// fund the deployer with ETH
-		await web3.eth.sendTransaction({
-			from: relayerAddr,
-			to: deployData.tx.from,
-			value: deployData.tx.gasLimit * deployData.tx.gasPrice,
-		})
-
-		// deploy the contract, whcih should also pay out the fee
-		const deployReceipt = await web3.eth.sendSignedTransaction(deployData.txRaw)
-		assert.equal(deployData.tx.from.toLowerCase(), deployReceipt.from.toLowerCase(), 'from matches')
-		assert.equal(deployData.idContractAddr.toLowerCase(), deployReceipt.contractAddress.toLowerCase(), 'contract address matches')
+		// deploy the contract, which should also pay out the fee
+		const deployReceipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
+		assert.equal(expectedAddr, deployReceipt.logs[0].address, 'contract address matches')
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 		// this is what we should do if we want to instantiate an ethers Contract
-		//id = new Contract(deployData.idContractAddr, Identity._json.abi, signer)
+		//id = new Contract(expectedAddr, Identity._json.abi, signer)
 	})
 
 	it('relay a tx', async function() {
