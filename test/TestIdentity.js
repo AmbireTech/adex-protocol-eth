@@ -9,7 +9,7 @@ const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const { providers, Contract, ContractFactory } = require('ethers')
-const { Interface, randomBytes } = require('ethers').utils
+const { Interface, randomBytes, getAddress } = require('ethers').utils
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
@@ -57,11 +57,11 @@ contract('Identity', function(accounts) {
 		)
 
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
-
 		const { generateAddress2 } = require('ethereumjs-util')
+		const expectedAddr = getAddress('0x'+generateAddress2(idFactoryWeb3.address, salt, deployTx.data).toString('hex'))
+
 		const receipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
-		//console.log(receipt)
-		//console.log(generateAddress2(idFactoryWeb3.address, salt, deployTx.data))
+		assert.equal(receipt.logs[0].address, expectedAddr, 'contract address matches')
 	})
 
 
