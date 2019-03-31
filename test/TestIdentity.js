@@ -1,5 +1,6 @@
-const Identity = artifacts.require('Identity')
 const AdExCore = artifacts.require('AdExCore')
+const Identity = artifacts.require('Identity')
+const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData, Channel, MerkleTree } = require('../js')
@@ -38,6 +39,31 @@ contract('Identity', function(accounts) {
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
 	})
+
+	it('deploy an Identity via CREATE2', async function() {
+		const idFactoryWeb3 = await IdentityFactory.new()
+		const signer = web3Provider.getSigner(relayerAddr)
+		const identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
+
+		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
+		const feeAmnt = 250
+		const deployTx = factory.getDeployTransaction(
+			// deploy fee will be feeAmnt to relayerAddr
+			token.address, relayerAddr, 0,
+			// userAcc will have privilege 3 (everything)
+			[userAcc], [3],
+			// @TODO: change that when we implement the registry
+			NULL_ADDR,
+		)
+
+		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
+
+		const { generateAddress2 } = require('ethereumjs-util')
+		const receipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
+		//console.log(receipt)
+		//console.log(generateAddress2(idFactoryWeb3.address, salt, deployTx.data))
+	})
+
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
