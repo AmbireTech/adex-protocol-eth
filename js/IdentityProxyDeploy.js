@@ -1,7 +1,10 @@
 const solc = require('solc')
-const fs = require('fs')
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
+const assert = require('assert')
+
+const safeERC20Artifact = require('../build/contracts/SafeERC20')
+const IdentityArtifact = require('../build/contracts/Identity')
 
 function getProxyDeployTx(
 	proxiedAddr,
@@ -10,16 +13,21 @@ function getProxyDeployTx(
 	privLevels,
 	opts = { unsafeERC20: false }
 ) {
-	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString()
 	// @TODO autogen storage slots; or alternatively just assert if they're in their place
 	const privSlot = 0
 	const registrySlot = 1
 	const privLevelsCode = privLevels
 		.map(([addr, level]) => {
+			// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
 			const buf = abi.rawEncode(['address', 'uint256'], [addr, privSlot])
 			const slot = keccak256(buf)
 			return `sstore(0x${slot}, ${level})`
 		})
+		.join('\n')
+
+	const safeERC20Header = safeERC20Artifact.source
+		.split('\n')
+		.filter(x => !x.startsWith('pragma '))
 		.join('\n')
 
 	let feeCode = ``
@@ -34,8 +42,7 @@ function getProxyDeployTx(
 
 	const content = `
 pragma solidity ^0.5.6;
-import "SafeERC20.sol";
-
+${safeERC20Header}
 contract IdentityProxy {
 	constructor()
 		public
@@ -60,10 +67,7 @@ contract IdentityProxy {
 }`
 	const input = {
 		language: 'Solidity',
-		sources: {
-			'SafeERC20.sol': { content: safeERC20 },
-			'Proxy.sol': { content }
-		},
+		sources: { 'Proxy.sol': { content } },
 		settings: {
 			outputSelection: {
 				'*': {
@@ -77,6 +81,7 @@ contract IdentityProxy {
 		}
 	}
 	const output = JSON.parse(solc.compile(JSON.stringify(input)))
+	assert.ifError(output.errors)
 	const byteCode = '0x'+output.contracts['Proxy.sol']['IdentityProxy'].evm.bytecode.object
 	return { data: byteCode }
 }
