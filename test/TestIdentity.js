@@ -269,9 +269,10 @@ contract('Identity', function(accounts) {
 			feeTokenAmount: 0,
 		})
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
+		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
 		const routineReceipt = await (await id.executeRoutines(
 			auth.toSolidityTuple(),
-			splitSig(await ethSign(auth.hashHex(), userAcc)),
+			authSig,
 			[
 				[ 0, withdrawData ],
 				// @TODO: op1, withdraw expired
@@ -284,6 +285,20 @@ contract('Identity', function(accounts) {
 		// Transfer, ChannelWithdraw, Transfer
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
 		// @TODO: more assertions?
+
+		// wrongWithdrawData: flipped the signatures
+		const wrongWithdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]).slice(10)
+		await expectEVMError(
+			id.executeRoutines(
+				auth.toSolidityTuple(),
+				authSig,
+				[
+					[ 0, wrongWithdrawData ],
+				],
+				{ gasLimit: 900000 }
+			),
+			'NOT_SIGNED_BY_VALIDATORS'
+		)
 	})
 
 	async function expectEVMError(promise, errString) {
