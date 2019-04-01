@@ -73,11 +73,19 @@ contract('Identity', function(accounts) {
 		const { generateAddress2 } = require('ethereumjs-util')
 		const expectedAddr = getAddress('0x'+generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex'))
 
+		const deploy = identityFactory.deploy.bind(
+			identityFactory,
+			deployTx.data,
+			salt,
+			{ gasLimit: 400*1000 }
+		)
+		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
+
 		// set the balance so that we can pay out the fee when deploying
 		await token.setBalanceTo(expectedAddr, 10000)
 
 		// deploy the contract, which should also pay out the fee
-		const deployReceipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 400*1000 })).wait()
+		const deployReceipt = await (await deploy()).wait()
 
 		// The counterfactually generated expectedAddr matches
 		const deployEv = deployReceipt.events.find(x => x.event === 'Deployed')
