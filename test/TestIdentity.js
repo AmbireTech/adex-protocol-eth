@@ -369,18 +369,10 @@ contract IdentityProxy {
 	{
 		address to = address(${proxiedAddr});
 		assembly {
-			// Taken from AragonOS
 			calldatacopy(0, 0, calldatasize())
 			let result := delegatecall(sub(gas, 10000), to, 0, calldatasize(), 0, 0)
-
-			returndatacopy(0x0, 0x0, returndatasize)
-			switch result case 0 {revert(0, 0)} default {return (0, returndatasize)}
-
-			//let size := returndatasize
-			//let ptr := mload(0x40)
-			//returndatacopy(ptr, 0, size)
-			//switch result case 0 { revert(ptr, size) }
-			//default { return(ptr, size) }
+			returndatacopy(0, 0, returndatasize)
+			switch result case 0 {revert(0, returndatasize)} default {return (0, returndatasize)}
 		}
 	}
 }`
