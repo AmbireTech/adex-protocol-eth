@@ -16,8 +16,6 @@ contract IdentityProxy {
 	// @TODO autogen this
 	mapping (address => uint8) public privileges;
 	address public registryAddr;
-	uint public nonce = 0;
-	mapping (bytes32 => bool) public routinePaidFees;
 
 	constructor()
 		public
