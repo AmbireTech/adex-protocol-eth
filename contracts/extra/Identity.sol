@@ -71,7 +71,7 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount, address[] memory addrs, uint8[] memory privLevels, address regAddr)
+	constructor(address[] memory addrs, uint8[] memory privLevels, address regAddr)
 		public
 	{
 		registryAddr = regAddr;
@@ -79,9 +79,6 @@ contract Identity {
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
 			emit LogPrivilegeChanged(addrs[i], privLevels[i]);
-		}
-		if (feeTokenAmount > 0) {
-			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
 		}
 	}
 
