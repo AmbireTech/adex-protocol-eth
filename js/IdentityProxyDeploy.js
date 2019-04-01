@@ -79,7 +79,7 @@ contract IdentityProxy {
 		settings: {
 			outputSelection: {
 				'*': {
-					'*': [ '*' ]
+					'*': [ 'evm.bytecode' ]
 				}
 			},
 			optimizer: {
