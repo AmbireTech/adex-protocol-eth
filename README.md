@@ -12,6 +12,12 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 * Channels can be created with any ERC20 token; if the underlying token of a channel is insecure or malicious, that also compromises the channel as well; this is out of scope of this contract, since this is a fundamental issue with any system that uses ERC20's; needless to say, the user needs to be aware of what token they're using/earning
 * For more details on how OUTPACE channels work, please read the specs: [AdEx Protocol](https://github.com/AdExNetwork/adex-protocol) and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md).
 
+## Testing
+
+```
+truffle build # This is important cause js/IdentityProxyDeploy uses artifacts from there
+npm test
+```
 
 ## Deployment
 
