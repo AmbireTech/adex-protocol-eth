@@ -20,12 +20,13 @@ contract Identity {
 	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCore(0x0).channelWithdrawExpired.selector;
 	bytes4 private CHANNEL_OPEN_SELECTOR = AdExCore(0x0).channelOpen.selector;
 
+	// Storage
+	mapping (address => uint8) public privileges;
+	address public registryAddr;
 	// The next allowed nonce
 	uint public nonce = 0;
-	mapping (address => uint8) public privileges;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
-	address public registryAddr;
 
 	enum PrivilegeLevel {
 		None,
