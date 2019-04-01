@@ -1,5 +1,6 @@
 const solc = require('solc')
 const fs = require('fs')
+const path = require('path')
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 
@@ -10,7 +11,7 @@ function getProxyDeployTx(
 	privLevels,
 	opts = { unsafeERC20: false }
 ) {
-	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString()
+	const safeERC20 = fs.readFileSync(path.join(__dirname + '/../contracts/libs/SafeERC20.sol')).toString()
 	// @TODO autogen storage slots; or alternatively just assert if they're in their place
 	const privSlot = 0
 	const registrySlot = 1
