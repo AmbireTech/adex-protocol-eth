@@ -4,6 +4,7 @@ const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
+const { getProxyDeployTx } = require('../js/IdentityProxyDeploy')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -58,7 +59,13 @@ contract('Identity', function(accounts) {
 			NULL_ADDR,
 		)*/
 		// Create a proxy
-		const deployTx = getProxyDeployTx(id.address, token.address, relayerAddr, feeAmnt, NULL_ADDR, [[userAcc, 3]])
+		const deployTx = getProxyDeployTx(
+			id.address,
+			token.address, relayerAddr, feeAmnt,
+			// @TODO: change that when we implement the registry
+			NULL_ADDR,
+			[[userAcc, 3]]
+		)
 
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
 		const { generateAddress2 } = require('ethereumjs-util')
@@ -332,69 +339,3 @@ contract('Identity', function(accounts) {
 		})
 	}
 })
-
-// @TODO: move this out of here
-function getProxyDeployTx(proxiedAddr, tokenAddr, relayerAddr, feeAmnt, registryAddr, privLevels) {
-	const solc = require('solc')
-	const fs = require('fs')
-	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString();
-	const privLevelsCode = privLevels
-		.map(([addr, level]) => `privileges[address(${addr})] = ${level};`)
-		.join('\n')
-	const content = `
-pragma solidity ^0.5.6;
-
-import "SafeERC20.sol";
-
-contract IdentityProxy {
-	// Storage: shared with Identity.sol
-	// @TODO autogen this
-	mapping (address => uint8) public privileges;
-	address public registryAddr;
-	// The next allowed nonce
-	uint public nonce = 0;
-	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => bool) public routinePaidFees;
-
-	constructor()
-		public
-	{
-		${privLevelsCode}
-		registryAddr = address(${registryAddr});
-		// token, beneficiery, amount
-		SafeERC20.transfer(address(${tokenAddr}), address(${relayerAddr}), uint256(${feeAmnt}));
-	}
-
-	function () external
-	{
-		address to = address(${proxiedAddr});
-		assembly {
-			calldatacopy(0, 0, calldatasize())
-			let result := delegatecall(sub(gas, 10000), to, 0, calldatasize(), 0, 0)
-			returndatacopy(0, 0, returndatasize)
-			switch result case 0 {revert(0, returndatasize)} default {return (0, returndatasize)}
-		}
-	}
-}`
-	const input = {
-		language: 'Solidity',
-		sources: {
-			'SafeERC20.sol': { content: safeERC20 },
-			'Proxy.sol': { content }
-		},
-		settings: {
-			outputSelection: {
-				'*': {
-					'*': [ '*' ]
-				}
-			},
-			optimizer: {
-				enabled: true,
-				runs: 200,
-			}
-		}
-	}
-	const output = JSON.parse(solc.compile(JSON.stringify(input)))
-	const byteCode = '0x'+output.contracts['Proxy.sol']['IdentityProxy'].evm.bytecode.object
-	return { data: byteCode }
-}
