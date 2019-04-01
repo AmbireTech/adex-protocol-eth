@@ -1,10 +1,19 @@
 const solc = require('solc')
 const fs = require('fs')
+const abi = require('ethereumjs-abi')
+const keccak256 = require('js-sha3').keccak256
 
 function getProxyDeployTx(proxiedAddr, tokenAddr, relayerAddr, feeAmnt, registryAddr, privLevels) {
 	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString()
+	// @TODO autogen storage slots
+	const privSlot = 0
+	const registrySlot = 1
 	const privLevelsCode = privLevels
-		.map(([addr, level]) => `privileges[address(${addr})] = ${level};`)
+		.map(([addr, level]) => {
+			const buf = abi.rawEncode(['address', 'uint256'], [addr, privSlot])
+			const slot = keccak256(buf)
+			return `sstore(0x${slot}, ${level})`
+		})
 		.join('\n')
 	const content = `
 pragma solidity ^0.5.6;
@@ -12,16 +21,13 @@ pragma solidity ^0.5.6;
 import "SafeERC20.sol";
 
 contract IdentityProxy {
-	// Storage: shared with Identity.sol
-	// @TODO autogen this
-	mapping (address => uint8) public privileges;
-	address public registryAddr;
-
 	constructor()
 		public
 	{
-		${privLevelsCode}
-		registryAddr = address(${registryAddr});
+		assembly {
+			${privLevelsCode}
+			sstore(${registrySlot}, ${registryAddr})
+		}
 		// token, beneficiery, amount
 		SafeERC20.transfer(address(${tokenAddr}), address(${relayerAddr}), uint256(${feeAmnt}));
 	}
