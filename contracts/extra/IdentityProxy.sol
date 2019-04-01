@@ -28,9 +28,8 @@ contract IdentityProxy {
 		// @TODO test if it will preserve the error
 		assembly {
 			// Taken from AragonOS
-			let masterCopy := and(sload(0), 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF)
 			calldatacopy(0, 0, calldatasize())
-			let result := delegatecall(sub(gas, 10000), masterCopy, 0, calldatasize(), 0, 0)
+			let result := delegatecall(sub(gas, 10000), 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF, 0, calldatasize(), 0, 0)
 			let size := returndatasize
 			let ptr := mload(0x40)
 			returndatacopy(ptr, 0, size)
