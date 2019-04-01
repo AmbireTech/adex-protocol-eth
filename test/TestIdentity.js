@@ -52,8 +52,6 @@ contract('Identity', function(accounts) {
 		/*
 		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
 		const deployTx = factory.getDeployTransaction(
-			// deploy fee will be feeAmnt to relayerAddr
-			token.address, relayerAddr, feeAmnt,
 			// userAcc will have privilege 3 (everything)
 			[userAcc], [3],
 			// @TODO: change that when we implement the registry
@@ -393,6 +391,10 @@ contract IdentityProxy {
 				'*': {
 					'*': [ '*' ]
 				}
+			},
+			optimizer: {
+				enabled: true,
+				runs: 200,
 			}
 		}
 	}
