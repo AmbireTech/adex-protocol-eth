@@ -116,7 +116,7 @@ contract Identity {
 			nonce = nonce.add(1);
 			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
-			require(executeCall(txn.to, txn.value, txn.data), 'CALL_FAILED');
+			executeCall(txn.to, txn.value, txn.data);
 			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 		}
@@ -140,12 +140,10 @@ contract Identity {
 			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-				require(success, 'WITHDRAW_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-				require(success, 'WITHDRAW_EXPIRED_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
@@ -162,8 +160,7 @@ contract Identity {
 						"VALIDATOR_NOT_WHITELISTED"
 					);
 				}
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
-				require(success, 'OPEN_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
 			} else {
 				require(false, 'INVALID_MODE');
 			}
@@ -182,10 +179,17 @@ contract Identity {
 	// https://github.com/gnosis/safe-contracts/blob/7e2eeb3328bb2ae85c36bc11ea6afc14baeb663c/contracts/base/Executor.sol
 	function executeCall(address to, uint256 value, bytes memory data)
 		internal
-		returns (bool success)
 	{
 		assembly {
-			success := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
+			let result := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
+
+			switch result case 0 {
+				let size := returndatasize
+				let ptr := mload(0x40)
+				returndatacopy(ptr, 0, size)
+				revert(ptr, size)
+			}
+			default {}
 		}
 	}
 }
