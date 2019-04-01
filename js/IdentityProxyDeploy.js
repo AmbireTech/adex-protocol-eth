@@ -13,9 +13,17 @@ function getProxyDeployTx(
 	privLevels,
 	opts = { unsafeERC20: false }
 ) {
-	// @TODO autogen storage slots; or alternatively just assert if they're in their place
-	const privSlot = 0
-	const registrySlot = 1
+	// Find storage locations of privileges, registryAddr
+	const identityNode = IdentityArtifact.ast.nodes
+		.find(({ name, nodeType }) => nodeType === 'ContractDefinition' && name === 'Identity')
+	assert.ok(identityNode, 'Identity contract definition not found')
+	const storageVariableNodes = identityNode.nodes
+		.filter(n => n.nodeType === 'VariableDeclaration' && !n.constant && n.stateVariable)
+	const privSlot = storageVariableNodes.findIndex(x => x.name === 'privileges')
+	const registrySlot = storageVariableNodes.findIndex(x => x.name === 'registryAddr')
+	assert.notEqual(privSlot, -1, 'privSlot was not found')
+	assert.notEqual(registrySlot, -1, 'registrySlot was not found')
+
 	const privLevelsCode = privLevels
 		.map(([addr, level]) => {
 			// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
