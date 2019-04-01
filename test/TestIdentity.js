@@ -49,16 +49,7 @@ contract('Identity', function(accounts) {
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
 
-		// Generating a deploy transaction
-		/*
-		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
-		const deployTx = factory.getDeployTransaction(
-			// userAcc will have privilege 3 (everything)
-			[userAcc], [3],
-			// @TODO: change that when we implement the registry
-			NULL_ADDR,
-		)*/
-		// Create a proxy
+		// Generating a proxy deploy transaction
 		const deployTx = getProxyDeployTx(
 			id.address,
 			token.address, relayerAddr, feeAmnt,
@@ -77,8 +68,9 @@ contract('Identity', function(accounts) {
 			identityFactory,
 			deployTx.data,
 			salt,
-			{ gasLimit: 400*1000 }
+			{ gasLimit: 300*1000 }
 		)
+		// Without any tokens to pay for the fee, we should revert
 		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
 
 		// set the balance so that we can pay out the fee when deploying
