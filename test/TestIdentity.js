@@ -67,7 +67,7 @@ contract('Identity', function(accounts) {
 
 		// deploy the contract, which should also pay out the fee
 		const deployReceipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
-		assert.equal(expectedAddr, deployReceipt.logs[0].address, 'contract address matches')
+		assert.equal(expectedAddr, deployReceipt.events.find(x => x.event === 'Deployed').args.addr, 'counterfactual contract address matches')
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 		// this is what we should do if we want to instantiate an ethers Contract
