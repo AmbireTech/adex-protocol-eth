@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/SignatureValidator.sol";
-import "../AdExCore.sol";
 import "../libs/ChannelLibrary.sol";
 
 contract ValidatorRegistry {
@@ -15,11 +14,6 @@ contract ValidatorRegistry {
 contract Identity {
 	using SafeMath for uint;
 
-	// Constants
-	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCore(0x0).channelWithdraw.selector;
-	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCore(0x0).channelWithdrawExpired.selector;
-	bytes4 private CHANNEL_OPEN_SELECTOR = AdExCore(0x0).channelOpen.selector;
-
 	// Storage
 	mapping (address => uint8) public privileges;
 	address public registryAddr;
@@ -27,6 +21,11 @@ contract Identity {
 	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
+
+	// Constants
+	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
+	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
+	bytes4 private constant CHANNEL_OPEN_SELECTOR = bytes4(keccak256('channelOpen((address,address,uint256,uint256,address[],bytes32))'));
 
 	enum PrivilegeLevel {
 		None,
