@@ -3,9 +3,15 @@ const fs = require('fs')
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 
-function getProxyDeployTx(proxiedAddr, tokenAddr, relayerAddr, feeAmnt, registryAddr, privLevels) {
+function getProxyDeployTx(
+	proxiedAddr,
+	feeTokenAddr, feeBeneficiery, feeAmnt,
+	registryAddr,
+	privLevels,
+	opts = { unsafeERC20: false }
+) {
 	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString()
-	// @TODO autogen storage slots
+	// @TODO autogen storage slots; or alternatively just assert if they're in their place
 	const privSlot = 0
 	const registrySlot = 1
 	const privLevelsCode = privLevels
@@ -15,9 +21,19 @@ function getProxyDeployTx(proxiedAddr, tokenAddr, relayerAddr, feeAmnt, registry
 			return `sstore(0x${slot}, ${level})`
 		})
 		.join('\n')
+
+	let feeCode = ``
+	if (feeAmnt > 0) {
+		// This is fine if we're only accepting whitelisted tokens
+		if (opts.unsafeERC20) {
+			feeCode = `GeneralERC20(${feeTokenAddr}).transfer(${feeBeneficiery}, ${feeAmnt});`
+		} else {
+			feeCode = `SafeERC20.transfer(${feeTokenAddr}, ${feeBeneficiery}, ${feeAmnt});`
+		}
+	}
+
 	const content = `
 pragma solidity ^0.5.6;
-
 import "SafeERC20.sol";
 
 contract IdentityProxy {
@@ -28,8 +44,7 @@ contract IdentityProxy {
 			${privLevelsCode}
 			sstore(${registrySlot}, ${registryAddr})
 		}
-		// token, beneficiery, amount
-		SafeERC20.transfer(address(${tokenAddr}), address(${relayerAddr}), uint256(${feeAmnt}));
+		${feeCode}
 	}
 
 	function () external

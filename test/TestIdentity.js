@@ -64,7 +64,9 @@ contract('Identity', function(accounts) {
 			token.address, relayerAddr, feeAmnt,
 			// @TODO: change that when we implement the registry
 			NULL_ADDR,
-			[[userAcc, 3]]
+			[[userAcc, 3]],
+			// Using this option is fine if the token.address is a token that reverts on failures
+			{ unsafeERC20: true }
 		)
 
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
