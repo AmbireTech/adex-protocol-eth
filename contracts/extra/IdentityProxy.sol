@@ -2,13 +2,15 @@ pragma solidity ^0.5.6;
 
 import "../libs/SafeERC20.sol";
 
-
 contract IdentityProxy {
 	// Storage: shared with Identity.sol
-	// @TODO generate this from AST
+	// Storage
 	mapping (address => uint8) public privileges;
 	address public registryAddr;
-
+	// The next allowed nonce
+	uint public nonce = 0;
+	// Routine operations are authorized at once for a period, fee is paid once
+	mapping (bytes32 => bool) public routinePaidFees;
 
 	constructor()
 		public
@@ -16,7 +18,8 @@ contract IdentityProxy {
 		// @TODO: this would all be codegen
 		privileges[address(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe)] = 3;
 		registryAddr = address(0xCAfEcAfeCAfECaFeCaFecaFecaFECafECafeCaFe);
-		// @TODO pay out fees
+		// token, beneficiery, amount
+		SafeERC20.transfer(address(0xdEADCAfEDeaDCAfeDeadCafEdEAdcaFEDEAdcAFe), address(0xCAFeDeaDcAFedeAdcaFedEADCAFEDeADcafedead), uint256(0xBAADA555BAADA555BAADA555BAADA555BAADA555BAADA555BAADA555BAADA555));
 	}
 
 	function () external
