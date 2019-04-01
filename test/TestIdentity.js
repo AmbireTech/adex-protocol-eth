@@ -48,65 +48,6 @@ contract('Identity', function(accounts) {
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
 
-		// Create a proxy
-		const solc = require('solc')
-		const fs = require('fs')
-		const content = `
-pragma solidity ^0.5.6;
-
-import "SafeERC20.sol";
-
-contract IdentityProxy {
-	// Storage: shared with Identity.sol
-	// @TODO autogen this
-	mapping (address => uint8) public privileges;
-	address public registryAddr;
-	// The next allowed nonce
-	uint public nonce = 0;
-	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => bool) public routinePaidFees;
-
-	constructor()
-		public
-	{
-		privileges[address(${userAcc})] = 3;
-		registryAddr = address(${NULL_ADDR});
-		// token, beneficiery, amount
-		SafeERC20.transfer(address(${token.address}), address(${relayerAddr}), uint256(${feeAmnt}));
-	}
-
-	function () external
-	{
-		assembly {
-			// Taken from AragonOS
-			calldatacopy(0, 0, calldatasize())
-			let result := delegatecall(sub(gas, 10000), ${id.address}, 0, calldatasize(), 0, 0)
-			let size := returndatasize
-			let ptr := mload(0x40)
-			returndatacopy(ptr, 0, size)
-
-			switch result case 0 { revert(ptr, size) }
-			default { return(ptr, size) }
-		}
-	}
-}`
-		const input = {
-			language: 'Solidity',
-			sources: {
-				'SafeERC20.sol': { content: fs.readFileSync('./contracts/libs/SafeERC20.sol').toString() },
-				'Proxy.sol': { content }
-			},
-			settings: {
-				outputSelection: {
-					'*': {
-						'*': [ '*' ]
-					}
-				}
-			}
-		}
-		const output = JSON.parse(solc.compile(JSON.stringify(input)))
-		const byteCode = '0x'+output.contracts['Proxy.sol']['IdentityProxy'].evm.bytecode.object
-		const deployTx = { data: byteCode }
 		// Generating a deploy transaction
 		/*
 		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
@@ -118,6 +59,9 @@ contract IdentityProxy {
 			// @TODO: change that when we implement the registry
 			NULL_ADDR,
 		)*/
+		// Create a proxy
+		const deployTx = getProxyDeployTx(id.address, token.address, relayerAddr, feeAmnt, NULL_ADDR, [[userAcc, 3]])
+
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
 		const { generateAddress2 } = require('ethereumjs-util')
 		const expectedAddr = getAddress('0x'+generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex'))
@@ -390,3 +334,69 @@ contract IdentityProxy {
 		})
 	}
 })
+
+// @TODO: move this out of here
+function getProxyDeployTx(proxiedAddr, tokenAddr, relayerAddr, feeAmnt, registryAddr, privLevels) {
+	const solc = require('solc')
+	const fs = require('fs')
+	const safeERC20 = fs.readFileSync('./contracts/libs/SafeERC20.sol').toString();
+	const privLevelsCode = privLevels
+		.map(([addr, level]) => `privileges[address(${addr})] = ${level};`)
+		.join('\n')
+	const content = `
+pragma solidity ^0.5.6;
+
+import "SafeERC20.sol";
+
+contract IdentityProxy {
+	// Storage: shared with Identity.sol
+	// @TODO autogen this
+	mapping (address => uint8) public privileges;
+	address public registryAddr;
+	// The next allowed nonce
+	uint public nonce = 0;
+	// Routine operations are authorized at once for a period, fee is paid once
+	mapping (bytes32 => bool) public routinePaidFees;
+
+	constructor()
+		public
+	{
+		${privLevelsCode}
+		registryAddr = address(${registryAddr});
+		// token, beneficiery, amount
+		SafeERC20.transfer(address(${tokenAddr}), address(${relayerAddr}), uint256(${feeAmnt}));
+	}
+
+	function () external
+	{
+		assembly {
+			// Taken from AragonOS
+			calldatacopy(0, 0, calldatasize())
+			let result := delegatecall(sub(gas, 10000), ${proxiedAddr}, 0, calldatasize(), 0, 0)
+			let size := returndatasize
+			let ptr := mload(0x40)
+			returndatacopy(ptr, 0, size)
+
+			switch result case 0 { revert(ptr, size) }
+			default { return(ptr, size) }
+		}
+	}
+}`
+	const input = {
+		language: 'Solidity',
+		sources: {
+			'SafeERC20.sol': { content: safeERC20 },
+			'Proxy.sol': { content }
+		},
+		settings: {
+			outputSelection: {
+				'*': {
+					'*': [ '*' ]
+				}
+			}
+		}
+	}
+	const output = JSON.parse(solc.compile(JSON.stringify(input)))
+	const byteCode = '0x'+output.contracts['Proxy.sol']['IdentityProxy'].evm.bytecode.object
+	return { data: byteCode }
+}
