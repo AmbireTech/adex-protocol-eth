@@ -82,6 +82,9 @@ contract('Identity', function(accounts) {
 		// privilege level is OK
 		const newIdentity = new Contract(expectedAddr, Identity._json.abi, web3Provider.getSigner(relayerAddr))
 		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
+
+		//console.log('deploy cost', deployReceipt.gasUsed.toString(10))
+		//id = newIdentity
 		// check if deploy fee is paid out
 		//assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 		// this is what we should do if we want to instantiate an ethers Contract
@@ -112,15 +115,16 @@ contract('Identity', function(accounts) {
 		)
 
 		// Do the execute() correctly, verify if it worked
-		// @TODO: set gasLimit manually
+		// @TODO: set gasLimit manually everywhere
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
+
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 200*1000 })).wait()
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
 		assert.ok(receipt.events.find(x => x.event == 'LogPrivilegeChanged'), 'LogPrivilegeChanged event found')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
-		//console.log(receipt.gasUsed.toString(10))
+		//console.log('relay cost', receipt.gasUsed.toString(10))
 
 		// setAddrPrivilege can only be invoked by the contract
 		await expectEVMError(id.setAddrPrivilege(userAcc, 0), 'ONLY_IDENTITY_CAN_CALL')
