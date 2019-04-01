@@ -87,7 +87,6 @@ contract('Identity', function(accounts) {
 		//id = newIdentity
 		// check if deploy fee is paid out
 		//assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
-		// this is what we should do if we want to instantiate an ethers Contract
 	})
 
 	it('relay a tx', async function() {
