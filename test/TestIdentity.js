@@ -49,10 +49,63 @@ contract('Identity', function(accounts) {
 		const feeAmnt = 250
 
 		// Create a proxy
-		// @TODO generate this via solc
-		// @TODO all the TODOs in the IdentityProxy.sol prototype
-		const tokenRewardHex = '00000000000000000000000000000000000000000000000000000000000000fa'
-		const byteCode = `0x6080604052600060025534801561001557600080fd5b50600360008073${userAcc.toLowerCase().slice(2)}73ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff021916908360ff16021790555073${NULL_ADDR.slice(2)}600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555061013473${token.address.toLowerCase().slice(2)}73${relayerAddr.toLowerCase().slice(2)}7f${tokenRewardHex}61013960201b6102091760201c565b610232565b8273ffffffffffffffffffffffffffffffffffffffff1663a9059cbb83836040518363ffffffff1660e01b8152600401808373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200182815260200192505050600060405180830381600087803b1580156101c057600080fd5b505af11580156101d4573d6000803e3d6000fd5b505050506101e66101f460201b60201c565b6101ef57600080fd5b505050565b600080600090503d60008114610211576020811461021a57610226565b60019150610226565b60206000803e60005191505b50600081141591505090565b610328806102416000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c806351da2eaa14610091578063a6e6b446146100db578063affed0e014610121578063c066a5b11461013f575b73${id.address.toLowerCase().slice(2)}600054163660008037600080366000846127105a03f43d604051816000823e826000811461008d578282f35b8282fd5b61009961019d565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b610107600480360360208110156100f157600080fd5b81019080803590602001909291905050506101c3565b604051808215151515815260200191505060405180910390f35b6101296101e3565b6040518082815260200191505060405180910390f35b6101816004803603602081101561015557600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff1690602001909291905050506101e9565b604051808260ff1660ff16815260200191505060405180910390f35b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60036020528060005260406000206000915054906101000a900460ff1681565b60025481565b60006020528060005260406000206000915054906101000a900460ff1681565b8273ffffffffffffffffffffffffffffffffffffffff1663a9059cbb83836040518363ffffffff1660e01b8152600401808373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200182815260200192505050600060405180830381600087803b15801561029057600080fd5b505af11580156102a4573d6000803e3d6000fd5b505050506102b06102be565b6102b957600080fd5b505050565b600080600090503d600081146102db57602081146102e4576102f0565b600191506102f0565b60206000803e60005191505b5060008114159150509056fea165627a7a723058209781a795d7496d33c7369ad6c82772ddff22050459fa17f9adc178d3407c902f0029`
+		const solc = require('solc')
+		const fs = require('fs')
+		const content = `
+pragma solidity ^0.5.6;
+
+import "SafeERC20.sol";
+
+contract IdentityProxy {
+	// Storage: shared with Identity.sol
+	// @TODO autogen this
+	mapping (address => uint8) public privileges;
+	address public registryAddr;
+	// The next allowed nonce
+	uint public nonce = 0;
+	// Routine operations are authorized at once for a period, fee is paid once
+	mapping (bytes32 => bool) public routinePaidFees;
+
+	constructor()
+		public
+	{
+		privileges[address(${userAcc})] = 3;
+		registryAddr = address(${NULL_ADDR});
+		// token, beneficiery, amount
+		SafeERC20.transfer(address(${token.address}), address(${relayerAddr}), uint256(${feeAmnt}));
+	}
+
+	function () external
+	{
+		assembly {
+			// Taken from AragonOS
+			calldatacopy(0, 0, calldatasize())
+			let result := delegatecall(sub(gas, 10000), ${id.address}, 0, calldatasize(), 0, 0)
+			let size := returndatasize
+			let ptr := mload(0x40)
+			returndatacopy(ptr, 0, size)
+
+			switch result case 0 { revert(ptr, size) }
+			default { return(ptr, size) }
+		}
+	}
+}`
+		const input = {
+			language: 'Solidity',
+			sources: {
+				'SafeERC20.sol': { content: fs.readFileSync('./contracts/libs/SafeERC20.sol').toString() },
+				'Proxy.sol': { content }
+			},
+			settings: {
+				outputSelection: {
+					'*': {
+						'*': [ '*' ]
+					}
+				}
+			}
+		}
+		const output = JSON.parse(solc.compile(JSON.stringify(input)))
+		const byteCode = '0x'+output.contracts['Proxy.sol']['IdentityProxy'].evm.bytecode.object
 		const deployTx = { data: byteCode }
 		// Generating a deploy transaction
 		/*
@@ -336,5 +389,4 @@ contract('Identity', function(accounts) {
 			}, (err, res) => err ? reject(err) : resolve(res))
 		})
 	}
-
 })
