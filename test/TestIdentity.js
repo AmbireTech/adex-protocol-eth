@@ -36,7 +36,7 @@ contract('Identity', function(accounts) {
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3], NULL_ADDR)
+		const idWeb3 = await Identity.new([userAcc], [3], NULL_ADDR)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
 
@@ -48,7 +48,14 @@ contract('Identity', function(accounts) {
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
 
+		// Create a proxy
+		// @TODO fee
+		// @TODO generate this via solc
+		// @TODO all the TODOs in the IdentityProxy.sol prototype
+		const byteCode = `0x608060405234801561001057600080fd5b50600360008073${userAcc.toLowerCase().slice(2)}73ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200190815260200160002060006101000a81548160ff021916908360ff16021790555073${NULL_ADDR.slice(2)}600160006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff160217905550610195806100e16000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c806351da2eaa1461007b578063c066a5b1146100c5575b73${id.address.toLowerCase().slice(2)}600054163660008037600080366000846127105a03f43d604051816000823e8260008114610077578282f35b8282fd5b610083610123565b604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390f35b610107600480360360208110156100db57600080fd5b81019080803573ffffffffffffffffffffffffffffffffffffffff169060200190929190505050610149565b604051808260ff1660ff16815260200191505060405180910390f35b600160009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b60006020528060005260406000206000915054906101000a900460ff168156fea165627a7a723058205623ea0fb0e176a3acbb29ef6ac17f255717003c178c0949709126cbce18e6aa0029`
+		const deployTx = { data: byteCode }
 		// Generating a deploy transaction
+		/*
 		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
 		const deployTx = factory.getDeployTransaction(
 			// deploy fee will be feeAmnt to relayerAddr
@@ -57,7 +64,7 @@ contract('Identity', function(accounts) {
 			[userAcc], [3],
 			// @TODO: change that when we implement the registry
 			NULL_ADDR,
-		)
+		)*/
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
 		const { generateAddress2 } = require('ethereumjs-util')
 		const expectedAddr = getAddress('0x'+generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex'))
@@ -66,12 +73,18 @@ contract('Identity', function(accounts) {
 		await token.setBalanceTo(expectedAddr, 10000)
 
 		// deploy the contract, which should also pay out the fee
-		const deployReceipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 4*1000*1000 })).wait()
-		assert.equal(expectedAddr, deployReceipt.events.find(x => x.event === 'Deployed').args.addr, 'counterfactual contract address matches')
+		const deployReceipt = await (await identityFactory.deploy(deployTx.data, salt, { gasLimit: 400*1000 })).wait()
+
+		// The counterfactually generated expectedAddr matches
+		const deployEv = deployReceipt.events.find(x => x.event === 'Deployed')
+		assert.equal(expectedAddr, deployEv.args.addr, 'counterfactual contract address matches')
+		
+		// privilege level is OK
+		const newIdentity = new Contract(expectedAddr, Identity._json.abi, web3Provider.getSigner(relayerAddr))
+		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
 		// check if deploy fee is paid out
-		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
+		//assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 		// this is what we should do if we want to instantiate an ethers Contract
-		//id = new Contract(expectedAddr, Identity._json.abi, signer)
 	})
 
 	it('relay a tx', async function() {
@@ -115,7 +128,7 @@ contract('Identity', function(accounts) {
 		// A nonce can only be used once
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
 
-
+		// Try to downgrade the privilege: should not be allowed
 		const relayerNextTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -128,6 +141,7 @@ contract('Identity', function(accounts) {
 		const newSig = splitSig(await ethSign(newHash, userAcc))
 		await expectEVMError(id.execute([relayerNextTx.toSolidityTuple()], [newSig]), 'PRIVILEGE_NOT_DOWNGRADED')
 
+		// Try to run a TX from an acc with insufficient privilege
 		const relayerTxEvil = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
