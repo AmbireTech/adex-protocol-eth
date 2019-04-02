@@ -29,6 +29,14 @@ The contract `AdExCore` from version v2.3.0, compiled with solc v0.5.6 is deploy
 * Goerli: https://goerli.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 * Kovan: https://kovan.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 
+### Deployment strategy
+
+The full deploy processis as follows
+
+* Deploy AdExCore
+* Deploy an IdentityFactory
+* Deploy a single Identity, with no owners and no registry
+* Deploy a Registry
 
 ### Verifying on etherscan
 
