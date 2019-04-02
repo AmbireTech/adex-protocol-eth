@@ -56,8 +56,8 @@ contract('AdExCore', function(accounts) {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 1)
 
-		//const initialBal = await token.balanceOf(userAcc)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+		const initialBal = await token.balanceOf(userAcc)
 
 		// Ensure we can't do this too early
 		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'NOT_EXPIRED')
@@ -66,11 +66,8 @@ contract('AdExCore', function(accounts) {
 		await moveTime(web3, 100)
 		const receipt = await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
-		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
-		// @TODO check balances, etc.
 		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
-
-		// @TODO can't do this twice
+		assert.equal(await token.balanceOf(userAcc), initialBal.toNumber() + tokens, 'funds are returned')
 	})
 
 	it('channelWithdraw', async function() {
