@@ -40,6 +40,10 @@ contract('AdExCore', function(accounts) {
 
 	it('channelOpen', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+
+		const channelWrongCreator = sampleChannel(accounts, token.address, accounts[1], tokens, blockTime+50, 0)
+		await expectEVMError(core.channelOpen(channelWrongCreator.toSolidityTuple()), 'INVALID_CREATOR')
+
 		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 0)
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
