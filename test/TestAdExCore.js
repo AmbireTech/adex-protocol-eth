@@ -61,23 +61,25 @@ contract('AdExCore', function(accounts) {
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const initialBal = await token.balanceOf(userAcc)
 
+		const channelWithdrawExpired = core.channelWithdrawExpired.bind(core, channel.toSolidityTuple())
 		// Ensure we can't do this too early
-		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'NOT_EXPIRED')
+		await expectEVMError(channelWithdrawExpired(), 'NOT_EXPIRED')
 
 		// Ensure we can do this when the time comes
 		await moveTime(web3, 100)
-		const receipt = await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
+		const receipt = await (await channelWithdrawExpired()).wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
 		assert.equal(await token.balanceOf(userAcc), initialBal.toNumber() + tokens, 'funds are returned')
 
 		// cannot do it again
-		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'INVALID_STATE')
+		await expectEVMError(channelWithdrawExpired(), 'INVALID_STATE')
 	})
 
 	it('channelWithdraw', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 2)
+		const channelWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple())
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Prepare the tree and sign the state root
@@ -94,19 +96,19 @@ contract('AdExCore', function(accounts) {
 
 		// Can't withdraw an amount that is not in the tree
 		await expectEVMError(
-			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, userLeafAmnt+1),
+			channelWithdraw(stateRoot, [sig1, sig2], proof, userLeafAmnt+1),
 			'BALANCELEAF_NOT_FOUND'
 		)
 
 		// Can't withdraw w/o valid signatures
 		const invalidSigs = [sig1, sig1] // using sig1 for both values
 		await expectEVMError(
-			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, invalidSigs, proof, userLeafAmnt),
+			channelWithdraw(stateRoot, invalidSigs, proof, userLeafAmnt),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 
 		// Can withdraw with the proper values
-		const validWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, userLeafAmnt)
+		const validWithdraw = channelWithdraw.bind(core, stateRoot, [sig1, sig2], proof, userLeafAmnt)
 		const tx = await validWithdraw()
 		const receipt = await tx.wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
