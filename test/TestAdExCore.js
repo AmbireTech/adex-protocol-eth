@@ -115,7 +115,12 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await core.withdrawnPerUser(channelId, userAcc), userLeafAmnt, 'channel has right withdrawnPerUser')
 
 		// if we try with less, it won't work
-		// @TODO
+		const lessWithdrawArgs = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: userLeafAmnt-1 },
+			userAcc, userLeafAmnt-1
+		)
+		await expectEVMError(channelWithdraw.apply(null, lessWithdrawArgs))
 
 		// we can do it again, but it's not gonna give us more tokens
 		const receipt2 = await (await validWithdraw()).wait()
