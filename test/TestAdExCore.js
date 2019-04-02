@@ -115,12 +115,12 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await core.withdrawnPerUser(channelId, userAcc), userLeafAmnt, 'channel has right withdrawnPerUser')
 
 		// if we try with less, it won't work
-		const lessWithdrawArgs = await balanceTreeToWithdrawArgs(
+		const decWithdrawArgs = await balanceTreeToWithdrawArgs(
 			channel,
 			{ [userAcc]: userLeafAmnt-1 },
 			userAcc, userLeafAmnt-1
 		)
-		await expectEVMError(channelWithdraw.apply(null, lessWithdrawArgs))
+		await expectEVMError(channelWithdraw.apply(null, decWithdrawArgs))
 
 		// we can do it again, but it's not gonna give us more tokens
 		const receipt2 = await (await validWithdraw()).wait()
@@ -129,20 +129,34 @@ contract('AdExCore', function(accounts) {
 		assert.equal(withdrawEvent.args.amount, 0, 'withdrawn amount is 0')
 		assert.equal(await core.withdrawn(channelId), userLeafAmnt, 'channel has the right withdrawn value')
 
-		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
+		// add more balances and withdraw; make sure that only the difference (to the last withdrawal) is withdrawn
+		// also, test a tree that has more elements
+		const incUserLeafAmnt = userLeafAmnt + 10
+		const incWithdrawArgs = await balanceTreeToWithdrawArgs(
+			channel,
+			{
+				[userAcc]: incUserLeafAmnt,
+				[accounts[1]]: 10,
+				[accounts[2]]: 10,
+			},
+			userAcc, incUserLeafAmnt
+		)
+		const receipt3 = await (await channelWithdraw.apply(null, incWithdrawArgs)).wait()
+		const incWithdrawEvent = receipt3.events.find(x => x.event === 'LogChannelWithdraw')
+		assert.ok(incWithdrawEvent, 'has LogChannelWithdraw event')
+		assert.equal(incWithdrawEvent.args.amount, 10, 'withdrawn amount is 10')
+		assert.equal(await core.withdrawn(channelId), incUserLeafAmnt, 'channel has the right withdrawn value')
 
 		// @TODO completely exhaust channel, use .withdrawn to ensure it's exhausted
-		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
-		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
-		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
-
 		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
-		// @TODO should the byzantine cases of channelWithdraw be in a separate test? (validators trying to attack)
 
 		await moveTime(web3, 100)
 		await expectEVMError(validWithdraw(), 'EXPIRED')
 	})
 
+	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
+	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+	// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 	async function balanceTreeToWithdrawArgs(channel, balances, acc, amnt) {
 		const elements = Object.entries(balances)
 			.map(([ acc, amnt ]) => Channel.getBalanceLeaf(acc, amnt))
