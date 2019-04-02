@@ -15,6 +15,8 @@ contract Identity {
 	using SafeMath for uint;
 
 	// Storage
+	// WARNING: be careful when modifying this
+	// privileges and registryAddr must always be respectively the 0th and 1st thing in storage
 	mapping (address => uint8) public privileges;
 	address public registryAddr;
 	// The next allowed nonce
