@@ -151,6 +151,7 @@ contract('AdExCore', function(accounts) {
 		assert.ok(incWithdrawEvent, 'has LogChannelWithdraw event')
 		assert.equal(incWithdrawEvent.args.amount, 10, 'withdrawn amount is 10')
 		assert.equal(await core.withdrawn(channelId), incUserLeafAmnt, 'channel has the right withdrawn value')
+		assert.equal(await token.balanceOf(userAcc), incUserLeafAmnt, 'user has the right token amount')
 
 		await moveTime(web3, 100)
 		await expectEVMError(validWithdraw(), 'EXPIRED')
