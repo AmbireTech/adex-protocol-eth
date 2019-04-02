@@ -1,14 +1,16 @@
-const Identity = artifacts.require('Identity')
 const AdExCore = artifacts.require('AdExCore')
+const Identity = artifacts.require('Identity')
+const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization, splitSig, getIdentityDeployData, Channel, MerkleTree } = require('../js')
+const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
+const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const { providers, Contract, ContractFactory } = require('ethers')
-const { Interface, randomBytes } = require('ethers').utils
+const { Interface, randomBytes, getAddress } = require('ethers').utils
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
@@ -19,6 +21,7 @@ const NULL_ADDR = '0x0000000000000000000000000000000000000000'
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(AdExCore._json.abi)
+	let identityFactory
 	let id
 	let token
 	let coreAddr
@@ -34,45 +37,61 @@ contract('Identity', function(accounts) {
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
 		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new(token.address, relayerAddr, 0, [userAcc], [3], NULL_ADDR)
+		const idWeb3 = await Identity.new([userAcc], [3], NULL_ADDR)
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
+
+		// This IdentityFactory is used to test counterfactual deployment
+		const idFactoryWeb3 = await IdentityFactory.new()
+		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 	})
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
 
-		// Generating a deploy transaction
-		const factory = new ContractFactory(Identity._json.abi, Identity._json.bytecode)
-		const deployTx = factory.getDeployTransaction(
-			// deploy fee will be feeAmnt to relayerAddr
+		// Generating a proxy deploy transaction
+		const deployTx = getProxyDeployTx(
+			id.address,
 			token.address, relayerAddr, feeAmnt,
-			// userAcc will have privilege 3 (everything)
-			[userAcc], [3],
 			// @TODO: change that when we implement the registry
 			NULL_ADDR,
+			[[userAcc, 3]],
+			// Using this option is fine if the token.address is a token that reverts on failures
+			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
+			//{ safeERC20Artifact: artifacts.require('SafeERC20'), ...getStorageSlotsFromArtifact(Identity) },
 		)
-		const seed = randomBytes(64)
-		const deployData = getIdentityDeployData(seed, deployTx)
+
+		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
+		const { generateAddress2 } = require('ethereumjs-util')
+		const expectedAddr = getAddress('0x'+generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex'))
+
+		const deploy = identityFactory.deploy.bind(
+			identityFactory,
+			deployTx.data,
+			salt,
+			{ gasLimit: 300*1000 }
+		)
+		// Without any tokens to pay for the fee, we should revert
+		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
 
 		// set the balance so that we can pay out the fee when deploying
-		await token.setBalanceTo(deployData.idContractAddr, 10000)
+		await token.setBalanceTo(expectedAddr, 10000)
 
-		// fund the deployer with ETH
-		await web3.eth.sendTransaction({
-			from: relayerAddr,
-			to: deployData.tx.from,
-			value: deployData.tx.gasLimit * deployData.tx.gasPrice,
-		})
+		// deploy the contract, which should also pay out the fee
+		const deployReceipt = await (await deploy()).wait()
 
-		// deploy the contract, whcih should also pay out the fee
-		const deployReceipt = await web3.eth.sendSignedTransaction(deployData.txRaw)
-		assert.equal(deployData.tx.from.toLowerCase(), deployReceipt.from.toLowerCase(), 'from matches')
-		assert.equal(deployData.idContractAddr.toLowerCase(), deployReceipt.contractAddress.toLowerCase(), 'contract address matches')
+		// The counterfactually generated expectedAddr matches
+		const deployEv = deployReceipt.events.find(x => x.event === 'Deployed')
+		assert.equal(expectedAddr, deployEv.args.addr, 'counterfactual contract address matches')
+		
+		// privilege level is OK
+		const newIdentity = new Contract(expectedAddr, Identity._json.abi, web3Provider.getSigner(relayerAddr))
+		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
+
+		//console.log('deploy cost', deployReceipt.gasUsed.toString(10))
+		//id = newIdentity
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
-		// this is what we should do if we want to instantiate an ethers Contract
-		//id = new Contract(deployData.idContractAddr, Identity._json.abi, signer)
 	})
 
 	it('relay a tx', async function() {
@@ -96,19 +115,20 @@ contract('Identity', function(accounts) {
 		const invalidSig = splitSig(await ethSign(hash, evilAcc))
 		await expectEVMError(
 			id.execute([relayerTx.toSolidityTuple()], [invalidSig]),
-			'INSUFFICIENT_PRIVILEGE'
+			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
 		)
 
 		// Do the execute() correctly, verify if it worked
-		// @TODO: set gasLimit manually
+		// @TODO: set gasLimit manually everywhere
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
+
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 200*1000 })).wait()
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
 		assert.ok(receipt.events.find(x => x.event == 'LogPrivilegeChanged'), 'LogPrivilegeChanged event found')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
-		//console.log(receipt.gasUsed.toString(10))
+		//console.log('relay cost', receipt.gasUsed.toString(10))
 
 		// setAddrPrivilege can only be invoked by the contract
 		await expectEVMError(id.setAddrPrivilege(userAcc, 0), 'ONLY_IDENTITY_CAN_CALL')
@@ -116,7 +136,7 @@ contract('Identity', function(accounts) {
 		// A nonce can only be used once
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
 
-
+		// Try to downgrade the privilege: should not be allowed
 		const relayerNextTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -129,6 +149,7 @@ contract('Identity', function(accounts) {
 		const newSig = splitSig(await ethSign(newHash, userAcc))
 		await expectEVMError(id.execute([relayerNextTx.toSolidityTuple()], [newSig]), 'PRIVILEGE_NOT_DOWNGRADED')
 
+		// Try to run a TX from an acc with insufficient privilege
 		const relayerTxEvil = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -253,9 +274,10 @@ contract('Identity', function(accounts) {
 			feeTokenAmount: 0,
 		})
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
+		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
 		const routineReceipt = await (await id.executeRoutines(
 			auth.toSolidityTuple(),
-			splitSig(await ethSign(auth.hashHex(), userAcc)),
+			authSig,
 			[
 				[ 0, withdrawData ],
 				// @TODO: op1, withdraw expired
@@ -268,6 +290,20 @@ contract('Identity', function(accounts) {
 		// Transfer, ChannelWithdraw, Transfer
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
 		// @TODO: more assertions?
+
+		// wrongWithdrawData: flipped the signatures
+		const wrongWithdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]).slice(10)
+		await expectEVMError(
+			id.executeRoutines(
+				auth.toSolidityTuple(),
+				authSig,
+				[
+					[ 0, wrongWithdrawData ],
+				],
+				{ gasLimit: 900000 }
+			),
+			'NOT_SIGNED_BY_VALIDATORS'
+		)
 	})
 
 	async function expectEVMError(promise, errString) {
@@ -275,11 +311,10 @@ contract('Identity', function(accounts) {
 			await promise;
 			assert.isOk(false, 'should have failed with '+errString)
 		} catch(e) {
-			assert.isOk(
-				e.message.match(
-					new RegExp('VM Exception while processing transaction: revert '+errString)
-				),
-				'wrong error: '+e.message + ', Expected ' + errString
+			assert.equal(
+				e.message,
+				'VM Exception while processing transaction: revert '+errString,
+				'error message is incorrect'
 			)
 		}
 	}
@@ -306,5 +341,4 @@ contract('Identity', function(accounts) {
 			}, (err, res) => err ? reject(err) : resolve(res))
 		})
 	}
-
 })

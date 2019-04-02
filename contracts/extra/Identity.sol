@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/SignatureValidator.sol";
-import "../AdExCore.sol";
 import "../libs/ChannelLibrary.sol";
 
 contract ValidatorRegistry {
@@ -15,17 +14,20 @@ contract ValidatorRegistry {
 contract Identity {
 	using SafeMath for uint;
 
-	// Constants
-	bytes4 private CHANNEL_WITHDRAW_SELECTOR = AdExCore(0x0).channelWithdraw.selector;
-	bytes4 private CHANNEL_WITHDRAW_EXPIRED_SELECTOR = AdExCore(0x0).channelWithdrawExpired.selector;
-	bytes4 private CHANNEL_OPEN_SELECTOR = AdExCore(0x0).channelOpen.selector;
-
+	// Storage
+	// WARNING: be careful when modifying this
+	// privileges and registryAddr must always be respectively the 0th and 1st thing in storage
+	mapping (address => uint8) public privileges;
+	address public registryAddr;
 	// The next allowed nonce
 	uint public nonce = 0;
-	mapping (address => uint8) public privileges;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
-	address public registryAddr;
+
+	// Constants
+	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
+	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
+	bytes4 private constant CHANNEL_OPEN_SELECTOR = bytes4(keccak256('channelOpen((address,address,uint256,uint256,address[],bytes32))'));
 
 	enum PrivilegeLevel {
 		None,
@@ -70,7 +72,7 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address feeTokenAddr, address feeBeneficiery, uint feeTokenAmount, address[] memory addrs, uint8[] memory privLevels, address regAddr)
+	constructor(address[] memory addrs, uint8[] memory privLevels, address regAddr)
 		public
 	{
 		registryAddr = regAddr;
@@ -78,9 +80,6 @@ contract Identity {
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
 			emit LogPrivilegeChanged(addrs[i], privLevels[i]);
-		}
-		if (feeTokenAmount > 0) {
-			SafeERC20.transfer(feeTokenAddr, feeBeneficiery, feeTokenAmount);
 		}
 	}
 
@@ -119,7 +118,7 @@ contract Identity {
 			nonce = nonce.add(1);
 			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
 
-			require(executeCall(txn.to, txn.value, txn.data), 'CALL_FAILED');
+			executeCall(txn.to, txn.value, txn.data);
 			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 		}
@@ -143,12 +142,10 @@ contract Identity {
 			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == 0) {
 				// Channel: Withdraw
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-				require(success, 'WITHDRAW_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == 1) {
 				// Channel: Withdraw Expired
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-				require(success, 'WITHDRAW_EXPIRED_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
 			} else if (op.mode == 2) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
@@ -165,8 +162,7 @@ contract Identity {
 						"VALIDATOR_NOT_WHITELISTED"
 					);
 				}
-				bool success = executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
-				require(success, 'OPEN_FAILED');
+				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
 			} else {
 				require(false, 'INVALID_MODE');
 			}
@@ -185,10 +181,17 @@ contract Identity {
 	// https://github.com/gnosis/safe-contracts/blob/7e2eeb3328bb2ae85c36bc11ea6afc14baeb663c/contracts/base/Executor.sol
 	function executeCall(address to, uint256 value, bytes memory data)
 		internal
-		returns (bool success)
 	{
 		assembly {
-			success := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
+			let result := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
+
+			switch result case 0 {
+				let size := returndatasize
+				let ptr := mload(0x40)
+				returndatacopy(ptr, 0, size)
+				revert(ptr, size)
+			}
+			default {}
 		}
 	}
 }

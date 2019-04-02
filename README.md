@@ -12,6 +12,12 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 * Channels can be created with any ERC20 token; if the underlying token of a channel is insecure or malicious, that also compromises the channel as well; this is out of scope of this contract, since this is a fundamental issue with any system that uses ERC20's; needless to say, the user needs to be aware of what token they're using/earning
 * For more details on how OUTPACE channels work, please read the specs: [AdEx Protocol](https://github.com/AdExNetwork/adex-protocol) and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md).
 
+## Testing
+
+```
+truffle build # This is important cause js/IdentityProxyDeploy uses artifacts from there
+npm test
+```
 
 ## Deployment
 
@@ -23,6 +29,14 @@ The contract `AdExCore` from version v2.3.0, compiled with solc v0.5.6 is deploy
 * Goerli: https://goerli.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 * Kovan: https://kovan.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 
+### Deployment strategy
+
+The full deploy processis as follows
+
+* Deploy AdExCore
+* Deploy an IdentityFactory
+* Deploy a single Identity, with no owners and no registry
+* Deploy a Registry
 
 ### Verifying on etherscan
 
