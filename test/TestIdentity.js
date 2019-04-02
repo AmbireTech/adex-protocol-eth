@@ -214,6 +214,25 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'INSUFFICIENT_PRIVILEGE_TRANSACTION')
 	})
 
+	it('execute by sender', async function() {
+		const initialNonce = (await id.nonce()).toNumber()
+		const relayerTx = new Transaction({
+			identityContract: id.address,
+			nonce: initialNonce,
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
+			to: id.address,
+			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
+		})
+		
+		await expectEVMError(id.executeBySender([relayerTx.toSolidityTuple()]), 'INSUFFICIENT_PRIVILEGE_SENDER')
+
+		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
+		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()])).wait()
+		assert.equal(receipt.events.length, 3, 'right number of events emitted')
+		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
+	})
+
 	it('relay routine operations', async function() {
 		// note: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
