@@ -76,6 +76,10 @@ contract('AdExCore', function(accounts) {
 	})
 
 	it('channelWithdraw', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 2)
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
 		// Prepare the tree and sign the state root
 		const userLeafAmnt = tokens/2
 		const elem1 = Channel.getBalanceLeaf(userAcc, userLeafAmnt)
@@ -83,11 +87,6 @@ contract('AdExCore', function(accounts) {
 		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
 		const tree = new MerkleTree([ elem1, elem2, elem3 ])
 		const proof = tree.proof(elem1)
-
-		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 2)
-		await (await core.channelOpen(channel.toSolidityTuple())).wait()
-
 		const stateRoot = tree.getRoot()
 		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
 		const sig1 = splitSig(await ethSign(hashToSignHex, userAcc))
@@ -107,14 +106,26 @@ contract('AdExCore', function(accounts) {
 		)
 
 		// Can withdraw with the proper values
-		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, userLeafAmnt)
+		const validWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, userLeafAmnt)
+		const tx = await validWithdraw()
 		const receipt = await tx.wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
 		assert.equal(await token.balanceOf(userAcc), userLeafAmnt, 'user has a proper token balance')
 
 		const channelId = channel.hash(core.address)
 		assert.equal(await core.withdrawn(channelId), userLeafAmnt, 'channel has the right withdrawn value')
-		assert.equal(await core.withdrawnPerUser(channelId, userAcc), userLeafAmnt, 'channel hsa right withdrawnPerUser')
+		assert.equal(await core.withdrawnPerUser(channelId, userAcc), userLeafAmnt, 'channel has right withdrawnPerUser')
+
+		// if we try with less, it won't work
+		// @TODO
+
+		// we can do it again, but it's not gonna give us more tokens
+		const receipt2 = await (await validWithdraw()).wait()
+		const withdrawEvent = receipt2.events.find(x => x.event === 'LogChannelWithdraw')
+		assert.ok(withdrawEvent, 'has LogChannelWithdraw event')
+		assert.equal(withdrawEvent.args.amount, 0, 'withdrawn amount is 0')
+		assert.equal(await core.withdrawn(channelId), userLeafAmnt, 'channel has the right withdrawn value')
+
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
 		// @TODO completely exhaust channel, use .withdrawn to ensure it's exhausted
@@ -122,11 +133,10 @@ contract('AdExCore', function(accounts) {
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 
-		// @TODO: if the balance leaf updates, the user can only withdraw the difference to the previous withdraw
-		// @TODO if you use a balance leaf with less than the lsat withdraw you did, it will revert
 		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
 		// @TODO should the byzantine cases of channelWithdraw be in a separate test? (validators trying to attack)
-		// @TODO can't withdraw more than the entire channel deposit, even if validators allow it
 
+		await moveTime(web3, 100)
+		await expectEVMError(validWithdraw(), 'EXPIRED')
 	})
 })
