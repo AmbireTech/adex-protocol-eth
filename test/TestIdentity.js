@@ -19,11 +19,6 @@ const DAY_SECONDS = 24 * 60 * 60
 
 const coreInterface = new Interface(AdExCore._json.abi)
 
-// WARNING
-// READ THIS
-// Apparently gas estimations are broken when we're using the Identity contract
-// so we HAVE to hardcode the gasLimit here
-
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	let identityFactory
@@ -83,7 +78,6 @@ contract('Identity', function(accounts) {
 			identityFactory,
 			deployTx.data,
 			salt,
-			{ gasLimit: 300*1000 }
 		)
 		// Without any tokens to pay for the fee, we should revert
 		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
@@ -121,20 +115,18 @@ contract('Identity', function(accounts) {
 		)
 
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
-		const gasLimit = 300 * 1000
 
 		const deployAndFund = identityFactory.deployAndFund.bind(
 			identityFactory,
 			deployTx.data, salt,
 			token.address, fundAmnt,
-			{ gasLimit }
 		)
 
 		// Only relayer can call
 		const userSigner = web3Provider.getSigner(userAcc)
 		const identityFactoryUser = new Contract(identityFactory.address, IdentityFactory._json.abi, userSigner)
 		await expectEVMError(
-			identityFactoryUser.deployAndFund(deployTx.data, salt, token.address, fundAmnt, { gasLimit }),
+			identityFactoryUser.deployAndFund(deployTx.data, salt, token.address, fundAmnt),
 			'ONLY_RELAYER'
 		)
 
@@ -178,7 +170,7 @@ contract('Identity', function(accounts) {
 		// Do the execute() correctly, verify if it worked
 		const sig = splitSig(await ethSign(hash, userAcc))
 
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 200*1000 })).wait()
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(await token.balanceOf(relayerAddr), initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(), 'relayer has received the tx fee')
@@ -278,7 +270,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.executeBySender([relayerTx.toSolidityTuple()]), 'INSUFFICIENT_PRIVILEGE_SENDER')
 
 		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
-		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()], { gasLimit: 200*1000 })).wait()
+		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()])).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
 	})
@@ -302,8 +294,6 @@ contract('Identity', function(accounts) {
 			2,
 			RoutineAuthorization.encodeWithdraw(token.address, userAcc, toWithdraw),
 		]
-		// @TODO: warn about gasLimit in docs, since estimateGas apparently does not calculate properly
-		// https://docs.ethers.io/ethers.js/html/api-contract.html#overrides
 		const initialUserBal = await token.balanceOf(userAcc)
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
 		const execRoutines = id.executeRoutines.bind(
@@ -311,7 +301,6 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			sig,
 			[op],
-			{ gasLimit: 500 * 1000 }
 		)
 		const receipt = await (await execRoutines()).wait()
 		//console.log(receipt.gasUsed.toString(10))
@@ -370,7 +359,7 @@ contract('Identity', function(accounts) {
 		})
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 800000 })).wait()
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig])).wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
 		//console.log(receipt.gasUsed.toString(10))
 
@@ -401,7 +390,6 @@ contract('Identity', function(accounts) {
 				// @TODO: op1, withdraw expired
 				[ 2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt) ],
 			],
-			{ gasLimit: 900000 }
 		)).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
 		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
@@ -415,7 +403,6 @@ contract('Identity', function(accounts) {
 				auth.toSolidityTuple(),
 				authSig,
 				[getChannelWithdrawOp(wrongWithdrawArgs)],
-				{ gasLimit: 900000 }
 			),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
@@ -450,7 +437,6 @@ contract('Identity', function(accounts) {
 		const channel = sampleChannel([allowedValidator1, allowedValidator2], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		const receipt = await (await executeRoutines(
 			[getChannelOpenOp([channel.toSolidityTuple()])],
-			{ gasLimit: 300000 }
 		)).wait()
 		// events should be: transfer, channelOpen
 		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
@@ -465,7 +451,7 @@ contract('Identity', function(accounts) {
 
 		// move time, withdrawExpired successfully and check results
 		await moveTime(web3, DAY_SECONDS*3)
-		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit: 300000 })).wait()
+		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp])).wait()
 		// LogWithdrawExpired and Transfer
 		assert.equal(expiredReceipt.events.length, 2, 'right event count')
 		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
