@@ -19,6 +19,11 @@ const DAY_SECONDS = 24 * 60 * 60
 
 const coreInterface = new Interface(AdExCore._json.abi)
 
+// WARNING
+// READ THIS
+// Apparently gas estimations are broken when we're using the Identity contract
+// so we HAVE to hardcode the gasLimit here
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	let identityFactory
@@ -171,7 +176,6 @@ contract('Identity', function(accounts) {
 		)
 
 		// Do the execute() correctly, verify if it worked
-		// @TODO: set gasLimit manually everywhere
 		const sig = splitSig(await ethSign(hash, userAcc))
 
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 200*1000 })).wait()
@@ -229,7 +233,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.executeBySender([relayerTx.toSolidityTuple()]), 'INSUFFICIENT_PRIVILEGE_SENDER')
 
 		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
-		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()])).wait()
+		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()], { gasLimit: 200*1000 })).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
 	})
@@ -262,7 +266,7 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			sig,
 			[op],
-			{ gasLimit: 500000 }
+			{ gasLimit: 500 * 1000 }
 		)
 		const receipt = await (await execRoutines()).wait()
 		//console.log(receipt.gasUsed.toString(10))
