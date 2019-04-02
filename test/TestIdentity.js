@@ -243,6 +243,7 @@ contract('Identity', function(accounts) {
 				data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 			})
 		)
+		const totalFee = txns.map(x => x.feeTokenAmount).reduce((a, b) => a+b, 0)
 
 		// Cannot use an invalid identityContract
 		const invalidTxns1 = [txns[0], { ...txns[1], identityContract: token.address }]
@@ -258,7 +259,7 @@ contract('Identity', function(accounts) {
 		assert.equal(receipt.events.filter(x => x.event === 'LogPrivilegeChanged').length, 2, 'LogPrivilegeChanged happened twice')
 		assert.equal(
 			await token.balanceOf(relayerAddr),
-			initialBal.toNumber() + txns.map(x => x.feeTokenAmount).reduce((a, b) => a+b, 0),
+			initialBal.toNumber() + totalFee,
 			'fee was paid out for all transactions'
 		)
 	})
