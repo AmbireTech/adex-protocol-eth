@@ -200,7 +200,7 @@ contract Identity {
 		internal
 	{
 		assembly {
-			let result := call(sub(gas, 10000), to, value, add(data, 0x20), mload(data), 0, 0)
+			let result := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
 
 			switch result case 0 {
 				let size := returndatasize
