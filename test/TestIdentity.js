@@ -90,7 +90,8 @@ contract('Identity', function(accounts) {
 		const deployReceipt = await (await deploy()).wait()
 
 		// The counterfactually generated expectedAddr matches
-		const deployEv = deployReceipt.events.find(x => x.event === 'Deployed')
+		const deployEv = deployReceipt.events.find(x => x.event === 'LogDeployed')
+		assert.ok(deployEv, 'has deployedEv')
 		assert.equal(expectedAddr, deployEv.args.addr, 'counterfactual contract address matches')
 		
 		// privilege level is OK
@@ -140,7 +141,7 @@ contract('Identity', function(accounts) {
 
 		// Call successfully
 		const receipt = await (await deployAndFund()).wait()
-		const deployedEv = receipt.events.find(x => x.event === 'Deployed')
+		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		assert.ok(deployedEv, 'has deployedEv')
 		assert.equal(await token.balanceOf(deployedEv.args.addr), fundAmnt, 'deployed contract has received the funding amount')
 	})
@@ -229,7 +230,7 @@ contract('Identity', function(accounts) {
 
 		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
 		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()])).wait()
-		assert.equal(receipt.events.length, 3, 'right number of events emitted')
+		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
 	})
 
