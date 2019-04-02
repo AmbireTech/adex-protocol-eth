@@ -112,7 +112,7 @@ contract('AdExCore', function(accounts) {
 		assert.equal(await core.withdrawnPerUser(channelId, accounts[0]), tokens/2, 'channel hsa right withdrawnPerUser')
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
-		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
+		// @TODO completely exhaust channel, use .withdrawn to ensure it's exhausted
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
 		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms

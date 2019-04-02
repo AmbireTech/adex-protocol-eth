@@ -1,6 +1,7 @@
 const AdExCore = artifacts.require('AdExCore')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
+const Registry = artifacts.require('Registry')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { moveTime, sampleChannel, expectEVMError } = require('./')
@@ -16,9 +17,6 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 
-// @TODO remove this when we implement the ValidatorRegistry
-const NULL_ADDR = '0x0000000000000000000000000000000000000000'
-
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(AdExCore._json.abi)
@@ -26,10 +24,13 @@ contract('Identity', function(accounts) {
 	let id
 	let token
 	let coreAddr
+	let registryAddr
 
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
+	const allowedValidator1 = accounts[6]
+	const allowedValidator2 = accounts[7]
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -37,14 +38,21 @@ contract('Identity', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
-		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new([userAcc], [3], NULL_ADDR)
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
-		await token.setBalanceTo(id.address, 10000)
+
+		// deploy a registry; this is required by the Identity
+		const registryWeb3 = await Registry.new()
+		await registryWeb3.setWhitelisted(allowedValidator1, true)
+		await registryWeb3.setWhitelisted(allowedValidator2, true)
+		registryAddr = registryWeb3.address
 
 		// This IdentityFactory is used to test counterfactual deployment
 		const idFactoryWeb3 = await IdentityFactory.new(relayerAddr)
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
+
+		// deploy an Identity
+		const idWeb3 = await Identity.new([userAcc], [3], registryAddr)
+		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+		await token.setBalanceTo(id.address, 10000)
 	})
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
@@ -54,8 +62,7 @@ contract('Identity', function(accounts) {
 		const deployTx = getProxyDeployTx(
 			id.address,
 			token.address, relayerAddr, feeAmnt,
-			// @TODO: change that when we implement the registry
-			NULL_ADDR,
+			registryAddr,
 			[[userAcc, 3]],
 			// Using this option is fine if the token.address is a token that reverts on failures
 			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
@@ -101,8 +108,7 @@ contract('Identity', function(accounts) {
 		const deployTx = getProxyDeployTx(
 			id.address,
 			token.address, relayerAddr, 0,
-			// @TODO: change that when we implement the registry
-			NULL_ADDR,
+			registryAddr,
 			[[userAcc, 3]],
 			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
 		)
@@ -330,10 +336,9 @@ contract('Identity', function(accounts) {
 			{ gasLimit: 900000 }
 		)).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
-		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn is right')
-		// Transfer, ChannelWithdraw, Transfer
+		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
+		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
-		// @TODO: more assertions?
 
 		// wrongWithdrawData: flipped the signatures
 		const wrongWithdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]).slice(10)
