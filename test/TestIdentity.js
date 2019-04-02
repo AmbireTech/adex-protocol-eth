@@ -17,9 +17,10 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 
+const coreInterface = new Interface(AdExCore._json.abi)
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
-	const coreInterface = new Interface(AdExCore._json.abi)
 	let identityFactory
 	let id
 	let token
@@ -285,6 +286,7 @@ contract('Identity', function(accounts) {
 
 	it('open a channel, withdraw via routines', async function() {
 		const tokenAmnt = 500
+		// Open a channel via the identity
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
 		// so we need to workaround with + DAY_SECONDS
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
@@ -311,9 +313,6 @@ contract('Identity', function(accounts) {
 		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
 		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
-		// @TODO more elegant way to do this
-		const withdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]).slice(10)
-
 		// Routine auth to withdraw
 		const auth = new RoutineAuthorization({
 			identityContract: id.address,
@@ -329,7 +328,7 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			authSig,
 			[
-				[ 0, withdrawData ],
+				getChannelWithdrawOp([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]),
 				// @TODO: op1, withdraw expired
 				[ 2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt) ],
 			],
@@ -340,18 +339,65 @@ contract('Identity', function(accounts) {
 		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
 
-		// wrongWithdrawData: flipped the signatures
-		const wrongWithdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]).slice(10)
+		// wrongWithdrawArgs: flipped the signatures
+		const wrongWithdrawArgs = [channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]
 		await expectEVMError(
 			id.executeRoutines(
 				auth.toSolidityTuple(),
 				authSig,
-				[
-					[ 0, wrongWithdrawData ],
-				],
+				[getChannelWithdrawOp(wrongWithdrawArgs)],
 				{ gasLimit: 900000 }
 			),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 	})
+
+	it('open a channel via routines', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
+		const tokenAmnt = 1066
+		await token.setBalanceTo(id.address, tokenAmnt)
+
+		const auth = new RoutineAuthorization({
+			identityContract: id.address,
+			relayer: relayerAddr,
+			outpace: coreAddr,
+			validUntil: blockTime + DAY_SECONDS,
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
+		})
+		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
+
+		// a channel with non-whitelisted validators
+		const channelEvil = sampleChannel([allowedValidator1, accounts[2]], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		await expectEVMError(
+			id.executeRoutines(
+				auth.toSolidityTuple(),
+				authSig,
+				[getChannelOpenOp([channelEvil.toSolidityTuple()])],
+				{ gasLimit: 300000 }
+			),
+			'VALIDATOR_NOT_WHITELISTED'
+		)
+
+		// we can open a channel with the whitelisted validators
+		const channel = sampleChannel([allowedValidator1, allowedValidator2], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		const receipt = await (await id.executeRoutines(
+			auth.toSolidityTuple(),
+			authSig,
+			[getChannelOpenOp([channel.toSolidityTuple()])],
+			{ gasLimit: 300000 }
+		)).wait()
+		// transfer, channelOpen
+		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
+	})
 })
+
+function getChannelOpenOp(args) {
+	const data = '0x'+coreInterface.functions.channelOpen.encode(args).slice(10)
+	return [3, data]
+}
+function getChannelWithdrawOp(args) {
+	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
+	return [0, data]
+}
