@@ -421,7 +421,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('open a channel via routines', async function() {
+	it('channelOpen and channelWithdrawExpired, via routines', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
@@ -430,43 +430,59 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: blockTime + DAY_SECONDS,
+			validUntil: blockTime + DAY_SECONDS*4,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
 		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
+		const executeRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), authSig)
 
 		// a channel with non-whitelisted validators
 		const channelEvil = sampleChannel([allowedValidator1, accounts[2]], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		await expectEVMError(
-			id.executeRoutines(
-				auth.toSolidityTuple(),
-				authSig,
-				[getChannelOpenOp([channelEvil.toSolidityTuple()])],
-				{ gasLimit: 300000 }
-			),
+			executeRoutines([
+				getChannelOpenOp([channelEvil.toSolidityTuple()]),
+			]),
 			'VALIDATOR_NOT_WHITELISTED'
 		)
 
 		// we can open a channel with the whitelisted validators
 		const channel = sampleChannel([allowedValidator1, allowedValidator2], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
-		const receipt = await (await id.executeRoutines(
-			auth.toSolidityTuple(),
-			authSig,
+		const receipt = await (await executeRoutines(
 			[getChannelOpenOp([channel.toSolidityTuple()])],
 			{ gasLimit: 300000 }
 		)).wait()
-		// transfer, channelOpen
+		// events should be: transfer, channelOpen
 		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
+
+		// withdrawExpired should work
+		const withdrawExpiredOp = getChannelWithdrawExpiredOp([channel.toSolidityTuple()])
+		// ensure we report the underlying OUTPACE error properly
+		await expectEVMError(
+			executeRoutines([withdrawExpiredOp]),
+			'NOT_EXPIRED'
+		)
+
+		// move time, withdrawExpired successfully and check results
+		await moveTime(web3, DAY_SECONDS*3)
+		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit: 300000 })).wait()
+		// LogWithdrawExpired and Transfer
+		assert.equal(expiredReceipt.events.length, 2, 'right event count')
+		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
 	})
 })
 
+// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+function getChannelWithdrawOp(args) {
+	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
+	return [0, data]
+}
+function getChannelWithdrawExpiredOp(args) {
+	const data = '0x'+coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)
+	return [1, data]
+}
 function getChannelOpenOp(args) {
 	const data = '0x'+coreInterface.functions.channelOpen.encode(args).slice(10)
 	return [3, data]
 }
-function getChannelWithdrawOp(args) {
-	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
-	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
-	return [0, data]
-}
+
