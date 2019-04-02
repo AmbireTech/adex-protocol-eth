@@ -42,7 +42,7 @@ contract('Identity', function(accounts) {
 		await token.setBalanceTo(id.address, 10000)
 
 		// This IdentityFactory is used to test counterfactual deployment
-		const idFactoryWeb3 = await IdentityFactory.new()
+		const idFactoryWeb3 = await IdentityFactory.new(relayerAddr)
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 	})
 
