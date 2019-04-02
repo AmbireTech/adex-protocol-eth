@@ -84,31 +84,27 @@ contract('AdExCore', function(accounts) {
 
 		// Prepare the tree and sign the state root
 		const userLeafAmnt = tokens/2
-		const elem1 = Channel.getBalanceLeaf(userAcc, userLeafAmnt)
-		const elem2 = Channel.getBalanceLeaf(accounts[1], tokens/4)
-		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
-		const tree = new MerkleTree([ elem1, elem2, elem3 ])
-		const proof = tree.proof(elem1)
-		const stateRoot = tree.getRoot()
-		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
-		const sig1 = splitSig(await ethSign(hashToSignHex, userAcc))
-		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		const [stateRoot, validSigs, proof] = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: userLeafAmnt },
+			userAcc, userLeafAmnt
+		)
 
 		// Can't withdraw an amount that is not in the tree
 		await expectEVMError(
-			channelWithdraw(stateRoot, [sig1, sig2], proof, userLeafAmnt+1),
+			channelWithdraw(stateRoot, validSigs, proof, userLeafAmnt+1),
 			'BALANCELEAF_NOT_FOUND'
 		)
 
 		// Can't withdraw w/o valid signatures
-		const invalidSigs = [sig1, sig1] // using sig1 for both values
+		const invalidSigs = [validSigs[0], validSigs[0]] // using sig1 for both values
 		await expectEVMError(
 			channelWithdraw(stateRoot, invalidSigs, proof, userLeafAmnt),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 
 		// Can withdraw with the proper values
-		const validWithdraw = channelWithdraw.bind(core, stateRoot, [sig1, sig2], proof, userLeafAmnt)
+		const validWithdraw = () => channelWithdraw(stateRoot, validSigs, proof, userLeafAmnt)
 		const tx = await validWithdraw()
 		const receipt = await tx.wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
@@ -141,4 +137,18 @@ contract('AdExCore', function(accounts) {
 		await moveTime(web3, 100)
 		await expectEVMError(validWithdraw(), 'EXPIRED')
 	})
+
+	async function balanceTreeToWithdrawArgs(channel, balances, acc, amnt) {
+		const elements = Object.entries(balances)
+			.map(([ acc, amnt ]) => Channel.getBalanceLeaf(acc, amnt))
+		const tree = new MerkleTree(elements)
+		const elemToWithdraw = Channel.getBalanceLeaf(acc, amnt)
+		const proof = tree.proof(elemToWithdraw)
+		const stateRoot = tree.getRoot()
+		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
+		const sig1 = splitSig(await ethSign(hashToSignHex, userAcc))
+		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		return [stateRoot, [sig1, sig2], proof, amnt]
+	}
 })
+
