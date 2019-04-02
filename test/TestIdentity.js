@@ -4,7 +4,7 @@ const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
-const { getProxyDeployTx } = require('../js/IdentityProxyDeploy')
+const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -57,7 +57,8 @@ contract('Identity', function(accounts) {
 			NULL_ADDR,
 			[[userAcc, 3]],
 			// Using this option is fine if the token.address is a token that reverts on failures
-			{ unsafeERC20: true }
+			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
+			//{ safeERC20Artifact: artifacts.require('SafeERC20'), ...getStorageSlotsFromArtifact(Identity) },
 		)
 
 		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
