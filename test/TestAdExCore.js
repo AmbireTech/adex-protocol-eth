@@ -2,10 +2,11 @@ const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 const MockLibs = artifacts.require('./mocks/Libs')
 
+const { moveTime, sampleChannel, expectEVMError } = require('./')
 const promisify = require('util').promisify
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-const { Channel, ChannelState, MerkleTree, splitSig } = require('../js')
+const { ChannelState, Channel, MerkleTree, splitSig } = require('../js')
 const { providers, Contract } = require('ethers')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
@@ -38,7 +39,7 @@ contract('AdExCore', function(accounts) {
 
 	it('channelOpen', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 0)
+		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 0)
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
 		assert.ok(ev, 'has LogChannelOpen event')
@@ -52,7 +53,7 @@ contract('AdExCore', function(accounts) {
 
 	it('channelWithdrawExpired', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 1)
+		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 1)
 
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
@@ -79,7 +80,7 @@ contract('AdExCore', function(accounts) {
 		const proof = tree.proof(elem1)
 
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
+		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 2)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		const stateRoot = tree.getRoot()
@@ -122,35 +123,4 @@ contract('AdExCore', function(accounts) {
 		// @TODO should the byzantine cases of channelWithdraw be in a separate test? (validators trying to attack)
 		// @TODO can't withdraw more than the entire channel deposit, even if validators allow it
 	})
-
-	function sampleChannel(creator, amount, validUntil, nonce) {
-		const spec = new Buffer(32)
-		spec.writeUInt32BE(nonce)
-		return new Channel({
-			creator,
-			tokenAddr: token.address,
-			tokenAmount: amount,
-			validUntil,
-			validators: [accounts[0], accounts[1]],
-			spec,
-		})
-	}
-	async function expectEVMError(promise, errString) {
-		try {
-			await promise;
-			assert.isOk(false, 'should have failed with '+errString)
-		} catch(e) {
-			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
-		}
-	}
-	function moveTime(web3, time) {
-		return new Promise(function(resolve, reject) {
-			web3.currentProvider.send({
-				jsonrpc: '2.0',
-				method: 'evm_increaseTime',
-				params: [time],
-				id: 0,
-			}, (err, res) => err ? reject(err) : resolve(res))
-		})
-	}
 })
