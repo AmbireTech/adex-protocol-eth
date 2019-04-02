@@ -154,6 +154,26 @@ contract('AdExCore', function(accounts) {
 		await expectEVMError(validWithdraw(), 'EXPIRED')
 	})
 
+	it('channelWithdraw: cannot withdraw more than the channel', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const totalDeposit = tokens
+		const channel = sampleChannel(accounts, token.address, userAcc, totalDeposit, blockTime+50, 3)
+		const channelWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple())
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
+		const leafAmnt = totalDeposit + 1
+		const [stateRoot, validSigs, proof] = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: leafAmnt },
+			userAcc, leafAmnt
+		)
+		await expectEVMError(
+			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, validSigs, proof, leafAmnt),
+			'WITHDRAWING_MORE_THAN_CHANNEL'
+		)
+	})
+
+
 	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
 	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
 	// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
