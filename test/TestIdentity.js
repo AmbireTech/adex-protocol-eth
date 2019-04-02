@@ -219,6 +219,50 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'INSUFFICIENT_PRIVILEGE_TRANSACTION')
 	})
 
+	// Relay two transactions
+	// this could be quite useful in real applications, e.g. approve and call into a contract in one TX
+	it('relay multiple transactions', async function() {
+		const getTuples = txns => txns.map(tx => new Transaction(tx).toSolidityTuple())
+		const getSigs = function(txns) {
+			return Promise.all(txns.map(args => {
+				const tx = new Transaction(args)
+				const hash = tx.hashHex()
+				return ethSign(hash, userAcc).then(sig => splitSig(sig))
+			}))
+		}
+
+		const initialBal = await token.balanceOf(relayerAddr)
+		const initialNonce = (await id.nonce()).toNumber()
+		const txns = [100, 200].map((n, i) =>
+			({
+				identityContract: id.address,
+				nonce: initialNonce + i,
+				feeTokenAddr: token.address,
+				feeTokenAmount: 5,
+				to: id.address,
+				data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
+			})
+		)
+
+		// Cannot use an invalid identityContract
+		const invalidTxns1 = [txns[0], { ...txns[1], identityContract: token.address }]
+		await expectEVMError(id.execute(getTuples(invalidTxns1), await getSigs(invalidTxns1)), 'TRANSACTION_NOT_FOR_CONTRACT')
+
+		// Cannot use a different fee token
+		const invalidTxns2 = [txns[0], { ...txns[1], feeTokenAddr: accounts[8] }]
+		await expectEVMError(id.execute(getTuples(invalidTxns2), await getSigs(invalidTxns2)), 'EXECUTE_NEEDS_SINGLE_TOKEN')
+
+		const receipt = await (await id.execute(getTuples(txns), await getSigs(txns))).wait()
+		// 2 times LogPrivilegeChanged, 1 transfer (fee)
+		assert.equal(receipt.events.length, 3, 'has the right events length')
+		assert.equal(receipt.events.filter(x => x.event === 'LogPrivilegeChanged').length, 2, 'LogPrivilegeChanged happened twice')
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialBal.toNumber() + txns.map(x => x.feeTokenAmount).reduce((a, b) => a+b, 0),
+			'fee was paid out for all transactions'
+		)
+	})
+
 	it('execute by sender', async function() {
 		const initialNonce = (await id.nonce()).toNumber()
 		const relayerTx = new Transaction({
