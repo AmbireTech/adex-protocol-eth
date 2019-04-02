@@ -127,6 +127,23 @@ contract Identity {
 		}
 	}
 
+	function executeBySender(Transaction[] memory txns)
+		public
+	{
+		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_SENDER');
+		uint len = txns.length;
+		for (uint i=0; i<len; i++) {
+			Transaction memory txn = txns[i];
+			require(txn.nonce == nonce, 'WRONG_NONCE');
+
+			nonce = nonce.add(1);
+
+			executeCall(txn.to, txn.value, txn.data);
+		}
+		// The actual anti-bricking mechanism - do not allow the sender to drop his own priviledges
+		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
+	}
+
 	function executeRoutines(RoutineAuthorization memory auth, bytes32[3] memory signature, RoutineOperation[] memory operations)
 		public
 	{
