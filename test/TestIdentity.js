@@ -225,7 +225,7 @@ contract('Identity', function(accounts) {
 			to: id.address,
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
 		})
-		
+
 		await expectEVMError(id.executeBySender([relayerTx.toSolidityTuple()]), 'INSUFFICIENT_PRIVILEGE_SENDER')
 
 		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
