@@ -50,6 +50,8 @@ contract('AdExCore', function(accounts) {
 
 		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
 		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
+
+		await expectEVMError(core.channelOpen(channel.toSolidityTuple()), 'INVALID_STATE')
 	})
 
 	it('channelWithdrawExpired', async function() {
@@ -68,6 +70,9 @@ contract('AdExCore', function(accounts) {
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
 		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
 		assert.equal(await token.balanceOf(userAcc), initialBal.toNumber() + tokens, 'funds are returned')
+
+		// cannot do it again
+		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'INVALID_STATE')
 	})
 
 	it('channelWithdraw', async function() {
