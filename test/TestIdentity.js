@@ -94,6 +94,49 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
 
+	it('IdentityFactory - deployAndFund', async function() {
+		const fundAmnt = 10000
+		// Generating a proxy deploy transaction
+		const deployTx = getProxyDeployTx(
+			id.address,
+			token.address, relayerAddr, 0,
+			// @TODO: change that when we implement the registry
+			NULL_ADDR,
+			[[userAcc, 3]],
+			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
+		)
+
+		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
+		const gasLimit = 300 * 1000
+
+		const deployAndFund = identityFactory.deployAndFund.bind(
+			identityFactory,
+			deployTx.data, salt,
+			token.address, fundAmnt,
+			{ gasLimit }
+		)
+
+		// Only relayer can call
+		const userSigner = web3Provider.getSigner(userAcc)
+		const identityFactoryUser = new Contract(identityFactory.address, IdentityFactory._json.abi, userSigner)
+		await expectEVMError(
+			identityFactoryUser.deployAndFund(deployTx.data, salt, token.address, fundAmnt, { gasLimit }),
+			'ONLY_RELAYER'
+		)
+
+		// No tokens, should revert
+		await expectEVMError(deployAndFund())
+
+		// Set tokens
+		await token.setBalanceTo(identityFactory.address, fundAmnt)
+
+		// Call successfully
+		const receipt = await (await deployAndFund()).wait()
+		const deployedEv = receipt.events.find(x => x.event === 'Deployed')
+		assert.ok(deployedEv, 'has deployedEv')
+		assert.equal(await token.balanceOf(deployedEv.args.addr), fundAmnt, 'deployed contract has received the funding amount')
+	})
+
 	it('relay a tx', async function() {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
@@ -311,11 +354,10 @@ contract('Identity', function(accounts) {
 			await promise;
 			assert.isOk(false, 'should have failed with '+errString)
 		} catch(e) {
-			assert.equal(
-				e.message,
-				'VM Exception while processing transaction: revert '+errString,
-				'error message is incorrect'
-			)
+			const expectedString = errString ?
+				'VM Exception while processing transaction: revert '+errString
+				: 'VM Exception while processing transaction: revert'
+			assert.equal(e.message, expectedString, 'error message is incorrect')
 		}
 	}
 
