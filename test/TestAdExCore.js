@@ -16,35 +16,36 @@ contract('AdExCore', function(accounts) {
 	let libMock
 
 	const tokens = 2000
+	const userAcc = accounts[0] 
 
 	before(async function() {
 		const tokenWeb3 = await MockToken.new()
 		const coreWeb3 = await AdExCore.deployed()
 		libMock = await MockLibs.new()
 		// WARNING: all invokations to core/token will be from account[0]
-		const signer = web3Provider.getSigner(accounts[0])
+		const signer = web3Provider.getSigner(userAcc)
 		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 	})
 	beforeEach(async function() {
-		await token.setBalanceTo(accounts[0], tokens)
+		await token.setBalanceTo(userAcc, tokens)
 	})
 
 	it('SignatureValidator', async function() {
 		const hash = '0x0202020202020202020202020202020202020202020202020202020202020202'
-		const sig = splitSig(await ethSign(hash, accounts[0]))
-		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
+		const sig = splitSig(await ethSign(hash, userAcc))
+		assert.isTrue(await libMock.isValidSig(hash, userAcc, sig), 'isValidSig returns true for the signer')
 		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
 	})
 
 	it('channelOpen', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 0)
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 0)
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
 		assert.ok(ev, 'has LogChannelOpen event')
 
-		assert.equal(await token.balanceOf(accounts[0]), 0, 'account balance is 0')
+		assert.equal(await token.balanceOf(userAcc), 0, 'account balance is 0')
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
 		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
@@ -53,8 +54,9 @@ contract('AdExCore', function(accounts) {
 
 	it('channelWithdrawExpired', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 1)
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 1)
 
+		//const initialBal = await token.balanceOf(userAcc)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Ensure we can't do this too early
@@ -73,19 +75,19 @@ contract('AdExCore', function(accounts) {
 
 	it('channelWithdraw', async function() {
 		// Prepare the tree and sign the state root
-		const elem1 = Channel.getBalanceLeaf(accounts[0], tokens/2)
+		const elem1 = Channel.getBalanceLeaf(userAcc, tokens/2)
 		const elem2 = Channel.getBalanceLeaf(accounts[1], tokens/4)
 		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
 		const tree = new MerkleTree([ elem1, elem2, elem3 ])
 		const proof = tree.proof(elem1)
 
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts, token.address, accounts[0], tokens, blockTime+50, 2)
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 2)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		const stateRoot = tree.getRoot()
 		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
-		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
+		const sig1 = splitSig(await ethSign(hashToSignHex, userAcc))
 		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 
 		// Can't withdraw an amount that is not in the tree
@@ -105,11 +107,11 @@ contract('AdExCore', function(accounts) {
 		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
 		const receipt = await tx.wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
-		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
+		assert.equal(await token.balanceOf(userAcc), tokens/2, 'user has a proper token balance')
 
 		const channelId = channel.hash(core.address)
 		assert.equal(await core.withdrawn(channelId), tokens/2, 'channel has the right withdrawn value')
-		assert.equal(await core.withdrawnPerUser(channelId, accounts[0]), tokens/2, 'channel hsa right withdrawnPerUser')
+		assert.equal(await core.withdrawnPerUser(channelId, userAcc), tokens/2, 'channel hsa right withdrawnPerUser')
 		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
 
 		// @TODO completely exhaust channel, use .withdrawn to ensure it's exhausted
