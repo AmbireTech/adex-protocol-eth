@@ -82,12 +82,13 @@ contract('AdExCore', function(accounts) {
 
 	it('channelWithdraw', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime+50, 2)
+		const totalDeposit = tokens
+		const channel = sampleChannel(accounts, token.address, userAcc, totalDeposit, blockTime+50, 2)
 		const channelWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple())
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Prepare the tree and sign the state root
-		const userLeafAmnt = tokens/2
+		const userLeafAmnt = totalDeposit/2
 		const [stateRoot, validSigs, proof] = await balanceTreeToWithdrawArgs(
 			channel,
 			{ [userAcc]: userLeafAmnt },
@@ -151,11 +152,14 @@ contract('AdExCore', function(accounts) {
 		assert.equal(incWithdrawEvent.args.amount, 10, 'withdrawn amount is 10')
 		assert.equal(await core.withdrawn(channelId), incUserLeafAmnt, 'channel has the right withdrawn value')
 
-		// @TODO completely exhaust channel, use .withdrawn to ensure it's exhausted
-		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
-
 		await moveTime(web3, 100)
 		await expectEVMError(validWithdraw(), 'EXPIRED')
+
+		// Now we withdrawExpired, and we can only get the rest
+		const expiredReceipt = await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
+		const expiredEv = expiredReceipt.events.find(x => x.event === 'LogChannelWithdrawExpired')
+		assert.equal(expiredEv.args.amount.toNumber() + incUserLeafAmnt, totalDeposit, 'withdrawExpired returned the rest of the funds')
+		assert.equal(await token.balanceOf(userAcc), totalDeposit, 'totalDeposit is returned')
 	})
 
 	it('channelWithdraw: cannot withdraw more than the channel', async function() {
