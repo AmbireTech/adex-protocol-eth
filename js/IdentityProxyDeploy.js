@@ -34,6 +34,7 @@ function getProxyDeployTx(
 			erc20Header = `interface GeneralERC20 { function transfer(address to, uint256 value) external; }`
 			feeCode = `GeneralERC20(${feeTokenAddr}).transfer(${feeBeneficiery}, ${feeAmnt});`
 		} else {
+			assert.ok(opts.safeERC20Artifact, 'opts: either unsafeERC20 or safeERC20Artifact required')
 			erc20Header = opts.safeERC20Artifact.source
 				.split('\n')
 				.filter(x => !x.startsWith('pragma '))
