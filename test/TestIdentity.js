@@ -3,7 +3,8 @@ const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
+const { moveTime, sampleChannel, expectEVMError } = require('./')
+const { Transaction, RoutineAuthorization, Channel, splitSig, MerkleTree } = require('../js')
 const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const promisify = require('util').promisify
@@ -281,7 +282,7 @@ contract('Identity', function(accounts) {
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
 		// so we need to workaround with + DAY_SECONDS
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
-		const channel = sampleChannel(id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		const channel = sampleChannel(accounts, token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -348,39 +349,4 @@ contract('Identity', function(accounts) {
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 	})
-
-	async function expectEVMError(promise, errString) {
-		try {
-			await promise;
-			assert.isOk(false, 'should have failed with '+errString)
-		} catch(e) {
-			const expectedString = errString ?
-				'VM Exception while processing transaction: revert '+errString
-				: 'VM Exception while processing transaction: revert'
-			assert.equal(e.message, expectedString, 'error message is incorrect')
-		}
-	}
-
-	function sampleChannel(creator, amount, validUntil, nonce) {
-		const spec = new Buffer(32)
-		spec.writeUInt32BE(nonce)
-		return new Channel({
-			creator,
-			tokenAddr: token.address,
-			tokenAmount: amount,
-			validUntil,
-			validators: [accounts[0], accounts[1]],
-			spec,
-		})
-	}
-	function moveTime(web3, time) {
-		return new Promise(function(resolve, reject) {
-			web3.currentProvider.send({
-				jsonrpc: '2.0',
-				method: 'evm_increaseTime',
-				params: [time],
-				id: 0,
-			}, (err, res) => err ? reject(err) : resolve(res))
-		})
-	}
 })
