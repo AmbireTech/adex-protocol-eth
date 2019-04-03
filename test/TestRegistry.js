@@ -19,7 +19,7 @@ contract('Registry', function(accounts) {
 		const validator = accounts[1]
 
 		// Another user cannot invoke
-		expectEVMError(registryUser.setWhitelisted(validator, true), 'ONLY_OWNER');
+		await expectEVMError(registryUser.setWhitelisted(validator, true), 'ONLY_OWNER');
 
 		// shold be false to start with
 		assert.equal(await registry.whitelisted(validator), false)
@@ -39,7 +39,7 @@ contract('Registry', function(accounts) {
 	it('changing ownership', async function() {
 		// Another user cannot invoke
 		const registryUser = new Contract(registry.address, Registry._json.abi, web3Provider.getSigner(accounts[2]))
-		expectEVMError(registryUser.changeOwner(accounts[2]), 'ONLY_OWNER')
+		await expectEVMError(registryUser.changeOwner(accounts[2]), 'ONLY_OWNER')
 
 		const receipt = await (await registry.changeOwner(accounts[2])).wait()
 		assert.equal(await registry.owner(), accounts[2], 'owner has updated')
@@ -49,6 +49,6 @@ contract('Registry', function(accounts) {
 		assert.equal(accounts[2], ownerChangedEv.args.newOwner, 'new owner address in event matches')
 
 		// since the owner has changed, the previous owner can no longer change owner
-		expectEVMError(registry.changeOwner(accounts[3]), 'ONLY_OWNER')
+		await expectEVMError(registry.changeOwner(accounts[3]), 'ONLY_OWNER')
 	})
 })
