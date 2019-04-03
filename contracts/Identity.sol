@@ -16,9 +16,8 @@ contract Identity {
 
 	// Storage
 	// WARNING: be careful when modifying this
-	// privileges and registryAddr must always be respectively the 0th and 1st thing in storage
+	// privileges must always be 0th thing in storage
 	mapping (address => uint8) public privileges;
-	address public registryAddr;
 	// The next allowed nonce
 	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
@@ -74,10 +73,9 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address[] memory addrs, uint8[] memory privLevels, address regAddr)
+	constructor(address[] memory addrs, uint8[] memory privLevels)
 		public
 	{
-		registryAddr = regAddr;
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];

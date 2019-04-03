@@ -4,21 +4,19 @@ const keccak256 = require('js-sha3').keccak256
 const assert = require('assert')
 
 // opts:
-// * privSlot, registrySlot: the storage slots used by the proxiedAddr
+// * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
 function getProxyDeployTx(
 	proxiedAddr,
 	feeTokenAddr,
 	feeBeneficiery,
 	feeAmnt,
-	registryAddr,
 	privLevels,
 	opts
 ) {
 	assert.ok(opts, 'opts not passed')
-	const { privSlot, registrySlot } = opts
+	const { privSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
-	assert.ok(typeof registrySlot === 'number', 'registrySlot is a number')
 
 	const privLevelsCode = privLevels
 		.map(([addr, level]) => {
@@ -53,10 +51,7 @@ contract IdentityProxy {
 	constructor()
 		public
 	{
-		assembly {
-			${privLevelsCode}
-			sstore(${registrySlot}, ${registryAddr})
-		}
+		assembly { ${privLevelsCode} }
 		${feeCode}
 	}
 
@@ -93,7 +88,7 @@ contract IdentityProxy {
 }
 
 function getStorageSlotsFromArtifact(IdentityArtifact) {
-	// Find storage locations of privileges, registryAddr
+	// Find storage locations of privileges
 	const identityNode = IdentityArtifact.ast.nodes.find(
 		({ name, nodeType }) => nodeType === 'ContractDefinition' && name === 'Identity'
 	)
@@ -102,10 +97,8 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 		n => n.nodeType === 'VariableDeclaration' && !n.constant && n.stateVariable
 	)
 	const privSlot = storageVariableNodes.findIndex(x => x.name === 'privileges')
-	const registrySlot = storageVariableNodes.findIndex(x => x.name === 'registryAddr')
 	assert.notEqual(privSlot, -1, 'privSlot was not found')
-	assert.notEqual(registrySlot, -1, 'registrySlot was not found')
-	return { privSlot, registrySlot }
+	return { privSlot }
 }
 
 module.exports = { getProxyDeployTx, getStorageSlotsFromArtifact }

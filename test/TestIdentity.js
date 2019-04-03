@@ -59,7 +59,7 @@ contract('Identity', function(accounts) {
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 
 		// deploy an Identity
-		const idWeb3 = await Identity.new([userAcc], [3], registryAddr)
+		const idWeb3 = await Identity.new([userAcc], [3])
 		id = new Contract(idWeb3.address, Identity._json.abi, signer)
 		await token.setBalanceTo(id.address, 10000)
 	})
@@ -73,7 +73,6 @@ contract('Identity', function(accounts) {
 			token.address,
 			relayerAddr,
 			feeAmnt,
-			registryAddr,
 			[[userAcc, 3]],
 			// Using this option is fine if the token.address is a token that reverts on failures
 			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) }
@@ -122,7 +121,6 @@ contract('Identity', function(accounts) {
 			token.address,
 			relayerAddr,
 			0,
-			registryAddr,
 			[[userAcc, 3]],
 			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) }
 		)
