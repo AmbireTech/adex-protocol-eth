@@ -360,7 +360,7 @@ contract('Identity', function(accounts) {
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			registry: registryAddr,
-			validUntil: blockTime + 14*DAY_SECONDS,
+			validUntil: blockTime + 14 * DAY_SECONDS,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: fee
 		})
