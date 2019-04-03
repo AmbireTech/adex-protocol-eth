@@ -10,7 +10,14 @@ const Registry = artifacts.require('Registry')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { moveTime, sampleChannel, expectEVMError } = require('./')
-const { Transaction, RoutineAuthorization, RoutineOps, Channel, splitSig, MerkleTree } = require('../js')
+const {
+	Transaction,
+	RoutineAuthorization,
+	RoutineOps,
+	Channel,
+	splitSig,
+	MerkleTree
+} = require('../js')
 const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -24,8 +31,6 @@ const DAY_SECONDS = 24 * 60 * 60
 // gasLimit must be hardcoded cause ganache cannot estimate it properly
 // that's cause of the call() that we do here; see https://github.com/AdExNetwork/adex-protocol-eth/issues/55
 const gasLimit = 300000
-
-const coreInterface = new Interface(AdExCore._json.abi)
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
@@ -116,14 +121,10 @@ contract('Identity', function(accounts) {
 	it('IdentityFactory - deployAndFund', async function() {
 		const fundAmnt = 10000
 		// Generating a proxy deploy transaction
-		const deployTx = getProxyDeployTx(
-			id.address,
-			token.address,
-			relayerAddr,
-			0,
-			[[userAcc, 3]],
-			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) }
-		)
+		const deployTx = getProxyDeployTx(id.address, token.address, relayerAddr, 0, [[userAcc, 3]], {
+			unsafeERC20: true,
+			...getStorageSlotsFromArtifact(Identity)
+		})
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const deployAndFund = identityFactory.deployAndFund.bind(
@@ -424,6 +425,7 @@ contract('Identity', function(accounts) {
 			blockTime + DAY_SECONDS,
 			0
 		)
+		const coreInterface = new Interface(AdExCore._json.abi)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -464,7 +466,7 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			authSig,
 			[
-				getChannelWithdrawOp([
+				RoutineOps.channelWithdraw([
 					channel.toSolidityTuple(),
 					stateRoot,
 					[vsig1, vsig2],
@@ -490,7 +492,7 @@ contract('Identity', function(accounts) {
 		]
 		await expectEVMError(
 			id.executeRoutines(auth.toSolidityTuple(), authSig, [
-				getChannelWithdrawOp(wrongWithdrawArgs)
+				RoutineOps.channelWithdraw(wrongWithdrawArgs)
 			]),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
@@ -523,7 +525,7 @@ contract('Identity', function(accounts) {
 			0
 		)
 		await expectEVMError(
-			executeRoutines([getChannelOpenOp([channelEvil.toSolidityTuple()])]),
+			executeRoutines([RoutineOps.channelOpen([channelEvil.toSolidityTuple()])]),
 			'VALIDATOR_NOT_WHITELISTED'
 		)
 
@@ -536,14 +538,17 @@ contract('Identity', function(accounts) {
 			blockTime + DAY_SECONDS,
 			0
 		)
-		const receipt = await (await executeRoutines([getChannelOpenOp([channel.toSolidityTuple()])], {
-			gasLimit
-		})).wait()
+		const receipt = await (await executeRoutines(
+			[RoutineOps.channelOpen([channel.toSolidityTuple()])],
+			{
+				gasLimit
+			}
+		)).wait()
 		// events should be: transfer, channelOpen
 		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
 
 		// withdrawExpired should work
-		const withdrawExpiredOp = getChannelWithdrawExpiredOp([channel.toSolidityTuple()])
+		const withdrawExpiredOp = RoutineOps.channelWithdrawExpired([channel.toSolidityTuple()])
 		// ensure we report the underlying OUTPACE error properly
 		await expectEVMError(executeRoutines([withdrawExpiredOp]), 'NOT_EXPIRED')
 
@@ -555,17 +560,3 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
 	})
 })
-
-// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
-function getChannelWithdrawOp(args) {
-	const data = `0x${coreInterface.functions.channelWithdraw.encode(args).slice(10)}`
-	return [0, data]
-}
-function getChannelWithdrawExpiredOp(args) {
-	const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
-	return [1, data]
-}
-function getChannelOpenOp(args) {
-	const data = `0x${coreInterface.functions.channelOpen.encode(args).slice(10)}`
-	return [3, data]
-}

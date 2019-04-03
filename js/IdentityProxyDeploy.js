@@ -6,14 +6,7 @@ const assert = require('assert')
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
-function getProxyDeployTx(
-	proxiedAddr,
-	feeTokenAddr,
-	feeBeneficiery,
-	feeAmnt,
-	privLevels,
-	opts
-) {
+function getProxyDeployTx(proxiedAddr, feeTokenAddr, feeBeneficiery, feeAmnt, privLevels, opts) {
 	assert.ok(opts, 'opts not passed')
 	const { privSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
