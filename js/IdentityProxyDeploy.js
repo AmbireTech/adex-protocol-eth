@@ -3,6 +3,13 @@ const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 const assert = require('assert')
 
+function getMappingSstore(slotNumber, keyType, key, value) {
+	// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
+	const buf = abi.rawEncode([keyType, 'uint256'], [key, slotNumber])
+	const slot = keccak256(buf)
+	return `sstore(0x${slot}, ${value})`
+}
+
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
@@ -15,22 +22,12 @@ function getProxyDeployTx(proxiedAddr, privLevels, opts) {
 	if (opts.routineAuthorizations) {
 		assert.ok(typeof routineAuthsSlot === 'number', 'routineAuthsSlot is a number')
 		routineAuthsCode = opts.routineAuthorizations
-			.map(hash => {
-				// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
-				const buf = abi.rawEncode(['bytes32', 'uint256'], [hash, routineAuthsSlot])
-				const slot = keccak256(buf)
-				return `sstore(0x${slot}, 0x01)`
-			})
+			.map(hash => getMappingSstore(routineAuthsSlot, 'bytes32', hash, '0x01'))
 			.join('\n')
 	}
 
 	const privLevelsCode = privLevels
-		.map(([addr, level]) => {
-			// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
-			const buf = abi.rawEncode(['address', 'uint256'], [addr, privSlot])
-			const slot = keccak256(buf)
-			return `sstore(0x${slot}, ${level})`
-		})
+		.map(([addr, level]) => getMappingSstore(privSlot, 'address', addr, level))
 		.join('\n')
 
 	let erc20Header = ''
