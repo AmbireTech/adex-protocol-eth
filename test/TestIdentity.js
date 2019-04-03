@@ -343,6 +343,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
+			registry: registryAddr,
 			validUntil: blockTime + DAY_SECONDS,
 			feeTokenAddr: token.address,
 			feeTokenAmount: fee
@@ -454,6 +455,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
+			registry: registryAddr,
 			validUntil: blockTime + DAY_SECONDS,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0
@@ -505,6 +507,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
+			registry: registryAddr,
 			validUntil: blockTime + DAY_SECONDS * 4,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0
