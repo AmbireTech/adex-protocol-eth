@@ -64,6 +64,7 @@ contract Identity {
 		address identityContract;
 		address relayer;
 		address outpace;
+		address registry;
 		uint validUntil;
 		address feeTokenAddr;
 		uint feeTokenAmount;
@@ -178,7 +179,7 @@ contract Identity {
 				uint validatorsLen = channel.validators.length;
 				for (uint j=0; j<validatorsLen; j++) {
 					require(
-						ValidatorRegistry(registryAddr).whitelisted(channel.validators[j]),
+						ValidatorRegistry(auth.registry).whitelisted(channel.validators[j]),
 						"VALIDATOR_NOT_WHITELISTED"
 					);
 				}

@@ -51,6 +51,7 @@ function RoutineAuthorization(args) {
 	this.identityContract = ensure.Address(args.identityContract)
 	this.relayer = ensure.Address(args.relayer)
 	this.outpace = ensure.Address(args.outpace)
+	this.registry = ensure.Address(args.registry)
 	this.validUntil = ensure.Uint256(args.validUntil)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
 	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
@@ -60,11 +61,12 @@ function RoutineAuthorization(args) {
 
 RoutineAuthorization.prototype.hash = function() {
 	const buf = abi.rawEncode(
-		['address', 'address', 'address', 'uint256', 'address', 'uint256'],
+		['address', 'address', 'address', 'address', 'uint256', 'address', 'uint256'],
 		[
 			this.identityContract,
 			this.relayer,
 			this.outpace,
+			this.registry,
 			this.validUntil,
 			this.feeTokenAddr,
 			this.feeTokenAmount
@@ -83,6 +85,7 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 		this.identityContract,
 		this.relayer,
 		this.outpace,
+		this.registry,
 		`0x${this.validUntil.toString(16)}`,
 		this.feeTokenAddr,
 		`0x${this.feeTokenAmount.toString(16)}`
