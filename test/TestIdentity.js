@@ -19,6 +19,11 @@ const DAY_SECONDS = 24 * 60 * 60
 
 const coreInterface = new Interface(AdExCore._json.abi)
 
+// WARNING
+// READ THIS
+// Apparently gas estimations are broken when we're using the Identity contract
+// so we HAVE to hardcode the gasLimit here
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	let identityFactory
@@ -171,7 +176,6 @@ contract('Identity', function(accounts) {
 		)
 
 		// Do the execute() correctly, verify if it worked
-		// @TODO: set gasLimit manually everywhere
 		const sig = splitSig(await ethSign(hash, userAcc))
 
 		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit: 200*1000 })).wait()
@@ -215,6 +219,51 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]), 'INSUFFICIENT_PRIVILEGE_TRANSACTION')
 	})
 
+	// Relay two transactions
+	// this could be quite useful in real applications, e.g. approve and call into a contract in one TX
+	it('relay multiple transactions', async function() {
+		const getTuples = txns => txns.map(tx => new Transaction(tx).toSolidityTuple())
+		const getSigs = function(txns) {
+			return Promise.all(txns.map(args => {
+				const tx = new Transaction(args)
+				const hash = tx.hashHex()
+				return ethSign(hash, userAcc).then(sig => splitSig(sig))
+			}))
+		}
+
+		const initialBal = await token.balanceOf(relayerAddr)
+		const initialNonce = (await id.nonce()).toNumber()
+		const txns = [100, 200].map((n, i) =>
+			({
+				identityContract: id.address,
+				nonce: initialNonce + i,
+				feeTokenAddr: token.address,
+				feeTokenAmount: 5,
+				to: id.address,
+				data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4]),
+			})
+		)
+		const totalFee = txns.map(x => x.feeTokenAmount).reduce((a, b) => a+b, 0)
+
+		// Cannot use an invalid identityContract
+		const invalidTxns1 = [txns[0], { ...txns[1], identityContract: token.address }]
+		await expectEVMError(id.execute(getTuples(invalidTxns1), await getSigs(invalidTxns1)), 'TRANSACTION_NOT_FOR_CONTRACT')
+
+		// Cannot use a different fee token
+		const invalidTxns2 = [txns[0], { ...txns[1], feeTokenAddr: accounts[8] }]
+		await expectEVMError(id.execute(getTuples(invalidTxns2), await getSigs(invalidTxns2)), 'EXECUTE_NEEDS_SINGLE_TOKEN')
+
+		const receipt = await (await id.execute(getTuples(txns), await getSigs(txns))).wait()
+		// 2 times LogPrivilegeChanged, 1 transfer (fee)
+		assert.equal(receipt.events.length, 3, 'has the right events length')
+		assert.equal(receipt.events.filter(x => x.event === 'LogPrivilegeChanged').length, 2, 'LogPrivilegeChanged happened twice')
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialBal.toNumber() + totalFee,
+			'fee was paid out for all transactions'
+		)
+	})
+
 	it('execute by sender', async function() {
 		const initialNonce = (await id.nonce()).toNumber()
 		const relayerTx = new Transaction({
@@ -229,7 +278,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.executeBySender([relayerTx.toSolidityTuple()]), 'INSUFFICIENT_PRIVILEGE_SENDER')
 
 		const idWithSender = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
-		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()])).wait()
+		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()], { gasLimit: 200*1000 })).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 		assert.equal((await id.nonce()).toNumber(), initialNonce+1, 'nonce has increased with 1')
 
@@ -275,7 +324,7 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			sig,
 			[op],
-			{ gasLimit: 500000 }
+			{ gasLimit: 500 * 1000 }
 		)
 		const receipt = await (await execRoutines()).wait()
 		//console.log(receipt.gasUsed.toString(10))
@@ -385,7 +434,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('open a channel via routines', async function() {
+	it('channelOpen and channelWithdrawExpired, via routines', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
@@ -394,43 +443,59 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: blockTime + DAY_SECONDS,
+			validUntil: blockTime + DAY_SECONDS*4,
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0,
 		})
 		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
+		const executeRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), authSig)
 
 		// a channel with non-whitelisted validators
 		const channelEvil = sampleChannel([allowedValidator1, accounts[2]], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		await expectEVMError(
-			id.executeRoutines(
-				auth.toSolidityTuple(),
-				authSig,
-				[getChannelOpenOp([channelEvil.toSolidityTuple()])],
-				{ gasLimit: 300000 }
-			),
+			executeRoutines([
+				getChannelOpenOp([channelEvil.toSolidityTuple()]),
+			]),
 			'VALIDATOR_NOT_WHITELISTED'
 		)
 
 		// we can open a channel with the whitelisted validators
 		const channel = sampleChannel([allowedValidator1, allowedValidator2], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
-		const receipt = await (await id.executeRoutines(
-			auth.toSolidityTuple(),
-			authSig,
+		const receipt = await (await executeRoutines(
 			[getChannelOpenOp([channel.toSolidityTuple()])],
 			{ gasLimit: 300000 }
 		)).wait()
-		// transfer, channelOpen
+		// events should be: transfer, channelOpen
 		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
+
+		// withdrawExpired should work
+		const withdrawExpiredOp = getChannelWithdrawExpiredOp([channel.toSolidityTuple()])
+		// ensure we report the underlying OUTPACE error properly
+		await expectEVMError(
+			executeRoutines([withdrawExpiredOp]),
+			'NOT_EXPIRED'
+		)
+
+		// move time, withdrawExpired successfully and check results
+		await moveTime(web3, DAY_SECONDS*3)
+		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit: 300000 })).wait()
+		// LogWithdrawExpired and Transfer
+		assert.equal(expiredReceipt.events.length, 2, 'right event count')
+		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
 	})
 })
 
+// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+function getChannelWithdrawOp(args) {
+	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
+	return [0, data]
+}
+function getChannelWithdrawExpiredOp(args) {
+	const data = '0x'+coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)
+	return [1, data]
+}
 function getChannelOpenOp(args) {
 	const data = '0x'+coreInterface.functions.channelOpen.encode(args).slice(10)
 	return [3, data]
 }
-function getChannelWithdrawOp(args) {
-	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
-	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
-	return [0, data]
-}
+
