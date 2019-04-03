@@ -180,6 +180,10 @@ contract Identity {
 					);
 				}
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
+			} else if (op.mode == 4) {
+				// Approve OUTPACE
+				(address tokenAddr, uint amount) = abi.decode(op.data, (address, uint));
+				SafeERC20.approve(tokenAddr, auth.outpace, amount);
 			} else {
 				require(false, 'INVALID_MODE');
 			}
