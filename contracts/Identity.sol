@@ -38,8 +38,8 @@ contract Identity {
 	enum RoutineOp {
 		ChannelWithdraw,
 		ChannelWithdrawExpired,
-		Withdraw,
-		ChannelOpen
+		ChannelOpen,
+		Withdraw
 	}
 
 	// Events
@@ -159,18 +159,12 @@ contract Identity {
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
-			// @TODO: is it possible to preserve original error from the call
 			if (op.mode == RoutineOp.ChannelWithdraw) {
 				// Channel: Withdraw
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
 			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.Withdraw) {
-				// Withdraw from identity
-				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
-				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-				SafeERC20.transfer(tokenAddr, to, amount);
 			} else if (op.mode == RoutineOp.ChannelOpen) {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
@@ -187,8 +181,13 @@ contract Identity {
 				SafeERC20.approve(channel.tokenAddr, auth.outpace, 0);
 				SafeERC20.approve(channel.tokenAddr, auth.outpace, channel.tokenAmount);
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
+			} else if (op.mode == RoutineOp.Withdraw) {
+				// Withdraw from identity
+				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
+				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
-				require(false, 'INVALID_MODE');
+				revert('INVALID_MODE');
 			}
 		}
 		if (!routinePaidFees[hash] && auth.feeTokenAmount > 0) {
