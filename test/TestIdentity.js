@@ -86,14 +86,10 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0
 		})
-		const deployTx = getProxyDeployTx(
-			baseIdentityAddr,
-			[[userAcc, 3]],
-			{
-				routineAuthorizations: [defaultAuth.hash()],
-				...getStorageSlotsFromArtifact(Identity)
-			}
-		)
+		const deployTx = getProxyDeployTx(baseIdentityAddr, [[userAcc, 3]], {
+			routineAuthorizations: [defaultAuth.hash()],
+			...getStorageSlotsFromArtifact(Identity)
+		})
 		const receipt = await (await identityFactory.deploy(deployTx.data, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
@@ -105,21 +101,17 @@ contract('Identity', function(accounts) {
 		const feeAmnt = 250
 
 		// Generating a proxy deploy transaction
-		const deployTx = getProxyDeployTx(
-			baseIdentityAddr,
-			[[userAcc, 3]],
-			{
-				fee: {
-					tokenAddr: token.address,
-					recepient: relayerAddr,
-					amount: feeAmnt,
-					// Using this option is fine if the token.address is a token that reverts on failures
-					unsafeERC20: true,
-					//safeERC20Artifact: artifacts.require('SafeERC20')
-				},
-				...getStorageSlotsFromArtifact(Identity)
-			}
-		)
+		const deployTx = getProxyDeployTx(baseIdentityAddr, [[userAcc, 3]], {
+			fee: {
+				tokenAddr: token.address,
+				recepient: relayerAddr,
+				amount: feeAmnt,
+				// Using this option is fine if the token.address is a token that reverts on failures
+				unsafeERC20: true
+				// safeERC20Artifact: artifacts.require('SafeERC20')
+			},
+			...getStorageSlotsFromArtifact(Identity)
+		})
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
