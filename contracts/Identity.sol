@@ -153,7 +153,7 @@ contract Identity {
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
 		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
