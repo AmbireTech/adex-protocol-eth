@@ -1,10 +1,10 @@
 pragma solidity ^0.5.6;
 pragma experimental ABIEncoderV2;
 
-import "../libs/SafeMath.sol";
-import "../libs/SafeERC20.sol";
-import "../libs/SignatureValidator.sol";
-import "../libs/ChannelLibrary.sol";
+import "./libs/SafeMath.sol";
+import "./libs/SafeERC20.sol";
+import "./libs/SignatureValidator.sol";
+import "./libs/ChannelLibrary.sol";
 
 contract ValidatorRegistry {
 	// The contract will probably just use a mapping, but this is a generic interface

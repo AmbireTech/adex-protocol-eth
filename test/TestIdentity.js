@@ -1,9 +1,11 @@
 const AdExCore = artifacts.require('AdExCore')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
+const Registry = artifacts.require('Registry')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { Transaction, RoutineAuthorization, splitSig, Channel, MerkleTree } = require('../js')
+const { moveTime, sampleChannel, expectEVMError } = require('./')
+const { Transaction, RoutineAuthorization, Channel, splitSig, MerkleTree } = require('../js')
 const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const promisify = require('util').promisify
@@ -15,20 +17,21 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 
-// @TODO remove this when we implement the ValidatorRegistry
-const NULL_ADDR = '0x0000000000000000000000000000000000000000'
+const coreInterface = new Interface(AdExCore._json.abi)
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
-	const coreInterface = new Interface(AdExCore._json.abi)
 	let identityFactory
 	let id
 	let token
 	let coreAddr
+	let registryAddr
 
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
+	const allowedValidator1 = accounts[6]
+	const allowedValidator2 = accounts[7]
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -36,14 +39,21 @@ contract('Identity', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
-		// deploy this with a 0 fee, cause w/o the counterfactual deployment we can't send tokens to the addr first
-		const idWeb3 = await Identity.new([userAcc], [3], NULL_ADDR)
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
-		await token.setBalanceTo(id.address, 10000)
+
+		// deploy a registry; this is required by the Identity
+		const registryWeb3 = await Registry.new()
+		await registryWeb3.setWhitelisted(allowedValidator1, true)
+		await registryWeb3.setWhitelisted(allowedValidator2, true)
+		registryAddr = registryWeb3.address
 
 		// This IdentityFactory is used to test counterfactual deployment
-		const idFactoryWeb3 = await IdentityFactory.new()
+		const idFactoryWeb3 = await IdentityFactory.new(relayerAddr)
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
+
+		// deploy an Identity
+		const idWeb3 = await Identity.new([userAcc], [3], registryAddr)
+		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+		await token.setBalanceTo(id.address, 10000)
 	})
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
@@ -53,8 +63,7 @@ contract('Identity', function(accounts) {
 		const deployTx = getProxyDeployTx(
 			id.address,
 			token.address, relayerAddr, feeAmnt,
-			// @TODO: change that when we implement the registry
-			NULL_ADDR,
+			registryAddr,
 			[[userAcc, 3]],
 			// Using this option is fine if the token.address is a token that reverts on failures
 			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
@@ -92,6 +101,48 @@ contract('Identity', function(accounts) {
 		//id = newIdentity
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
+	})
+
+	it('IdentityFactory - deployAndFund', async function() {
+		const fundAmnt = 10000
+		// Generating a proxy deploy transaction
+		const deployTx = getProxyDeployTx(
+			id.address,
+			token.address, relayerAddr, 0,
+			registryAddr,
+			[[userAcc, 3]],
+			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) },
+		)
+
+		const salt = '0x'+Buffer.from(randomBytes(32)).toString('hex')
+		const gasLimit = 300 * 1000
+
+		const deployAndFund = identityFactory.deployAndFund.bind(
+			identityFactory,
+			deployTx.data, salt,
+			token.address, fundAmnt,
+			{ gasLimit }
+		)
+
+		// Only relayer can call
+		const userSigner = web3Provider.getSigner(userAcc)
+		const identityFactoryUser = new Contract(identityFactory.address, IdentityFactory._json.abi, userSigner)
+		await expectEVMError(
+			identityFactoryUser.deployAndFund(deployTx.data, salt, token.address, fundAmnt, { gasLimit }),
+			'ONLY_RELAYER'
+		)
+
+		// No tokens, should revert
+		await expectEVMError(deployAndFund())
+
+		// Set tokens
+		await token.setBalanceTo(identityFactory.address, fundAmnt)
+
+		// Call successfully
+		const receipt = await (await deployAndFund()).wait()
+		const deployedEv = receipt.events.find(x => x.event === 'Deployed')
+		assert.ok(deployedEv, 'has deployedEv')
+		assert.equal(await token.balanceOf(deployedEv.args.addr), fundAmnt, 'deployed contract has received the funding amount')
 	})
 
 	it('relay a tx', async function() {
@@ -235,10 +286,11 @@ contract('Identity', function(accounts) {
 
 	it('open a channel, withdraw via routines', async function() {
 		const tokenAmnt = 500
+		// Open a channel via the identity
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
 		// so we need to workaround with + DAY_SECONDS
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
-		const channel = sampleChannel(id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		const channel = sampleChannel(accounts, token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
@@ -261,9 +313,6 @@ contract('Identity', function(accounts) {
 		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
 		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
-		// @TODO more elegant way to do this
-		const withdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]).slice(10)
-
 		// Routine auth to withdraw
 		const auth = new RoutineAuthorization({
 			identityContract: id.address,
@@ -279,66 +328,76 @@ contract('Identity', function(accounts) {
 			auth.toSolidityTuple(),
 			authSig,
 			[
-				[ 0, withdrawData ],
+				getChannelWithdrawOp([channel.toSolidityTuple(), stateRoot, [vsig1, vsig2], proof, tokenAmnt]),
 				// @TODO: op1, withdraw expired
 				[ 2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt) ],
 			],
 			{ gasLimit: 900000 }
 		)).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
-		assert.equal(balAfter-balBefore, tokenAmnt, 'token amount withdrawn is right')
-		// Transfer, ChannelWithdraw, Transfer
+		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
+		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
-		// @TODO: more assertions?
 
-		// wrongWithdrawData: flipped the signatures
-		const wrongWithdrawData = '0x'+coreInterface.functions.channelWithdraw.encode([channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]).slice(10)
+		// wrongWithdrawArgs: flipped the signatures
+		const wrongWithdrawArgs = [channel.toSolidityTuple(), stateRoot, [vsig2, vsig1], proof, tokenAmnt]
 		await expectEVMError(
 			id.executeRoutines(
 				auth.toSolidityTuple(),
 				authSig,
-				[
-					[ 0, wrongWithdrawData ],
-				],
+				[getChannelWithdrawOp(wrongWithdrawArgs)],
 				{ gasLimit: 900000 }
 			),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 	})
 
-	async function expectEVMError(promise, errString) {
-		try {
-			await promise;
-			assert.isOk(false, 'should have failed with '+errString)
-		} catch(e) {
-			assert.equal(
-				e.message,
-				'VM Exception while processing transaction: revert '+errString,
-				'error message is incorrect'
-			)
-		}
-	}
+	it('open a channel via routines', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
+		const tokenAmnt = 1066
+		await token.setBalanceTo(id.address, tokenAmnt)
 
-	function sampleChannel(creator, amount, validUntil, nonce) {
-		const spec = new Buffer(32)
-		spec.writeUInt32BE(nonce)
-		return new Channel({
-			creator,
-			tokenAddr: token.address,
-			tokenAmount: amount,
-			validUntil,
-			validators: [accounts[0], accounts[1]],
-			spec,
+		const auth = new RoutineAuthorization({
+			identityContract: id.address,
+			relayer: relayerAddr,
+			outpace: coreAddr,
+			validUntil: blockTime + DAY_SECONDS,
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
 		})
-	}
-	function moveTime(web3, time) {
-		return new Promise(function(resolve, reject) {
-			web3.currentProvider.send({
-				jsonrpc: '2.0',
-				method: 'evm_increaseTime',
-				params: [time],
-				id: 0,
-			}, (err, res) => err ? reject(err) : resolve(res))
-		})
-	}
+		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
+
+		// a channel with non-whitelisted validators
+		const channelEvil = sampleChannel([allowedValidator1, accounts[2]], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		await expectEVMError(
+			id.executeRoutines(
+				auth.toSolidityTuple(),
+				authSig,
+				[getChannelOpenOp([channelEvil.toSolidityTuple()])],
+				{ gasLimit: 300000 }
+			),
+			'VALIDATOR_NOT_WHITELISTED'
+		)
+
+		// we can open a channel with the whitelisted validators
+		const channel = sampleChannel([allowedValidator1, allowedValidator2], token.address, id.address, tokenAmnt, blockTime+DAY_SECONDS, 0)
+		const receipt = await (await id.executeRoutines(
+			auth.toSolidityTuple(),
+			authSig,
+			[getChannelOpenOp([channel.toSolidityTuple()])],
+			{ gasLimit: 300000 }
+		)).wait()
+		// transfer, channelOpen
+		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
+	})
 })
+
+function getChannelOpenOp(args) {
+	const data = '0x'+coreInterface.functions.channelOpen.encode(args).slice(10)
+	return [3, data]
+}
+function getChannelWithdrawOp(args) {
+	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+	const data = '0x'+coreInterface.functions.channelWithdraw.encode(args).slice(10)
+	return [0, data]
+}
