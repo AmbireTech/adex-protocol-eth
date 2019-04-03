@@ -33,7 +33,13 @@ contract Identity {
 		None,
 		Routines,
 		Transactions,
-		Withdraw
+		WithdrawTo
+	}
+	enum RoutineOp {
+		ChannelWithdraw,
+		ChannelWithdrawExpired,
+		Withdraw,
+		ChannelOpen
 	}
 
 	// Events
@@ -69,7 +75,7 @@ contract Identity {
 		uint feeTokenAmount;
 	}
 	struct RoutineOperation {
-		uint mode;
+		RoutineOp mode;
 		bytes data;
 	}
 
@@ -87,9 +93,6 @@ contract Identity {
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-
-		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
-		// since this can only be invoked by PrivilegeLevels.Transaction, maybe if we make sure we can't invoke setAddrPrivilege(addr, level) where addr == signer, it may be sufficient
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
 	}
@@ -157,18 +160,18 @@ contract Identity {
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
 			// @TODO: is it possible to preserve original error from the call
-			if (op.mode == 0) {
+			if (op.mode == RoutineOp.ChannelWithdraw) {
 				// Channel: Withdraw
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-			} else if (op.mode == 1) {
+			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == 2) {
+			} else if (op.mode == RoutineOp.Withdraw) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
-				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
 				SafeERC20.transfer(tokenAddr, to, amount);
-			} else if (op.mode == 3) {
+			} else if (op.mode == RoutineOp.ChannelOpen) {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
 				// Ensure validity is sane
