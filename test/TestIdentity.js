@@ -10,7 +10,7 @@ const Registry = artifacts.require('Registry')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { moveTime, sampleChannel, expectEVMError } = require('./')
-const { Transaction, RoutineAuthorization, Channel, splitSig, MerkleTree } = require('../js')
+const { Transaction, RoutineAuthorization, RoutineOps, Channel, splitSig, MerkleTree } = require('../js')
 const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
@@ -348,7 +348,7 @@ contract('Identity', function(accounts) {
 		})
 		const hash = auth.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		const op = [2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, toWithdraw)]
+		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
 		const initialUserBal = await token.balanceOf(userAcc)
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
 		const execRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), sig, [op], {
@@ -391,7 +391,7 @@ contract('Identity', function(accounts) {
 		)
 
 		// Does not allow withdrawals to an unauthorized addr
-		const evilOp = [2, RoutineAuthorization.encodeWithdraw(token.address, evilAcc, toWithdraw)]
+		const evilOp = RoutineOps.withdraw(token.address, evilAcc, toWithdraw)
 		await expectEVMError(
 			id.executeRoutines(auth.toSolidityTuple(), sig, [evilOp]),
 			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
@@ -471,7 +471,7 @@ contract('Identity', function(accounts) {
 					proof,
 					tokenAmnt
 				]),
-				[2, RoutineAuthorization.encodeWithdraw(token.address, userAcc, tokenAmnt)]
+				RoutineOps.withdraw(token.address, userAcc, tokenAmnt)
 			],
 			{ gasLimit }
 		)).wait()

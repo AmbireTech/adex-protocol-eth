@@ -92,8 +92,10 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 	]
 }
 
-RoutineAuthorization.encodeWithdraw = function(tokenAddr, to, amount) {
-	return abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])
+const RoutineOps = {
+	withdraw: function(tokenAddr, to, amount) {
+		return [2, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
+	},
 }
 
-module.exports = { Transaction, RoutineAuthorization }
+module.exports = { Transaction, RoutineAuthorization, RoutineOps }
