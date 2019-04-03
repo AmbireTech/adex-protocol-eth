@@ -12,6 +12,7 @@ contract Token {
 	}
 
 	function transfer(address to, uint value) public returns (bool) {
+		require(balances[msg.sender] >= value, 'INSUFFICIENT_FUNDS');
 		balances[msg.sender] = SafeMath.sub(balances[msg.sender], value);
 		balances[to] = SafeMath.add(balances[to], value);
 		emit Transfer(msg.sender, to, value);
@@ -19,6 +20,7 @@ contract Token {
 	}
 
 	function transferFrom(address from, address to, uint value) public returns (bool) {
+		require(balances[from] >= value, 'INSUFFICIENT_FUNDS');
 		balances[from] = SafeMath.sub(balances[from], value);
 		balances[to] = SafeMath.add(balances[to], value);
 		emit Transfer(from, to, value);

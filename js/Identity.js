@@ -109,7 +109,7 @@ const RoutineOps = {
 	},
 	withdraw(tokenAddr, to, amount) {
 		return [3, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
-	},
+	}
 }
 
 module.exports = { Transaction, RoutineAuthorization, RoutineOps }
