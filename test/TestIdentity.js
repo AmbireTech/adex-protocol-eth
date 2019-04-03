@@ -18,7 +18,7 @@ const {
 	splitSig,
 	MerkleTree
 } = require('../js')
-const { getProxyDeployTx, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
+const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
@@ -86,11 +86,11 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: 0
 		})
-		const deployTx = getProxyDeployTx(baseIdentityAddr, [[userAcc, 3]], {
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			routineAuthorizations: [defaultAuth.hash()],
 			...getStorageSlotsFromArtifact(Identity)
 		})
-		const receipt = await (await identityFactory.deploy(deployTx.data, 0, { gasLimit })).wait()
+		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
@@ -101,7 +101,7 @@ contract('Identity', function(accounts) {
 		const feeAmnt = 250
 
 		// Generating a proxy deploy transaction
-		const deployTx = getProxyDeployTx(baseIdentityAddr, [[userAcc, 3]], {
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			fee: {
 				tokenAddr: token.address,
 				recepient: relayerAddr,
@@ -115,10 +115,10 @@ contract('Identity', function(accounts) {
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
-			`0x${generateAddress2(identityFactory.address, salt, deployTx.data).toString('hex')}`
+			`0x${generateAddress2(identityFactory.address, salt, bytecode).toString('hex')}`
 		)
 
-		const deploy = identityFactory.deploy.bind(identityFactory, deployTx.data, salt, { gasLimit })
+		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
 		// Without any tokens to pay for the fee, we should revert
 		// if this is failing, then the contract is probably not trying to pay the fee
 		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
@@ -150,14 +150,14 @@ contract('Identity', function(accounts) {
 	it('IdentityFactory - deployAndFund', async function() {
 		const fundAmnt = 10000
 		// Generating a proxy deploy transaction
-		const deployTx = getProxyDeployTx(id.address, [[userAcc, 3]], {
+		const bytecode = getProxyDeployBytecode(id.address, [[userAcc, 3]], {
 			...getStorageSlotsFromArtifact(Identity)
 		})
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const deployAndFund = identityFactory.deployAndFund.bind(
 			identityFactory,
-			deployTx.data,
+			bytecode,
 			salt,
 			token.address,
 			fundAmnt,
@@ -172,7 +172,7 @@ contract('Identity', function(accounts) {
 			userSigner
 		)
 		await expectEVMError(
-			identityFactoryUser.deployAndFund(deployTx.data, salt, token.address, fundAmnt, { gasLimit }),
+			identityFactoryUser.deployAndFund(bytecode, salt, token.address, fundAmnt, { gasLimit }),
 			'ONLY_RELAYER'
 		)
 
