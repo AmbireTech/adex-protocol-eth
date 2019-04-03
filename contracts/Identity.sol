@@ -198,7 +198,7 @@ contract Identity {
 				revert('INVALID_MODE');
 			}
 		}
-		if (auth.weeklyFeeAmount > 0 && (now - routinePaidFees[hash]) > 7 days) {
+		if (auth.weeklyFeeAmount > 0 && (now - routinePaidFees[hash]) >= 7 days) {
 			routinePaidFees[hash] = now;
 			SafeERC20.transfer(auth.feeTokenAddr, msg.sender, auth.weeklyFeeAmount);
 		}
