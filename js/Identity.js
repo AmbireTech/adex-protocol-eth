@@ -10,7 +10,7 @@ function Transaction(args) {
 	this.identityContract = ensure.Address(args.identityContract)
 	this.nonce = ensure.Uint256(args.nonce)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
-	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
+	this.feeAmount = ensure.Uint256(args.feeAmount)
 	this.to = ensure.Address(args.to)
 	this.value = ensure.Uint256(args.value)
 	this.data = ensure.Bytes(args.data)
@@ -25,7 +25,7 @@ Transaction.prototype.hash = function() {
 			this.identityContract,
 			this.nonce,
 			this.feeTokenAddr,
-			this.feeTokenAmount,
+			this.feeAmount,
 			this.to,
 			this.value,
 			this.data
@@ -44,7 +44,7 @@ Transaction.prototype.toSolidityTuple = function() {
 		this.identityContract,
 		`0x${this.nonce.toString(16)}`,
 		this.feeTokenAddr,
-		`0x${this.feeTokenAmount.toString(16)}`,
+		`0x${this.feeAmount.toString(16)}`,
 		this.to,
 		`0x${this.value.toString(16)}`,
 		`0x${this.data.toString('hex')}`
@@ -57,7 +57,7 @@ function RoutineAuthorization(args) {
 	this.registry = ensure.Address(args.registry)
 	this.validUntil = ensure.Uint256(args.validUntil)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
-	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
+	this.feeAmount = ensure.Uint256(args.feeAmount)
 	Object.freeze(this)
 	return this
 }
@@ -71,7 +71,7 @@ RoutineAuthorization.prototype.hash = function() {
 			this.registry,
 			this.validUntil,
 			this.feeTokenAddr,
-			this.feeTokenAmount
+			this.feeAmount
 		]
 	)
 	return Buffer.from(keccak256.arrayBuffer(buf))
@@ -89,7 +89,7 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 		this.registry,
 		`0x${this.validUntil.toString(16)}`,
 		this.feeTokenAddr,
-		`0x${this.feeTokenAmount.toString(16)}`
+		`0x${this.feeAmount.toString(16)}`
 	]
 }
 
