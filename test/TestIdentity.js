@@ -84,7 +84,7 @@ contract('Identity', function(accounts) {
 			registry: registryAddr,
 			validUntil: 1900000000,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 0
+			feeAmount: 0
 		})
 		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			routineAuthorizations: [defaultAuth.hash()],
@@ -202,7 +202,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			nonce: initialNonce,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 25,
+			feeAmount: 25,
 			to: id.address,
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4])
 		})
@@ -225,7 +225,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(
 			await token.balanceOf(relayerAddr),
-			initialBal.toNumber() + relayerTx.feeTokenAmount.toNumber(),
+			initialBal.toNumber() + relayerTx.feeAmount.toNumber(),
 			'relayer has received the tx fee'
 		)
 		assert.ok(
@@ -287,11 +287,11 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			nonce: initialNonce + i,
 			feeTokenAddr: token.address,
-			feeTokenAmount: 5,
+			feeAmount: 5,
 			to: id.address,
 			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4])
 		}))
-		const totalFee = txns.map(x => x.feeTokenAmount).reduce((a, b) => a + b, 0)
+		const totalFee = txns.map(x => x.feeAmount).reduce((a, b) => a + b, 0)
 
 		// Cannot use an invalid identityContract
 		const invalidTxns1 = [txns[0], { ...txns[1], identityContract: token.address }]
@@ -362,7 +362,7 @@ contract('Identity', function(accounts) {
 			registry: registryAddr,
 			validUntil: blockTime + DAY_SECONDS,
 			feeTokenAddr: token.address,
-			feeTokenAmount: fee
+			feeAmount: fee
 		})
 		// Activate this routine authorization
 		const tx = await zeroFeeTx(
@@ -557,7 +557,7 @@ contract('Identity', function(accounts) {
 			identityContract: id.address,
 			nonce: (await id.nonce()).toNumber(),
 			feeTokenAddr: token.address,
-			feeTokenAmount: 0,
+			feeAmount: 0,
 			to,
 			data
 		})
