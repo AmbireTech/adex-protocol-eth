@@ -16,12 +16,13 @@ contract Identity {
 
 	// Storage
 	// WARNING: be careful when modifying this
-	// privileges must always be 0th thing in storage
+	// privileges and routineAuthorizations must always be 0th and 1th thing in storage
 	mapping (address => uint8) public privileges;
-	// The next allowed nonce
-	uint public nonce = 0;
 	// Routine authorizations
 	mapping (bytes32 => bool) public routineAuthorizations;
+
+	// The next allowed nonce
+	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
 
