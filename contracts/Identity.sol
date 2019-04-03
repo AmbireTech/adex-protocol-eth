@@ -20,6 +20,8 @@ contract Identity {
 	mapping (address => uint8) public privileges;
 	// The next allowed nonce
 	uint public nonce = 0;
+	// Routine authorizations
+	mapping (bytes32 => bool) public routineAuthorizations;
 	// Routine operations are authorized at once for a period, fee is paid once
 	mapping (bytes32 => bool) public routinePaidFees;
 
@@ -44,6 +46,7 @@ contract Identity {
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
+	event LogRoutineAuth(bytes32 hash, bool authorized);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -66,7 +69,6 @@ contract Identity {
 	// while the fee will be paid only ONCE per auth, the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
-		address identityContract;
 		address relayer;
 		address outpace;
 		address registry;
@@ -95,6 +97,14 @@ contract Identity {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
+	}
+
+	function setRoutineAuth(bytes32 hash, bool authorized)
+		external
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		routineAuthorizations[hash] = authorized;
+		emit LogRoutineAuth(hash, authorized);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
@@ -147,15 +157,13 @@ contract Identity {
 		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
-	function executeRoutines(RoutineAuthorization memory auth, bytes32[3] memory signature, RoutineOperation[] memory operations)
+	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(auth.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
 		require(auth.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
-		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE');
+		require(routineAuthorizations[hash], 'NOT_AUTHORIZED');
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
