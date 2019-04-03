@@ -88,12 +88,8 @@ contract('Identity', function(accounts) {
 		})
 		const deployTx = getProxyDeployTx(
 			baseIdentityAddr,
-			token.address,
-			relayerAddr,
-			0,
 			[[userAcc, 3]],
 			{
-				unsafeERC20: true,
 				routineAuthorizations: [defaultAuth.hash()],
 				...getStorageSlotsFromArtifact(Identity)
 			}
@@ -111,13 +107,18 @@ contract('Identity', function(accounts) {
 		// Generating a proxy deploy transaction
 		const deployTx = getProxyDeployTx(
 			baseIdentityAddr,
-			token.address,
-			relayerAddr,
-			feeAmnt,
 			[[userAcc, 3]],
-			// Using this option is fine if the token.address is a token that reverts on failures
-			{ unsafeERC20: true, ...getStorageSlotsFromArtifact(Identity) }
-			// { safeERC20Artifact: artifacts.require('SafeERC20'), ...getStorageSlotsFromArtifact(Identity) },
+			{
+				fee: {
+					tokenAddr: token.address,
+					recepient: relayerAddr,
+					amount: feeAmnt,
+					// Using this option is fine if the token.address is a token that reverts on failures
+					unsafeERC20: true,
+					//safeERC20Artifact: artifacts.require('SafeERC20')
+				},
+				...getStorageSlotsFromArtifact(Identity)
+			}
 		)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
@@ -127,6 +128,7 @@ contract('Identity', function(accounts) {
 
 		const deploy = identityFactory.deploy.bind(identityFactory, deployTx.data, salt, { gasLimit })
 		// Without any tokens to pay for the fee, we should revert
+		// if this is failing, then the contract is probably not trying to pay the fee
 		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
 
 		// set the balance so that we can pay out the fee when deploying
@@ -149,7 +151,6 @@ contract('Identity', function(accounts) {
 		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
 
 		// console.log('deploy cost', deployReceipt.gasUsed.toString(10))
-		// id = newIdentity
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
@@ -157,8 +158,7 @@ contract('Identity', function(accounts) {
 	it('IdentityFactory - deployAndFund', async function() {
 		const fundAmnt = 10000
 		// Generating a proxy deploy transaction
-		const deployTx = getProxyDeployTx(id.address, token.address, relayerAddr, 0, [[userAcc, 3]], {
-			unsafeERC20: true,
+		const deployTx = getProxyDeployTx(id.address, [[userAcc, 3]], {
 			...getStorageSlotsFromArtifact(Identity)
 		})
 

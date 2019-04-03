@@ -6,7 +6,7 @@ const assert = require('assert')
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
-function getProxyDeployTx(proxiedAddr, feeTokenAddr, feeBeneficiery, feeAmnt, privLevels, opts) {
+function getProxyDeployTx(proxiedAddr, privLevels, opts) {
 	assert.ok(opts, 'opts not passed')
 	const { privSlot, routineAuthsSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
@@ -35,18 +35,19 @@ function getProxyDeployTx(proxiedAddr, feeTokenAddr, feeBeneficiery, feeAmnt, pr
 
 	let erc20Header = ''
 	let feeCode = ''
-	if (feeAmnt > 0) {
+	if (opts.fee) {
+		const fee = opts.fee
 		// This is fine if we're only accepting whitelisted tokens
-		if (opts.unsafeERC20) {
+		if (fee.unsafeERC20) {
 			erc20Header = `interface GeneralERC20 { function transfer(address to, uint256 value) external; }`
-			feeCode = `GeneralERC20(${feeTokenAddr}).transfer(${feeBeneficiery}, ${feeAmnt});`
+			feeCode = `GeneralERC20(${fee.tokenAddr}).transfer(${fee.recepient}, ${fee.amount});`
 		} else {
-			assert.ok(opts.safeERC20Artifact, 'opts: either unsafeERC20 or safeERC20Artifact required')
-			erc20Header = opts.safeERC20Artifact.source
+			assert.ok(fee.safeERC20Artifact, 'opts: either unsafeERC20 or safeERC20Artifact required')
+			erc20Header = fee.safeERC20Artifact.source
 				.split('\n')
 				.filter(x => !x.startsWith('pragma '))
 				.join('\n')
-			feeCode = `SafeERC20.transfer(${feeTokenAddr}, ${feeBeneficiery}, ${feeAmnt});`
+			feeCode = `SafeERC20.transfer(${fee.tokenAddr}, ${fee.recepient}, ${fee.amount});`
 		}
 	}
 
