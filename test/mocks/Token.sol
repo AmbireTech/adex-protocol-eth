@@ -4,6 +4,8 @@ import "../../contracts/libs/SafeMath.sol";
 
 contract Token {
 	mapping (address => uint) balances;
+	// The approvals are pretty much dummy; they're not used in transferFrom
+	mapping (address => uint) approvals;
 	event Transfer(address indexed from, address indexed to, uint value);
 	function balanceOf(address owner) public view returns (uint) {
 		return balances[owner];
@@ -22,7 +24,10 @@ contract Token {
 		emit Transfer(from, to, value);
 		return true;
 	}
-
+	function approve(address spender, uint value) public returns (bool) {
+		approvals[spender] = value;
+		return true;
+	}
 	function setBalanceTo(address to, uint value) public {
 		balances[to] = value;
 	}
