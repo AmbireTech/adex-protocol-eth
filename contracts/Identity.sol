@@ -23,7 +23,7 @@ contract Identity {
 	// The next allowed nonce
 	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => bool) public routinePaidFees;
+	mapping (bytes32 => uint256) public routinePaidFees;
 
 	// Constants
 	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
@@ -57,7 +57,7 @@ contract Identity {
 		uint nonce;
 		// tx fee, in tokens
 		address feeTokenAddr;
-		uint feeTokenAmount;
+		uint feeAmount;
 		// all the regular txn data
 		address to;
 		uint value;
@@ -74,7 +74,7 @@ contract Identity {
 		address registry;
 		uint validUntil;
 		address feeTokenAddr;
-		uint feeTokenAmount;
+		uint weeklyFeeAmount;
 	}
 	struct RoutineOperation {
 		RoutineOp mode;
@@ -111,7 +111,7 @@ contract Identity {
 		public
 	{
 		address feeTokenAddr = txns[0].feeTokenAddr;
-		uint feeTokenAmount = 0;
+		uint feeAmount = 0;
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
@@ -123,20 +123,20 @@ contract Identity {
 			// there is a discrepancy between ethereumjs-abi and solidity
 			// if we enter every field individually, in order, there is no discrepancy
 			//bytes32 hash = keccak256(abi.encode(txn));
-			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeTokenAmount, txn.to, txn.value, txn.data));
+			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 
 			nonce = nonce.add(1);
-			feeTokenAmount = feeTokenAmount.add(txn.feeTokenAmount);
+			feeAmount = feeAmount.add(txn.feeAmount);
 
 			executeCall(txn.to, txn.value, txn.data);
 			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 		}
-		if (feeTokenAmount > 0) {
-			SafeERC20.transfer(feeTokenAddr, msg.sender, feeTokenAmount);
+		if (feeAmount > 0) {
+			SafeERC20.transfer(feeTokenAddr, msg.sender, feeAmount);
 		}
 	}
 
@@ -198,9 +198,9 @@ contract Identity {
 				revert('INVALID_MODE');
 			}
 		}
-		if (!routinePaidFees[hash] && auth.feeTokenAmount > 0) {
-			routinePaidFees[hash] = true;
-			SafeERC20.transfer(auth.feeTokenAddr, msg.sender, auth.feeTokenAmount);
+		if (auth.weeklyFeeAmount > 0 && (now - routinePaidFees[hash]) > 7 days) {
+			routinePaidFees[hash] = now;
+			SafeERC20.transfer(auth.feeTokenAddr, msg.sender, auth.weeklyFeeAmount);
 		}
 	}
 
