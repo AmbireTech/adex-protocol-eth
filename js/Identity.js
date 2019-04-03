@@ -52,7 +52,6 @@ Transaction.prototype.toSolidityTuple = function() {
 }
 
 function RoutineAuthorization(args) {
-	this.identityContract = ensure.Address(args.identityContract)
 	this.relayer = ensure.Address(args.relayer)
 	this.outpace = ensure.Address(args.outpace)
 	this.registry = ensure.Address(args.registry)
@@ -65,9 +64,8 @@ function RoutineAuthorization(args) {
 
 RoutineAuthorization.prototype.hash = function() {
 	const buf = abi.rawEncode(
-		['address', 'address', 'address', 'address', 'uint256', 'address', 'uint256'],
+		['address', 'address', 'address', 'uint256', 'address', 'uint256'],
 		[
-			this.identityContract,
 			this.relayer,
 			this.outpace,
 			this.registry,
@@ -86,7 +84,6 @@ RoutineAuthorization.prototype.hashHex = function() {
 RoutineAuthorization.prototype.toSolidityTuple = function() {
 	// etherjs doesn't seem to want BN.js instances; hex is the lowest common denominator for web3/ethers
 	return [
-		this.identityContract,
 		this.relayer,
 		this.outpace,
 		this.registry,
