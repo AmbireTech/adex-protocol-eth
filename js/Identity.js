@@ -1,6 +1,10 @@
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
+const { Interface } = require('ethers').utils
 const ensure = require('./ensureTypes')
+const coreABI = require('../abi/AdExCore')
+
+const coreInterface = new Interface(coreABI)
 
 function Transaction(args) {
 	this.identityContract = ensure.Address(args.identityContract)
@@ -93,9 +97,22 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 }
 
 const RoutineOps = {
-	withdraw: function(tokenAddr, to, amount) {
+	withdraw(tokenAddr, to, amount) {
 		return [2, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
 	},
+	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+	channelWithdraw(args) {
+		const data = `0x${coreInterface.functions.channelWithdraw.encode(args).slice(10)}`
+		return [0, data]
+	},
+	channelWithdrawExpired(args) {
+		const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
+		return [1, data]
+	},
+	channelOpen(args) {
+		const data = `0x${coreInterface.functions.channelOpen.encode(args).slice(10)}`
+		return [3, data]
+	}
 }
 
 module.exports = { Transaction, RoutineAuthorization, RoutineOps }
