@@ -13,7 +13,7 @@ function getMappingSstore(slotNumber, keyType, key, value) {
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
-function getProxyDeployTx(proxiedAddr, privLevels, opts) {
+function getProxyDeployBytecode(proxiedAddr, privLevels, opts) {
 	assert.ok(opts, 'opts not passed')
 	const { privSlot, routineAuthsSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
@@ -90,9 +90,15 @@ contract IdentityProxy {
 	}
 	const output = JSON.parse(solc.compile(JSON.stringify(input)))
 	assert.ifError(output.errors)
-	const byteCode = `0x${output.contracts['Proxy.sol'].IdentityProxy.evm.bytecode.object}`
-	return { data: byteCode }
+	return `0x${output.contracts['Proxy.sol'].IdentityProxy.evm.bytecode.object}`
 }
+
+/*
+function getProxyDeploy(proxiedAddr, privLevels, opts) {
+	const bytecode = getProxyDeployBytecode(proxiedAddr, privLevels, opts)
+	return { bytecode, address, salt }
+}
+*/
 
 function getStorageSlotsFromArtifact(IdentityArtifact) {
 	// Find storage locations of privileges
@@ -110,4 +116,4 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 	return { privSlot, routineAuthsSlot }
 }
 
-module.exports = { getProxyDeployTx, getStorageSlotsFromArtifact }
+module.exports = { getProxyDeployBytecode, getStorageSlotsFromArtifact }
