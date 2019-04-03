@@ -364,6 +364,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: fee
 		})
+
 		// Activate this routine authorization
 		const tx = await zeroFeeTx(
 			id.address,
@@ -371,7 +372,9 @@ contract('Identity', function(accounts) {
 		)
 		const sig = splitSig(await ethSign(tx.hashHex(), userAcc))
 		await (await id.execute([tx.toSolidityTuple()], [sig], { gasLimit })).wait()
+
 		// Create the operation and relay it
+		// the operation is simply to withdraw from the id contract to userAcc
 		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
 		const initialUserBal = await token.balanceOf(userAcc)
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
