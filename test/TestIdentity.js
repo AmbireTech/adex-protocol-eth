@@ -30,15 +30,24 @@ const DAY_SECONDS = 24 * 60 * 60
 // READ THIS!
 // gasLimit must be hardcoded cause ganache cannot estimate it properly
 // that's cause of the call() that we do here; see https://github.com/AdExNetwork/adex-protocol-eth/issues/55
-const gasLimit = 300000
+const gasLimit = 400000
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
+	// The Identity contract factory
 	let identityFactory
-	let id
+	// A dummy token
 	let token
+	// An instance of the AdExCore (OUTPACE) contract
 	let coreAddr
+	// the registry that's used in the RoutineAuthorizations
 	let registryAddr
+	// an Identity contract that will be used as a base for all proxies
+	let baseIdentityAddr
+	// default RoutineAuthorization that's valid forever
+	let defaultAuth
+	// The Identity contract instance that will be used
+	let id
 
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
@@ -64,8 +73,35 @@ contract('Identity', function(accounts) {
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 
 		// deploy an Identity
-		const idWeb3 = await Identity.new([userAcc], [3])
-		id = new Contract(idWeb3.address, Identity._json.abi, signer)
+		const idWeb3 = await Identity.new([], [])
+		baseIdentityAddr = idWeb3.address
+
+		// We use this default RoutineAuthorization
+		// for various tests
+		defaultAuth = new RoutineAuthorization({
+			relayer: relayerAddr,
+			outpace: coreAddr,
+			registry: registryAddr,
+			validUntil: 1900000000,
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0
+		})
+		const deployTx = getProxyDeployTx(
+			baseIdentityAddr,
+			token.address,
+			relayerAddr,
+			0,
+			[[userAcc, 3]],
+			{
+				unsafeERC20: true,
+				routineAuthorizations: [defaultAuth.hash()],
+				...getStorageSlotsFromArtifact(Identity)
+			}
+		)
+		const receipt = await (await identityFactory.deploy(deployTx.data, 0, { gasLimit })).wait()
+		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
+		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
+
 		await token.setBalanceTo(id.address, 10000)
 	})
 
@@ -74,7 +110,7 @@ contract('Identity', function(accounts) {
 
 		// Generating a proxy deploy transaction
 		const deployTx = getProxyDeployTx(
-			id.address,
+			baseIdentityAddr,
 			token.address,
 			relayerAddr,
 			feeAmnt,
@@ -149,7 +185,7 @@ contract('Identity', function(accounts) {
 		)
 
 		// No tokens, should revert
-		await expectEVMError(deployAndFund())
+		await expectEVMError(deployAndFund(), 'INSUFFICIENT_FUNDS')
 
 		// Set tokens
 		await token.setBalanceTo(identityFactory.address, fundAmnt)
@@ -170,8 +206,6 @@ contract('Identity', function(accounts) {
 
 		const initialBal = await token.balanceOf(relayerAddr)
 		const initialNonce = (await id.nonce()).toNumber()
-		// @TODO: multiple transactions (a few consecutive)
-		// @TODO consider testing that using multiple feeTokenAddr's will fail
 		const relayerTx = new Transaction({
 			identityContract: id.address,
 			nonce: initialNonce,
@@ -216,14 +250,11 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
 
 		// Try to downgrade the privilege: should not be allowed
-		const relayerNextTx = new Transaction({
-			identityContract: id.address,
-			nonce: (await id.nonce()).toNumber(),
-			feeTokenAddr: token.address,
-			feeTokenAmount: 5,
-			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1])
-		})
+		const relayerNextTx = await zeroFeeTx(
+			id.address,
+			idInterface.functions.setAddrPrivilege.encode([userAcc, 1])
+		)
+
 		const newHash = relayerNextTx.hashHex()
 		const newSig = splitSig(await ethSign(newHash, userAcc))
 		await expectEVMError(
@@ -232,14 +263,10 @@ contract('Identity', function(accounts) {
 		)
 
 		// Try to run a TX from an acc with insufficient privilege
-		const relayerTxEvil = new Transaction({
-			identityContract: id.address,
-			nonce: (await id.nonce()).toNumber(),
-			feeTokenAddr: token.address,
-			feeTokenAmount: 25,
-			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([evilAcc, 4])
-		})
+		const relayerTxEvil = await zeroFeeTx(
+			id.address,
+			idInterface.functions.setAddrPrivilege.encode([evilAcc, 4])
+		)
 		const hashEvil = relayerTxEvil.hashHex()
 		const sigEvil = splitSig(await ethSign(hashEvil, evilAcc))
 		await expectEVMError(
@@ -306,15 +333,10 @@ contract('Identity', function(accounts) {
 	})
 
 	it('execute by sender', async function() {
-		const initialNonce = (await id.nonce()).toNumber()
-		const relayerTx = new Transaction({
-			identityContract: id.address,
-			nonce: initialNonce,
-			feeTokenAddr: token.address,
-			feeTokenAmount: 0,
-			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 4])
-		})
+		const relayerTx = await zeroFeeTx(
+			id.address,
+			idInterface.functions.setAddrPrivilege.encode([userAcc, 4])
+		)
 
 		await expectEVMError(
 			id.executeBySender([relayerTx.toSolidityTuple()]),
@@ -330,7 +352,11 @@ contract('Identity', function(accounts) {
 			gasLimit
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
-		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
+		assert.equal(
+			(await id.nonce()).toNumber(),
+			parseInt(relayerTx.nonce, 10) + 1,
+			'nonce has increased with 1'
+		)
 	})
 
 	it('relay routine operations', async function() {
@@ -339,7 +365,6 @@ contract('Identity', function(accounts) {
 		const fee = 20
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const auth = new RoutineAuthorization({
-			identityContract: id.address,
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			registry: registryAddr,
@@ -347,14 +372,18 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeTokenAmount: fee
 		})
-		const hash = auth.hashHex()
-		const sig = splitSig(await ethSign(hash, userAcc))
+		// Activate this routine authorization
+		const tx = await zeroFeeTx(
+			id.address,
+			idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true])
+		)
+		const sig = splitSig(await ethSign(tx.hashHex(), userAcc))
+		await (await id.execute([tx.toSolidityTuple()], [sig], { gasLimit })).wait()
+		// Create the operation and relay it
 		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
 		const initialUserBal = await token.balanceOf(userAcc)
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
-		const execRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), sig, [op], {
-			gasLimit
-		})
+		const execRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), [op], { gasLimit })
 		const receipt = await (await execRoutines()).wait()
 		// console.log(receipt.gasUsed.toString(10))
 
@@ -384,31 +413,30 @@ contract('Identity', function(accounts) {
 			'relayer has received the fee only once'
 		)
 
-		// Does not work with an invalid sig
-		const invalidSig = splitSig(await ethSign(hash, evilAcc))
+		// Does not work with an invalid routine auth
+		const invalidAuth1 = new RoutineAuthorization({ ...auth, registry: userAcc })
+		await expectEVMError(id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]), 'NOT_AUTHORIZED')
+		const invalidAuth2 = new RoutineAuthorization({ ...auth, relayer: userAcc })
 		await expectEVMError(
-			id.executeRoutines(auth.toSolidityTuple(), invalidSig, [op]),
-			'INSUFFICIENT_PRIVILEGE'
+			id.executeRoutines(invalidAuth2.toSolidityTuple(), [op]),
+			'ONLY_RELAYER_CAN_CALL'
 		)
 
 		// Does not allow withdrawals to an unauthorized addr
 		const evilOp = RoutineOps.withdraw(token.address, evilAcc, toWithdraw)
 		await expectEVMError(
-			id.executeRoutines(auth.toSolidityTuple(), sig, [evilOp]),
+			id.executeRoutines(auth.toSolidityTuple(), [evilOp]),
 			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
 		)
 
 		// We can't tamper with authentication params (outpace in this case)
 		const evilTuple = auth.toSolidityTuple()
 		evilTuple[2] = token.address // set any other address
-		await expectEVMError(id.executeRoutines(evilTuple, sig, [op]), 'INSUFFICIENT_PRIVILEGE')
+		await expectEVMError(id.executeRoutines(evilTuple, [op]), 'NOT_AUTHORIZED')
 
 		// We can no longer call after the authorization has expired
 		await moveTime(web3, DAY_SECONDS + 10)
-		await expectEVMError(
-			id.executeRoutines(auth.toSolidityTuple(), sig, [op]),
-			'AUTHORIZATION_EXPIRED'
-		)
+		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
 
 	it('open a channel, withdraw via routines', async function() {
@@ -426,14 +454,10 @@ contract('Identity', function(accounts) {
 			0
 		)
 		const coreInterface = new Interface(AdExCore._json.abi)
-		const relayerTx = new Transaction({
-			identityContract: id.address,
-			nonce: (await id.nonce()).toNumber(),
-			feeTokenAddr: token.address,
-			feeTokenAmount: 0,
-			to: coreAddr,
-			data: coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
-		})
+		const relayerTx = await zeroFeeTx(
+			coreAddr,
+			coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
+		)
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
 		await (await id.execute([relayerTx.toSolidityTuple()], [sig], {
@@ -450,21 +474,9 @@ contract('Identity', function(accounts) {
 		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
 		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
-		// Routine auth to withdraw
-		const auth = new RoutineAuthorization({
-			identityContract: id.address,
-			relayer: relayerAddr,
-			outpace: coreAddr,
-			registry: registryAddr,
-			validUntil: blockTime + DAY_SECONDS,
-			feeTokenAddr: token.address,
-			feeTokenAmount: 0
-		})
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
-		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
 		const routineReceipt = await (await id.executeRoutines(
-			auth.toSolidityTuple(),
-			authSig,
+			defaultAuth.toSolidityTuple(),
 			[
 				RoutineOps.channelWithdraw([
 					channel.toSolidityTuple(),
@@ -491,7 +503,7 @@ contract('Identity', function(accounts) {
 			tokenAmnt
 		]
 		await expectEVMError(
-			id.executeRoutines(auth.toSolidityTuple(), authSig, [
+			id.executeRoutines(defaultAuth.toSolidityTuple(), [
 				RoutineOps.channelWithdraw(wrongWithdrawArgs)
 			]),
 			'NOT_SIGNED_BY_VALIDATORS'
@@ -503,17 +515,7 @@ contract('Identity', function(accounts) {
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
 
-		const auth = new RoutineAuthorization({
-			identityContract: id.address,
-			relayer: relayerAddr,
-			outpace: coreAddr,
-			registry: registryAddr,
-			validUntil: blockTime + DAY_SECONDS * 4,
-			feeTokenAddr: token.address,
-			feeTokenAmount: 0
-		})
-		const authSig = splitSig(await ethSign(auth.hashHex(), userAcc))
-		const executeRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), authSig)
+		const executeRoutines = id.executeRoutines.bind(id, defaultAuth.toSolidityTuple())
 
 		// a channel with non-whitelisted validators
 		const channelEvil = sampleChannel(
@@ -525,7 +527,7 @@ contract('Identity', function(accounts) {
 			0
 		)
 		await expectEVMError(
-			executeRoutines([RoutineOps.channelOpen([channelEvil.toSolidityTuple()])]),
+			executeRoutines([RoutineOps.channelOpen([channelEvil.toSolidityTuple()])], { gasLimit }),
 			'VALIDATOR_NOT_WHITELISTED'
 		)
 
@@ -540,9 +542,7 @@ contract('Identity', function(accounts) {
 		)
 		const receipt = await (await executeRoutines(
 			[RoutineOps.channelOpen([channel.toSolidityTuple()])],
-			{
-				gasLimit
-			}
+			{ gasLimit }
 		)).wait()
 		// events should be: transfer, channelOpen
 		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
@@ -559,4 +559,15 @@ contract('Identity', function(accounts) {
 		assert.equal(expiredReceipt.events.length, 2, 'right event count')
 		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
 	})
+
+	async function zeroFeeTx(to, data) {
+		return new Transaction({
+			identityContract: id.address,
+			nonce: (await id.nonce()).toNumber(),
+			feeTokenAddr: token.address,
+			feeTokenAmount: 0,
+			to,
+			data
+		})
+	}
 })

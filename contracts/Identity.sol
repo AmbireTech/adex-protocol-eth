@@ -20,7 +20,6 @@ contract Identity {
 	mapping (address => uint8) public privileges;
 	// Routine authorizations
 	mapping (bytes32 => bool) public routineAuthorizations;
-
 	// The next allowed nonce
 	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
@@ -178,7 +177,7 @@ contract Identity {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
 				// Ensure validity is sane
-				require(channel.validUntil <= now + CHANNEL_MAX_VALIDITY);
+				//require(channel.validUntil <= now + CHANNEL_MAX_VALIDITY, 'CHANNEL_EXCEEDED_MAX_VALID');
 				// Ensure all validators are whitelisted
 				uint validatorsLen = channel.validators.length;
 				for (uint j=0; j<validatorsLen; j++) {

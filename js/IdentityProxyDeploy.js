@@ -8,8 +8,21 @@ const assert = require('assert')
 // * unsafeERC20: true OR safeERC20Artifact
 function getProxyDeployTx(proxiedAddr, feeTokenAddr, feeBeneficiery, feeAmnt, privLevels, opts) {
 	assert.ok(opts, 'opts not passed')
-	const { privSlot } = opts
+	const { privSlot, routineAuthsSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
+
+	let routineAuthsCode = ''
+	if (opts.routineAuthorizations) {
+		assert.ok(typeof routineAuthsSlot === 'number', 'routineAuthsSlot is a number')
+		routineAuthsCode = opts.routineAuthorizations
+			.map(hash => {
+				// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
+				const buf = abi.rawEncode(['bytes32', 'uint256'], [hash, routineAuthsSlot])
+				const slot = keccak256(buf)
+				return `sstore(0x${slot}, 0x01)`
+			})
+			.join('\n')
+	}
 
 	const privLevelsCode = privLevels
 		.map(([addr, level]) => {
@@ -44,7 +57,10 @@ contract IdentityProxy {
 	constructor()
 		public
 	{
-		assembly { ${privLevelsCode} }
+		assembly {
+			${privLevelsCode}
+			${routineAuthsCode}
+		}
 		${feeCode}
 	}
 
@@ -91,7 +107,9 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 	)
 	const privSlot = storageVariableNodes.findIndex(x => x.name === 'privileges')
 	assert.notEqual(privSlot, -1, 'privSlot was not found')
-	return { privSlot }
+	const routineAuthsSlot = storageVariableNodes.findIndex(x => x.name === 'routineAuthorizations')
+	assert.notEqual(routineAuthsSlot, -1, 'routineAuthsSlot was not found')
+	return { privSlot, routineAuthsSlot }
 }
 
 module.exports = { getProxyDeployTx, getStorageSlotsFromArtifact }
