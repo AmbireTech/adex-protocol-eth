@@ -28,6 +28,7 @@ contract Identity {
 	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
 	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
 	bytes4 private constant CHANNEL_OPEN_SELECTOR = bytes4(keccak256('channelOpen((address,address,uint256,uint256,address[],bytes32))'));
+	uint256 private CHANNEL_MAX_VALIDITY = 90 days;
 
 	enum PrivilegeLevel {
 		None,
@@ -171,6 +172,8 @@ contract Identity {
 			} else if (op.mode == 3) {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
+				// Ensure validity is sane
+				require(channel.validUntil <= now + CHANNEL_MAX_VALIDITY);
 				// Ensure all validators are whitelisted
 				uint validatorsLen = channel.validators.length;
 				for (uint j=0; j<validatorsLen; j++) {
