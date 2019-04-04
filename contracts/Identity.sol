@@ -16,9 +16,10 @@ contract Identity {
 
 	// Storage
 	// WARNING: be careful when modifying this
-	// privileges and registryAddr must always be respectively the 0th and 1st thing in storage
+	// privileges and routineAuthorizations must always be 0th and 1th thing in storage
 	mapping (address => uint8) public privileges;
-	address public registryAddr;
+	// Routine authorizations
+	mapping (bytes32 => bool) public routineAuthorizations;
 	// The next allowed nonce
 	uint public nonce = 0;
 	// Routine operations are authorized at once for a period, fee is paid once
@@ -28,16 +29,24 @@ contract Identity {
 	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
 	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
 	bytes4 private constant CHANNEL_OPEN_SELECTOR = bytes4(keccak256('channelOpen((address,address,uint256,uint256,address[],bytes32))'));
+	uint256 private constant CHANNEL_MAX_VALIDITY = 90 days;
 
 	enum PrivilegeLevel {
 		None,
 		Routines,
 		Transactions,
+		WithdrawTo
+	}
+	enum RoutineOp {
+		ChannelWithdraw,
+		ChannelWithdrawExpired,
+		ChannelOpen,
 		Withdraw
 	}
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
+	event LogRoutineAuth(bytes32 hash, bool authorized);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -60,22 +69,21 @@ contract Identity {
 	// while the fee will be paid only ONCE per auth, the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
-		address identityContract;
 		address relayer;
 		address outpace;
+		address registry;
 		uint validUntil;
 		address feeTokenAddr;
 		uint feeTokenAmount;
 	}
 	struct RoutineOperation {
-		uint mode;
+		RoutineOp mode;
 		bytes data;
 	}
 
-	constructor(address[] memory addrs, uint8[] memory privLevels, address regAddr)
+	constructor(address[] memory addrs, uint8[] memory privLevels)
 		public
 	{
-		registryAddr = regAddr;
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
@@ -87,11 +95,16 @@ contract Identity {
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-
-		// @TODO: should we have on-chain anti-bricking guarantees? maybe there's an easy way to do this
-		// since this can only be invoked by PrivilegeLevels.Transaction, maybe if we make sure we can't invoke setAddrPrivilege(addr, level) where addr == signer, it may be sufficient
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
+	}
+
+	function setRoutineAuth(bytes32 hash, bool authorized)
+		external
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		routineAuthorizations[hash] = authorized;
+		emit LogRoutineAuth(hash, authorized);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
@@ -144,44 +157,45 @@ contract Identity {
 		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
-	function executeRoutines(RoutineAuthorization memory auth, bytes32[3] memory signature, RoutineOperation[] memory operations)
+	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(auth.identityContract == address(this), 'AUTHORIZATION_NOT_FOR_CONTRACT');
 		require(auth.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
-		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer] >= uint8(PrivilegeLevel.Routines), 'INSUFFICIENT_PRIVILEGE');
+		require(routineAuthorizations[hash], 'NOT_AUTHORIZED');
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
-			// @TODO: is it possible to preserve original error from the call
-			if (op.mode == 0) {
+			if (op.mode == RoutineOp.ChannelWithdraw) {
 				// Channel: Withdraw
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-			} else if (op.mode == 1) {
+			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == 2) {
-				// Withdraw from identity
-				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
-				require(privileges[to] >= uint8(PrivilegeLevel.Withdraw), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-				SafeERC20.transfer(tokenAddr, to, amount);
-			} else if (op.mode == 3) {
+			} else if (op.mode == RoutineOp.ChannelOpen) {
 				// Channel: open
 				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
+				// Ensure validity is sane
+				require(channel.validUntil <= (now + CHANNEL_MAX_VALIDITY), 'CHANNEL_EXCEEDED_MAX_VALID');
 				// Ensure all validators are whitelisted
 				uint validatorsLen = channel.validators.length;
 				for (uint j=0; j<validatorsLen; j++) {
 					require(
-						ValidatorRegistry(registryAddr).whitelisted(channel.validators[j]),
+						ValidatorRegistry(auth.registry).whitelisted(channel.validators[j]),
 						"VALIDATOR_NOT_WHITELISTED"
 					);
 				}
+				SafeERC20.approve(channel.tokenAddr, auth.outpace, 0);
+				SafeERC20.approve(channel.tokenAddr, auth.outpace, channel.tokenAmount);
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
+			} else if (op.mode == RoutineOp.Withdraw) {
+				// Withdraw from identity
+				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
+				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
+				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
-				require(false, 'INVALID_MODE');
+				revert('INVALID_MODE');
 			}
 		}
 		if (!routinePaidFees[hash] && auth.feeTokenAmount > 0) {
