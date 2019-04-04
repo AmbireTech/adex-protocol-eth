@@ -1,6 +1,6 @@
 {
   "name": "adex-protocol-eth",
-  "version": "2.3.2",
+  "version": "3.0.0",
   "description": "AdEx protocol on Ethereum",
   "directories": {
     "test": "test"
@@ -9,13 +9,23 @@
   "dependencies": {
     "bn.js": "^4.11.8",
     "ethereumjs-abi": "^0.6.5",
+    "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.27",
     "js-sha3": "^0.8.0",
-    "truffle": "^5.0.6"
+    "solc": "^0.5.7",
+    "truffle": "^5.0.10"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-prettier": "^3.0.1",
+    "prettier": "^1.16.4"
+  },
   "scripts": {
     "test": "truffle test",
+    "lint": "eslint .  -c .eslintrc.js --fix",
     "preversion": "mkdir -p temp && solc --abi contracts/AdExCore.sol -o temp && mkdir -p abi && mv temp/AdExCore.abi abi/AdExCore.json && rm -r temp/"
   },
   "repository": {

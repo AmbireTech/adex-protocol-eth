@@ -1,12 +1,16 @@
+const promisify = require('util').promisify
+const { providers, Contract } = require('ethers')
+
 const AdExCore = artifacts.require('AdExCore')
 const MockToken = artifacts.require('./mocks/Token')
 const MockLibs = artifacts.require('./mocks/Libs')
 
-const promisify = require('util').promisify
+const { moveTime, sampleChannel, expectEVMError } = require('./')
+
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-const { Channel, ChannelState, MerkleTree, splitSig } = require('../js')
-const { providers, Contract } = require('ethers')
+const { ChannelState, Channel, MerkleTree, splitSig } = require('../js')
+
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('AdExCore', function(accounts) {
@@ -15,142 +19,242 @@ contract('AdExCore', function(accounts) {
 	let libMock
 
 	const tokens = 2000
+	const userAcc = accounts[0]
 
 	before(async function() {
 		const tokenWeb3 = await MockToken.new()
 		const coreWeb3 = await AdExCore.deployed()
 		libMock = await MockLibs.new()
 		// WARNING: all invokations to core/token will be from account[0]
-		const signer = web3Provider.getSigner(accounts[0])
+		const signer = web3Provider.getSigner(userAcc)
 		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 	})
 	beforeEach(async function() {
-		await token.setBalanceTo(accounts[0], tokens)
+		await token.setBalanceTo(userAcc, tokens)
 	})
 
 	it('SignatureValidator', async function() {
 		const hash = '0x0202020202020202020202020202020202020202020202020202020202020202'
-		const sig = splitSig(await ethSign(hash, accounts[0]))
-		assert.isTrue(await libMock.isValidSig(hash, accounts[0], sig), 'isValidSig returns true for the signer')
-		assert.isNotTrue(await libMock.isValidSig(hash, accounts[1], sig), 'isValidSig returns true for a non-signer')
+		const sig = splitSig(await ethSign(hash, userAcc))
+		assert.isTrue(
+			await libMock.isValidSig(hash, userAcc, sig),
+			'isValidSig returns true for the signer'
+		)
+		assert.isNotTrue(
+			await libMock.isValidSig(hash, accounts[1], sig),
+			'isValidSig returns true for a non-signer'
+		)
 	})
 
 	it('channelOpen', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 0)
+
+		const channelWrongCreator = sampleChannel(
+			accounts,
+			token.address,
+			accounts[1],
+			tokens,
+			blockTime + 50,
+			0
+		)
+		await expectEVMError(core.channelOpen(channelWrongCreator.toSolidityTuple()), 'INVALID_CREATOR')
+
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime + 50, 0)
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
-		const ev = receipt.events.find(x => x.event === 'LogChannelOpen') 
+		const ev = receipt.events.find(x => x.event === 'LogChannelOpen')
 		assert.ok(ev, 'has LogChannelOpen event')
 
-		assert.equal(await token.balanceOf(accounts[0]), 0, 'account balance is 0')
+		assert.equal(await token.balanceOf(userAcc), 0, 'account balance is 0')
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
 
 		assert.equal(ev.args.channelId, channel.hashHex(core.address), 'channel hash matches')
-		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Active, 'channel state is correct')
+		assert.equal(
+			await core.states(channel.hash(core.address)),
+			ChannelState.Active,
+			'channel state is correct'
+		)
+
+		await expectEVMError(core.channelOpen(channel.toSolidityTuple()), 'INVALID_STATE')
 	})
 
 	it('channelWithdrawExpired', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 1)
+		const channel = sampleChannel(accounts, token.address, userAcc, tokens, blockTime + 50, 1)
 
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+		const initialBal = await token.balanceOf(userAcc)
 
+		const channelWithdrawExpired = core.channelWithdrawExpired.bind(core, channel.toSolidityTuple())
 		// Ensure we can't do this too early
-		await expectEVMError(core.channelWithdrawExpired(channel.toSolidityTuple()), 'NOT_EXPIRED')
+		await expectEVMError(channelWithdrawExpired(), 'NOT_EXPIRED')
 
 		// Ensure we can do this when the time comes
 		await moveTime(web3, 100)
-		const receipt = await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
-		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'), 'has LogChannelWihtdrawExpired event')
-		// @TODO ensure can't withdraw after it's expired; maybe verify that we can BEFORE via gas estimations
-		// @TODO check balances, etc.
-		assert.equal(await core.states(channel.hash(core.address)), ChannelState.Expired, 'channel state is correct')
+		const receipt = await (await channelWithdrawExpired()).wait()
+		assert.ok(
+			receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'),
+			'has LogChannelWihtdrawExpired event'
+		)
+		assert.equal(
+			await core.states(channel.hash(core.address)),
+			ChannelState.Expired,
+			'channel state is correct'
+		)
+		assert.equal(
+			await token.balanceOf(userAcc),
+			initialBal.toNumber() + tokens,
+			'funds are returned'
+		)
 
-		// @TODO can't do this twice
+		// cannot do it again
+		await expectEVMError(channelWithdrawExpired(), 'INVALID_STATE')
 	})
 
 	it('channelWithdraw', async function() {
-		// Prepare the tree and sign the state root
-		const elem1 = Channel.getBalanceLeaf(accounts[0], tokens/2)
-		const elem2 = Channel.getBalanceLeaf(accounts[1], tokens/4)
-		const elem3 = Channel.getBalanceLeaf(accounts[2], tokens/4)
-		const tree = new MerkleTree([ elem1, elem2, elem3 ])
-		const proof = tree.proof(elem1)
-
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const channel = sampleChannel(accounts[0], tokens, blockTime+50, 2)
+		const totalDeposit = tokens
+		const channel = sampleChannel(accounts, token.address, userAcc, totalDeposit, blockTime + 50, 2)
+		const channelWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple())
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
-		const stateRoot = tree.getRoot()
-		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
-		const sig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
-		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		// Prepare the tree and sign the state root
+		const userLeafAmnt = totalDeposit / 2
+		const [stateRoot, validSigs, proof] = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: userLeafAmnt },
+			userAcc,
+			userLeafAmnt
+		)
 
 		// Can't withdraw an amount that is not in the tree
 		await expectEVMError(
-			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens),
+			channelWithdraw(stateRoot, validSigs, proof, userLeafAmnt + 1),
 			'BALANCELEAF_NOT_FOUND'
 		)
 
 		// Can't withdraw w/o valid signatures
-		const invalidSigs = [sig1, sig1] // using sig1 for both values
+		const invalidSigs = [validSigs[0], validSigs[0]] // using sig1 for both values
 		await expectEVMError(
-			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, invalidSigs, proof, tokens),
+			channelWithdraw(stateRoot, invalidSigs, proof, userLeafAmnt),
 			'NOT_SIGNED_BY_VALIDATORS'
 		)
 
 		// Can withdraw with the proper values
-		const tx = await core.channelWithdraw(channel.toSolidityTuple(), stateRoot, [sig1, sig2], proof, tokens/2)
+		const validWithdraw = () => channelWithdraw(stateRoot, validSigs, proof, userLeafAmnt)
+		const tx = await validWithdraw()
 		const receipt = await tx.wait()
-		assert.ok(receipt.events.find(x => x.event === 'LogChannelWithdraw'), 'has LogChannelWithdraw event')
-		assert.equal(await token.balanceOf(accounts[0]), tokens/2, 'user has a proper token balance')
+		assert.ok(
+			receipt.events.find(x => x.event === 'LogChannelWithdraw'),
+			'has LogChannelWithdraw event'
+		)
+		assert.equal(await token.balanceOf(userAcc), userLeafAmnt, 'user has a proper token balance')
 
 		const channelId = channel.hash(core.address)
-		assert.equal(await core.withdrawn(channelId), tokens/2, 'channel has the right withdrawn value')
-		assert.equal(await core.withdrawnPerUser(channelId, accounts[0]), tokens/2, 'channel hsa right withdrawnPerUser')
-		// @TODO: test merkle tree with 1 element (no proof); merkle proof with 2 elements, and then with many
+		assert.equal(
+			await core.withdrawn(channelId),
+			userLeafAmnt,
+			'channel has the right withdrawn value'
+		)
+		assert.equal(
+			await core.withdrawnPerUser(channelId, userAcc),
+			userLeafAmnt,
+			'channel has right withdrawnPerUser'
+		)
 
-		// @TODO completely exhaust channel, use getWithdrawn to ensure it's exhausted (or have a JS lib convenience method)
-		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
-		// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
-		// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+		// if we try with less, it won't work
+		const decWithdrawArgs = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: userLeafAmnt - 1 },
+			userAcc,
+			userLeafAmnt - 1
+		)
+		await expectEVMError(channelWithdraw(...decWithdrawArgs))
 
-		// @TODO: if the balance leaf updates, the user can only withdraw the difference to the previous withdraw
-		// @TODO if you use a balance leaf with less than the lsat withdraw you did, it will revert
-		// @TODO: even if a state tree contains more than the total deposit of the channel, it can't be withdrawn (even if the contract has more tokens)
-		// @TODO should the byzantine cases of channelWithdraw be in a separate test? (validators trying to attack)
-		// @TODO can't withdraw more than the entire channel deposit, even if validators allow it
+		// we can do it again, but it's not gonna give us more tokens
+		const receipt2 = await (await validWithdraw()).wait()
+		const withdrawEvent = receipt2.events.find(x => x.event === 'LogChannelWithdraw')
+		assert.ok(withdrawEvent, 'has LogChannelWithdraw event')
+		assert.equal(withdrawEvent.args.amount, 0, 'withdrawn amount is 0')
+		assert.equal(
+			await core.withdrawn(channelId),
+			userLeafAmnt,
+			'channel has the right withdrawn value'
+		)
+
+		// add more balances and withdraw; make sure that only the difference (to the last withdrawal) is withdrawn
+		// also, test a tree that has more elements
+		const incUserLeafAmnt = userLeafAmnt + 10
+		const incWithdrawArgs = await balanceTreeToWithdrawArgs(
+			channel,
+			{
+				[userAcc]: incUserLeafAmnt,
+				[accounts[1]]: 10,
+				[accounts[2]]: 10
+			},
+			userAcc,
+			incUserLeafAmnt
+		)
+		const receipt3 = await (await channelWithdraw(...incWithdrawArgs)).wait()
+		const incWithdrawEvent = receipt3.events.find(x => x.event === 'LogChannelWithdraw')
+		assert.ok(incWithdrawEvent, 'has LogChannelWithdraw event')
+		assert.equal(incWithdrawEvent.args.amount, 10, 'withdrawn amount is 10')
+		assert.equal(
+			await core.withdrawn(channelId),
+			incUserLeafAmnt,
+			'channel has the right withdrawn value'
+		)
+		assert.equal(await token.balanceOf(userAcc), incUserLeafAmnt, 'user has the right token amount')
+
+		await moveTime(web3, 100)
+		await expectEVMError(validWithdraw(), 'EXPIRED')
+
+		// Now we withdrawExpired, and we can only get the rest
+		const expiredReceipt = await (await core.channelWithdrawExpired(
+			channel.toSolidityTuple()
+		)).wait()
+		const expiredEv = expiredReceipt.events.find(x => x.event === 'LogChannelWithdrawExpired')
+		assert.equal(
+			expiredEv.args.amount.toNumber() + incUserLeafAmnt,
+			totalDeposit,
+			'withdrawExpired returned the rest of the funds'
+		)
+		assert.equal(await token.balanceOf(userAcc), totalDeposit, 'totalDeposit is returned')
 	})
 
-	function sampleChannel(creator, amount, validUntil, nonce) {
-		const spec = new Buffer(32)
-		spec.writeUInt32BE(nonce)
-		return new Channel({
-			creator,
-			tokenAddr: token.address,
-			tokenAmount: amount,
-			validUntil,
-			validators: [accounts[0], accounts[1]],
-			spec,
-		})
-	}
-	async function expectEVMError(promise, errString) {
-		try {
-			await promise;
-			assert.isOk(false, 'should have failed with '+errString)
-		} catch(e) {
-			assert.isOk(e.message.match(new RegExp('VM Exception while processing transaction: revert '+errString)), 'wrong error: '+e.message)
-		}
-	}
-	function moveTime(web3, time) {
-		return new Promise(function(resolve, reject) {
-			web3.currentProvider.send({
-				jsonrpc: '2.0',
-				method: 'evm_increaseTime',
-				params: [time],
-				id: 0,
-			}, (err, res) => err ? reject(err) : resolve(res))
-		})
+	it('channelWithdraw: cannot withdraw more than the channel', async function() {
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const totalDeposit = tokens
+		const channel = sampleChannel(accounts, token.address, userAcc, totalDeposit, blockTime + 50, 3)
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
+		const leafAmnt = totalDeposit + 1
+		const [stateRoot, validSigs, proof] = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: leafAmnt },
+			userAcc,
+			leafAmnt
+		)
+		await expectEVMError(
+			core.channelWithdraw(channel.toSolidityTuple(), stateRoot, validSigs, proof, leafAmnt),
+			'WITHDRAWING_MORE_THAN_CHANNEL'
+		)
+	})
+
+	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashToSignHex, sig1), 1000 times, takes ~6000ms
+	// Bench: creating these: (elem1, elem2, elem3, tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+	// Bench: creating these: (tree, proof, stateRoot, hashtoSignHex), 1000 times, takes ~300ms
+	async function balanceTreeToWithdrawArgs(channel, balances, acc, amnt) {
+		const elements = Object.entries(balances).map(([leafAcc, leafAmnt]) =>
+			Channel.getBalanceLeaf(leafAcc, leafAmnt)
+		)
+		const tree = new MerkleTree(elements)
+		const elemToWithdraw = Channel.getBalanceLeaf(acc, amnt)
+		const proof = tree.proof(elemToWithdraw)
+		const stateRoot = tree.getRoot()
+		const hashToSignHex = channel.hashToSignHex(core.address, stateRoot)
+		const sig1 = splitSig(await ethSign(hashToSignHex, userAcc))
+		const sig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		return [stateRoot, [sig1, sig2], proof, amnt]
 	}
 })
