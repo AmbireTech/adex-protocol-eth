@@ -16,6 +16,7 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 contract('AdExCore', function(accounts) {
 	let token
 	let core
+	let coreInvalid
 	let libMock
 
 	const tokens = 2000
@@ -29,6 +30,9 @@ contract('AdExCore', function(accounts) {
 		const signer = web3Provider.getSigner(userAcc)
 		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
+
+		const signerInvalid = web3Provider.getSigner(accounts[3])
+		coreInvalid = new Contract(coreWeb3.address, AdExCore._json.abi, signerInvalid)
 	})
 	beforeEach(async function() {
 		await token.setBalanceTo(userAcc, tokens)
@@ -43,7 +47,7 @@ contract('AdExCore', function(accounts) {
 		)
 		assert.isNotTrue(
 			await libMock.isValidSig(hash, accounts[1], sig),
-			'isValidSig returns true for a non-signer'
+			'isValidSig returns false for a non-signer'
 		)
 	})
 
@@ -64,6 +68,7 @@ contract('AdExCore', function(accounts) {
 		const receipt = await (await core.channelOpen(channel.toSolidityTuple())).wait()
 		const ev = receipt.events.find(x => x.event === 'LogChannelOpen')
 		assert.ok(ev, 'has LogChannelOpen event')
+		assert.notEqual(ev.args.channelId, 0)
 
 		assert.equal(await token.balanceOf(userAcc), 0, 'account balance is 0')
 		assert.equal(await token.balanceOf(core.address), tokens, 'contract balance is correct')
@@ -76,6 +81,9 @@ contract('AdExCore', function(accounts) {
 		)
 
 		await expectEVMError(core.channelOpen(channel.toSolidityTuple()), 'INVALID_STATE')
+
+		const channelInvalid = sampleChannel(accounts, token.address, userAcc, tokens, blockTime - 50, 0)
+		await expectEVMError(core.channelOpen(channelInvalid.toSolidityTuple()), 'INVALID_CHANNEL')
 	})
 
 	it('channelWithdrawExpired', async function() {
@@ -91,6 +99,11 @@ contract('AdExCore', function(accounts) {
 
 		// Ensure we can do this when the time comes
 		await moveTime(web3, 100)
+
+		// Ensure only the creator can withdraw
+		const channelWithdrawInvalid = coreInvalid.channelWithdrawExpired.bind(core, channel.toSolidityTuple())
+		await expectEVMError(channelWithdrawInvalid(), 'INVALID_CREATOR')
+
 		const receipt = await (await channelWithdrawExpired()).wait()
 		assert.ok(
 			receipt.events.find(x => x.event === 'LogChannelWithdrawExpired'),
