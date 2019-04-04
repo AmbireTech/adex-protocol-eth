@@ -84,7 +84,7 @@ contract('Identity', function(accounts) {
 			registry: registryAddr,
 			validUntil: 1900000000,
 			feeTokenAddr: token.address,
-			feeAmount: 0
+			weeklyFeeAmount: 0
 		})
 		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			routineAuthorizations: [defaultAuth.hash()],
@@ -363,7 +363,7 @@ contract('Identity', function(accounts) {
 	})
 
 	it('relay routine operations', async function() {
-		// note: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
+		// NOTE: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
 		const fee = 20
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
@@ -371,10 +371,11 @@ contract('Identity', function(accounts) {
 			relayer: relayerAddr,
 			outpace: coreAddr,
 			registry: registryAddr,
-			validUntil: blockTime + DAY_SECONDS,
+			validUntil: blockTime + 14 * DAY_SECONDS,
 			feeTokenAddr: token.address,
-			feeAmount: fee
+			weeklyFeeAmount: fee
 		})
+
 		// Activate this routine authorization
 		const tx = await zeroFeeTx(
 			id.address,
@@ -382,7 +383,9 @@ contract('Identity', function(accounts) {
 		)
 		const sig = splitSig(await ethSign(tx.hashHex(), userAcc))
 		await (await id.execute([tx.toSolidityTuple()], [sig], { gasLimit })).wait()
+
 		// Create the operation and relay it
+		// the operation is simply to withdraw from the id contract to userAcc
 		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
 		const initialUserBal = await token.balanceOf(userAcc)
 		const initialRelayerBal = await token.balanceOf(relayerAddr)
@@ -437,17 +440,26 @@ contract('Identity', function(accounts) {
 		evilTuple[2] = token.address // set any other address
 		await expectEVMError(id.executeRoutines(evilTuple, [op]), 'NOT_AUTHORIZED')
 
+		// Fee will be paid again, since it's weekly
+		await moveTime(web3, DAY_SECONDS * 7 + 10)
+		await (await execRoutines()).wait()
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialRelayerBal.toNumber() + fee * 2,
+			'relayer has received the fee twice'
+		)
+
 		// We can no longer call after the authorization has expired
-		await moveTime(web3, DAY_SECONDS + 10)
+		await moveTime(web3, DAY_SECONDS * 7 + 10)
 		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
 
-	it('open a channel, withdraw via routines', async function() {
+	it('open a channel, withdraw it via routines', async function() {
 		const tokenAmnt = 500
 		// Open a channel via the identity
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
-		// so we need to workaround with + DAY_SECONDS
-		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
+		// so we need to workaround with + 8 * DAY_SECONDS
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp + 8 * DAY_SECONDS
 		const channel = sampleChannel(
 			accounts,
 			token.address,

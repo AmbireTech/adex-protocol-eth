@@ -57,7 +57,7 @@ function RoutineAuthorization(args) {
 	this.registry = ensure.Address(args.registry)
 	this.validUntil = ensure.Uint256(args.validUntil)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
-	this.feeAmount = ensure.Uint256(args.feeAmount)
+	this.weeklyFeeAmount = ensure.Uint256(args.weeklyFeeAmount)
 	Object.freeze(this)
 	return this
 }
@@ -71,7 +71,7 @@ RoutineAuthorization.prototype.hash = function() {
 			this.registry,
 			this.validUntil,
 			this.feeTokenAddr,
-			this.feeAmount
+			this.weeklyFeeAmount
 		]
 	)
 	return Buffer.from(keccak256.arrayBuffer(buf))
@@ -89,7 +89,7 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 		this.registry,
 		`0x${this.validUntil.toString(16)}`,
 		this.feeTokenAddr,
-		`0x${this.feeAmount.toString(16)}`
+		`0x${this.weeklyFeeAmount.toString(16)}`
 	]
 }
 
