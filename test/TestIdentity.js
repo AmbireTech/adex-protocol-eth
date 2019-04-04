@@ -344,11 +344,22 @@ contract('Identity', function(accounts) {
 			gasLimit
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
-		assert.equal(
-			(await id.nonce()).toNumber(),
-			parseInt(relayerTx.nonce, 10) + 1,
-			'nonce has increased with 1'
-		)
+
+    const initialNonce = parseInt(relayerTx.nonce, 10)
+		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
+
+		const invalidNonceTx = new Transaction({
+			...relayerTx,
+			nonce: relayerTx.nonce-1
+		})
+		await expectEVMError(idWithSender.executeBySender([invalidNonceTx.toSolidityTuple()]), 'WRONG_NONCE')
+
+		const invalidPrivTx = new Transaction({
+			...relayerTx,
+			nonce: (await id.nonce()).toNumber(),
+			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1]),
+		})
+		await expectEVMError(idWithSender.executeBySender([invalidPrivTx.toSolidityTuple()]), 'PRIVILEGE_NOT_DOWNGRADED')
 	})
 
 	it('relay routine operations', async function() {
