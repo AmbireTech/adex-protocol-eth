@@ -1,12 +1,16 @@
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
+const { Interface } = require('ethers').utils
 const ensure = require('./ensureTypes')
+const coreABI = require('../abi/AdExCore')
+
+const coreInterface = new Interface(coreABI)
 
 function Transaction(args) {
 	this.identityContract = ensure.Address(args.identityContract)
 	this.nonce = ensure.Uint256(args.nonce)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
-	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
+	this.feeAmount = ensure.Uint256(args.feeAmount)
 	this.to = ensure.Address(args.to)
 	this.value = ensure.Uint256(args.value)
 	this.data = ensure.Bytes(args.data)
@@ -21,7 +25,7 @@ Transaction.prototype.hash = function() {
 			this.identityContract,
 			this.nonce,
 			this.feeTokenAddr,
-			this.feeTokenAmount,
+			this.feeAmount,
 			this.to,
 			this.value,
 			this.data
@@ -40,7 +44,7 @@ Transaction.prototype.toSolidityTuple = function() {
 		this.identityContract,
 		`0x${this.nonce.toString(16)}`,
 		this.feeTokenAddr,
-		`0x${this.feeTokenAmount.toString(16)}`,
+		`0x${this.feeAmount.toString(16)}`,
 		this.to,
 		`0x${this.value.toString(16)}`,
 		`0x${this.data.toString('hex')}`
@@ -48,12 +52,12 @@ Transaction.prototype.toSolidityTuple = function() {
 }
 
 function RoutineAuthorization(args) {
-	this.identityContract = ensure.Address(args.identityContract)
 	this.relayer = ensure.Address(args.relayer)
 	this.outpace = ensure.Address(args.outpace)
+	this.registry = ensure.Address(args.registry)
 	this.validUntil = ensure.Uint256(args.validUntil)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
-	this.feeTokenAmount = ensure.Uint256(args.feeTokenAmount)
+	this.feeAmount = ensure.Uint256(args.feeAmount)
 	Object.freeze(this)
 	return this
 }
@@ -62,12 +66,12 @@ RoutineAuthorization.prototype.hash = function() {
 	const buf = abi.rawEncode(
 		['address', 'address', 'address', 'uint256', 'address', 'uint256'],
 		[
-			this.identityContract,
 			this.relayer,
 			this.outpace,
+			this.registry,
 			this.validUntil,
 			this.feeTokenAddr,
-			this.feeTokenAmount
+			this.feeAmount
 		]
 	)
 	return Buffer.from(keccak256.arrayBuffer(buf))
@@ -80,17 +84,32 @@ RoutineAuthorization.prototype.hashHex = function() {
 RoutineAuthorization.prototype.toSolidityTuple = function() {
 	// etherjs doesn't seem to want BN.js instances; hex is the lowest common denominator for web3/ethers
 	return [
-		this.identityContract,
 		this.relayer,
 		this.outpace,
+		this.registry,
 		`0x${this.validUntil.toString(16)}`,
 		this.feeTokenAddr,
-		`0x${this.feeTokenAmount.toString(16)}`
+		`0x${this.feeAmount.toString(16)}`
 	]
 }
 
-RoutineAuthorization.encodeWithdraw = function(tokenAddr, to, amount) {
-	return abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])
+const RoutineOps = {
+	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
+	channelWithdraw(args) {
+		const data = `0x${coreInterface.functions.channelWithdraw.encode(args).slice(10)}`
+		return [0, data]
+	},
+	channelWithdrawExpired(args) {
+		const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
+		return [1, data]
+	},
+	channelOpen(args) {
+		const data = `0x${coreInterface.functions.channelOpen.encode(args).slice(10)}`
+		return [2, data]
+	},
+	withdraw(tokenAddr, to, amount) {
+		return [3, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
+	}
 }
 
-module.exports = { Transaction, RoutineAuthorization }
+module.exports = { Transaction, RoutineAuthorization, RoutineOps }

@@ -63,7 +63,7 @@ library ChannelLibrary {
 		if (channel.validUntil < currentTime) {
 			return false;
 		}
-		if (channel.validUntil > currentTime + MAX_VALIDITY) {
+		if (channel.validUntil > (currentTime + MAX_VALIDITY)) {
 			return false;
 		}
 
