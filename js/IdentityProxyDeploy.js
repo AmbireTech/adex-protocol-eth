@@ -16,11 +16,11 @@ function getMappingSstore(slotNumber, keyType, key, value) {
 function getProxyDeployBytecode(proxiedAddr, privLevels, opts) {
 	assert.ok(opts, 'opts not passed')
 	const { privSlot, routineAuthsSlot } = opts
-	assert.ok(typeof privSlot === 'number', 'privSlot is a number')
+	assert.ok(typeof privSlot === 'number', 'privSlot must be a number')
 
 	let routineAuthsCode = ''
 	if (opts.routineAuthorizations) {
-		assert.ok(typeof routineAuthsSlot === 'number', 'routineAuthsSlot is a number')
+		assert.ok(typeof routineAuthsSlot === 'number', 'routineAuthsSlot must be a number')
 		routineAuthsCode = opts.routineAuthorizations
 			.map(hash => getMappingSstore(routineAuthsSlot, 'bytes32', hash, '0x01'))
 			.join('\n')
