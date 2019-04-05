@@ -129,7 +129,6 @@ contract('AdExCore', function(accounts) {
 		const totalDeposit = tokens
 		const channel = sampleChannel(accounts, token.address, userAcc, totalDeposit, blockTime + 50, 2)
 		const channelWithdraw = core.channelWithdraw.bind(core, channel.toSolidityTuple())
-		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Prepare the tree and sign the state root
 		const userLeafAmnt = totalDeposit / 2
@@ -139,6 +138,14 @@ contract('AdExCore', function(accounts) {
 			userAcc,
 			userLeafAmnt
 		)
+
+		// Can't withdraw an non-existing channel
+		await expectEVMError(
+			channelWithdraw(stateRoot, validSigs, proof, userLeafAmnt),
+			'INVALID_STATE'
+		)
+
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Can't withdraw an amount that is not in the tree
 		await expectEVMError(
