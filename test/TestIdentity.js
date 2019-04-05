@@ -384,6 +384,9 @@ contract('Identity', function(accounts) {
 		const sig = splitSig(await ethSign(tx.hashHex(), userAcc))
 		await (await id.execute([tx.toSolidityTuple()], [sig], { gasLimit })).wait()
 
+		// setRoutineAuth can only be invoked by the contract
+		await expectEVMError(id.setRoutineAuth(auth.hashHex(), userAcc), 'ONLY_IDENTITY_CAN_CALL')
+
 		// Create the operation and relay it
 		// the operation is simply to withdraw from the id contract to userAcc
 		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
