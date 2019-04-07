@@ -23,11 +23,16 @@ npm test
 
 The contract `extra/Identity` is supposed to be deployed separately for each user through a counterfactual method described in [AdEx Identity](https://github.com/AdExNetwork/adex-protocol/issues/10).
 
-The contract `AdExCore` from version v2.3.0, compiled with solc v0.5.6 is deployed here:
+The contract `AdExCore` from version v3.1.0, compiled with solc v0.5.6 is deployed here:
 
 * Mainnet: https://etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 * Goerli: https://goerli.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
 * Kovan: https://kovan.etherscan.io/address/0x333420fc6a897356e69b62417cd17ff012177d2b
+
+An `Identity`, initialized with no privileges, to be used as a basis for `IdentityProxy`:
+
+* Mainnet: https://etherscan.io/address/0xbdf97b0f5fa78beae684d9fb67dd45f11b996e46
+* Goerli: https://goerli.etherscan.io/address/0xbdf97b0f5fa78beae684d9fb67dd45f11b996e46
 
 ### Deployment strategy
 
