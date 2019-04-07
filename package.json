@@ -12,7 +12,7 @@
     "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.27",
     "js-sha3": "^0.8.0",
-    "solc": "^0.5.7",
+    "solc": "0.5.6",
     "truffle": "^5.0.10"
   },
   "devDependencies": {
