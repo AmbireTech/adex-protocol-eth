@@ -34,6 +34,12 @@ An `Identity`, initialized with no privileges, to be used as a basis for `Identi
 * Mainnet: https://etherscan.io/address/0xbdf97b0f5fa78beae684d9fb67dd45f11b996e46
 * Goerli: https://goerli.etherscan.io/address/0xbdf97b0f5fa78beae684d9fb67dd45f11b996e46
 
+An `IdentityFactory`, set up with the AdEx relayer:
+
+* Mainnet: https://etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
+* Goerli: https://goerli.etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
+
+
 ### Deployment strategy
 
 The full deploy processis as follows
