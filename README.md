@@ -39,6 +39,10 @@ An `IdentityFactory`, set up with the AdEx relayer:
 * Mainnet: https://etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
 * Goerli: https://goerli.etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
 
+And the `Registry`:
+
+* Mainnet: https://etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
+* Goerli: https://goerli.etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
 
 ### Deployment strategy
 
