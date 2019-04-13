@@ -10,5 +10,6 @@ mv temp/AdExCore.abi abi/AdExCore.json
 mv temp/Identity.abi abi/Identity.json  
 mv temp/IdentityFactory.abi abi/IdentityFactory.json
 # AdexCore bytecode
-mv temp/AdExCore.bin resources/bytecode/AdExCore.json
+bytecode="`cat temp/AdExCore.bin`"; # read file contents into var
+echo "\"$bytecode\"" > "resources/bytecode/AdExCore.json" # write to file
 rm -r temp/
