@@ -590,7 +590,10 @@ contract('Identity', function(accounts) {
 		await token.setBalanceTo(channelCreatorAddr, tokenAmnt)
 
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
-		const initialFactoryBal = await token.balanceOf(identityFactory.address)
+		const [initialFactoryBal, initialRelayerBal] = await Promise.all([
+			await token.balanceOf(identityFactory.address),
+			await token.balanceOf(relayerAddr)
+		])
 
 		const validators = accounts.slice(0, 2)
 		const channel = sampleChannel(
@@ -657,6 +660,19 @@ contract('Identity', function(accounts) {
 		assert.equal(
 			(await token.balanceOf(identityFactory.address)).toNumber(),
 			initialFactoryBal.toNumber() + feeAmount,
+			'IdentityFactory balance is correct'
+		)
+
+		// Relyaer can withdraw the fee
+		await (await identityFactory.withdraw(
+			token.address,
+			relayerAddr,
+			feeAmount,
+			{ gasLimit }
+		)).wait()
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialRelayerBal.toNumber() + feeAmount,
 			'relayer balance is correct'
 		)
 	})
