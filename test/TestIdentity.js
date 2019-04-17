@@ -350,16 +350,22 @@ contract('Identity', function(accounts) {
 
 		const invalidNonceTx = new Transaction({
 			...relayerTx,
-			nonce: relayerTx.nonce-1
+			nonce: relayerTx.nonce - 1
 		})
-		await expectEVMError(idWithSender.executeBySender([invalidNonceTx.toSolidityTuple()]), 'WRONG_NONCE')
+		await expectEVMError(
+			idWithSender.executeBySender([invalidNonceTx.toSolidityTuple()]),
+			'WRONG_NONCE'
+		)
 
 		const invalidPrivTx = new Transaction({
 			...relayerTx,
 			nonce: (await id.nonce()).toNumber(),
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1]),
+			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1])
 		})
-		await expectEVMError(idWithSender.executeBySender([invalidPrivTx.toSolidityTuple()]), 'PRIVILEGE_NOT_DOWNGRADED')
+		await expectEVMError(
+			idWithSender.executeBySender([invalidPrivTx.toSolidityTuple()]),
+			'PRIVILEGE_NOT_DOWNGRADED'
+		)
 	})
 
 	it('relay routine operations', async function() {
@@ -643,8 +649,16 @@ contract('Identity', function(accounts) {
 		)).wait()
 		// LogChannelWithdraw, Transfer (withdraw), Transfer (tx fee), LogDeployed
 		assert.equal(receipt.events.length, 4, 'proper events length')
-		assert.equal((await token.balanceOf(expectedAddr)).toNumber(), tokenAmnt - feeAmount, 'Identity balance is correct')
-		assert.equal((await token.balanceOf(identityFactory.address)).toNumber(), initialFactoryBal.toNumber() + feeAmount, 'relayer balance is correct')
+		assert.equal(
+			(await token.balanceOf(expectedAddr)).toNumber(),
+			tokenAmnt - feeAmount,
+			'Identity balance is correct'
+		)
+		assert.equal(
+			(await token.balanceOf(identityFactory.address)).toNumber(),
+			initialFactoryBal.toNumber() + feeAmount,
+			'relayer balance is correct'
+		)
 	})
 
 	async function zeroFeeTx(to, data) {
