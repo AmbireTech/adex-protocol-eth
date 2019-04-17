@@ -345,7 +345,7 @@ contract('Identity', function(accounts) {
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 
-    const initialNonce = parseInt(relayerTx.nonce, 10)
+		const initialNonce = parseInt(relayerTx.nonce, 10)
 		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
 
 		const invalidNonceTx = new Transaction({
@@ -573,6 +573,78 @@ contract('Identity', function(accounts) {
 		// LogWithdrawExpired and Transfer
 		assert.equal(expiredReceipt.events.length, 2, 'right event count')
 		assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
+	})
+
+	it('IdentityFactory: deployAndExecute', async function() {
+		const channelCreatorAddr = accounts[7]
+		const signer = web3Provider.getSigner(channelCreatorAddr)
+
+		const tokenAmnt = 1000
+		const feeAmount = 120
+		await token.setBalanceTo(channelCreatorAddr, tokenAmnt)
+
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const initialFactoryBal = await token.balanceOf(identityFactory.address)
+
+		const validators = accounts.slice(0, 2)
+		const channel = sampleChannel(
+			validators,
+			token.address,
+			channelCreatorAddr,
+			tokenAmnt,
+			blockTime + DAY_SECONDS,
+			0
+		)
+		const core = new Contract(coreAddr, AdExCore._json.abi, signer)
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
+			...getStorageSlotsFromArtifact(Identity)
+		})
+
+		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
+		const expectedAddr = getAddress(
+			`0x${generateAddress2(identityFactory.address, salt, bytecode).toString('hex')}`
+		)
+
+		// Prepare all the data needed for withdrawal
+		const elem1 = Channel.getBalanceLeaf(expectedAddr, tokenAmnt)
+		const tree = new MerkleTree([elem1])
+		const proof = tree.proof(elem1)
+		const stateRoot = tree.getRoot()
+		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
+		const vsig1 = splitSig(await ethSign(hashToSignHex, validators[0]))
+		const vsig2 = splitSig(await ethSign(hashToSignHex, validators[1]))
+
+		const coreInterface = new Interface(AdExCore._json.abi)
+		const tx1 = new Transaction({
+			identityContract: expectedAddr,
+			nonce: 0,
+			feeTokenAddr: token.address,
+			// This fee would pay for the transaction AND for the deploy
+			feeAmount,
+			to: coreAddr,
+			data: coreInterface.functions.channelWithdraw.encode([
+				channel.toSolidityTuple(),
+				stateRoot,
+				[vsig1, vsig2],
+				proof,
+				tokenAmnt
+			])
+		})
+		const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
+
+		const receipt = await (await identityFactory.deployAndExecute(
+			bytecode,
+			salt,
+			[tx1.toSolidityTuple()],
+			[sig],
+			{ gasLimit }
+		)).wait()
+		// LogChannelWithdraw, Transfer (withdraw), Transfer (tx fee), LogDeployed
+		assert.equal(receipt.events.length, 4, 'proper events length')
+		assert.equal((await token.balanceOf(expectedAddr)).toNumber(), tokenAmnt - feeAmount, 'Identity balance is correct')
+		assert.equal((await token.balanceOf(identityFactory.address)).toNumber(), initialFactoryBal.toNumber() + feeAmount, 'relayer balance is correct')
 	})
 
 	async function zeroFeeTx(to, data) {
