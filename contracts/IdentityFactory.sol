@@ -35,4 +35,9 @@ contract IdentityFactory {
 		Identity(addr).execute(txns, signatures);
 		emit LogDeployed(addr, salt);
 	}
+
+	function withdraw(address tokenAddr, address to, uint256 tokenAmount) public {
+		require(msg.sender == relayer, "ONLY_RELAYER");
+		SafeERC20.transfer(tokenAddr, to, tokenAmount);
+	}
 }
