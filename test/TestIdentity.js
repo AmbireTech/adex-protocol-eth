@@ -663,7 +663,18 @@ contract('Identity', function(accounts) {
 			'IdentityFactory balance is correct'
 		)
 
-		// Relyaer can withdraw the fee
+		// Only relayer allowed to withdraw
+		const identityFactoryEvil = new Contract(
+			identityFactory.address,
+			IdentityFactory._json.abi,
+			web3Provider.getSigner(evilAcc)
+		)
+		await expectEVMError(
+			identityFactoryEvil.withdraw(token.address, evilAcc, feeAmount, { gasLimit }),
+			'ONLY_RELAYER'
+		)
+
+		// Relayer can withdraw the fee
 		await (await identityFactory.withdraw(
 			token.address,
 			relayerAddr,
