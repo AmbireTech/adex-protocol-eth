@@ -34,8 +34,8 @@ An `Identity`, initialized with no privileges, to be used as a basis for `Identi
 
 An `IdentityFactory`, set up with the AdEx relayer:
 
-* Mainnet: https://etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
-* Goerli: https://goerli.etherscan.io/address/0x23500b78f53f5919a9cc88c66c5da43a068bc259
+* Mainnet: https://etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
+* Goerli: https://goerli.etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
 
 And the `Registry`:
 
