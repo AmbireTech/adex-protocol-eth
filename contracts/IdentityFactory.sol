@@ -38,26 +38,14 @@ contract IdentityFactory {
 	// This is done to mitigate possible frontruns where, for example, deploying the same code/salt via deploy()
 	// would make a pending deployAndFund fail
 	// The way we mitigate that is by checking if the contract is already deployed and if so, we continue execution
-	/*
 	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
-		address addr;
-		assembly { addr := create2(0, add(code, 0x20), mload(code), salt) }
-		if (addr == address(0)) {
-			address expectedAddr = address(uint160(uint256((keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code)))))));
-			uint size;
-			assembly { size := extcodesize(expectedAddr) }
-			// If there is code at that address, we can assume it's the one we were about to deploy, 
-			// because of how CREATE2 and keccak256 works
-			// Deploying failed, but it's also not currently deployed
-			require(size > 0, "FAILED_DEPLOYING");
-			return expectedAddr;
-		}
-		return addr;
-	}*/
-	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
-		address expectedAddr = address(uint160(uint256(keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code))))));
+		address expectedAddr = address(uint160(uint256(
+			keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code)))
+		)));
 		uint size;
 		assembly { size := extcodesize(expectedAddr) }
+		// If there is code at that address, we can assume it's the one we were about to deploy,
+		// because of how CREATE2 and keccak256 works
 		if (size == 0) {
 			address addr;
 			assembly { addr := create2(0, add(code, 0x20), mload(code), salt) }
