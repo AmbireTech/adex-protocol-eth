@@ -182,8 +182,11 @@ contract('Identity', function(accounts) {
 		// Set tokens
 		await token.setBalanceTo(identityFactory.address, fundAmnt)
 
+		//console.log(await (await identityFactoryUser.deploy(bytecode, salt)))
+
 		// Call successfully
 		const receipt = await (await deployAndFund()).wait()
+		//console.log('gasUsed:', receipt.gasUsed.toString(10))
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		assert.ok(deployedEv, 'has deployedEv')
 		assert.equal(
