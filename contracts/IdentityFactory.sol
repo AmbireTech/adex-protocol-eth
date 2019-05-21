@@ -55,14 +55,14 @@ contract IdentityFactory {
 		return addr;
 	}*/
 	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
-		address expectedAddr = address(uint160(uint256((keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code)))))));
+		address expectedAddr = address(uint160(uint256(keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code))))));
 		uint size;
 		assembly { size := extcodesize(expectedAddr) }
 		if (size == 0) {
 			address addr;
 			assembly { addr := create2(0, add(code, 0x20), mload(code), salt) }
 			require(addr != address(0), "FAILED_DEPLOYING");
-			//assert(addr == expectedAddr);
+			require(addr == expectedAddr, "FAILED_MATCH");
 		}
 		return expectedAddr;
 	}
