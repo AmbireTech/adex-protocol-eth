@@ -134,7 +134,7 @@ contract('AdExCore', function(accounts) {
 		)
 
 		// Can't withdraw w/o valid signatures
-		const invalidSigs = [validSigs[0], validSigs[0]] // using sig1 for both values
+		const invalidSigs = [validSigs[0], validSigs[0]] // using 0th sig for both values
 		await expectEVMError(
 			channelWithdraw(stateRoot, invalidSigs, proof, userLeafAmnt),
 			'NOT_SIGNED_BY_VALIDATORS'
