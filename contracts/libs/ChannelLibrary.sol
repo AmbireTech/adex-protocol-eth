@@ -87,6 +87,9 @@ library ChannelLibrary {
 			// NOTE: if a validator has not signed, you can just use SignatureMode.NO_SIG
 			if (SignatureValidator.isValidSignature(toSign, channel.validators[i], signatures[i])) {
 				signs++;
+			} else if (i == 0) {
+				// The 0th signature is always from the leading validator, so it doesn't make sense for other sigs to exist if this one does not
+				return false;
 			}
 		}
 		return signs*3 >= channel.validators.length*2;
