@@ -1,7 +1,15 @@
-const solc = require('solc')
+const solcWrap = require('solc-wrapper')
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 const assert = require('assert')
+const path = require('path')
+const fs = require('fs')
+const requireFromString = require('require-from-string')
+
+const soljson = requireFromString(
+	fs.readFileSync(path.join(__dirname, 'soljson-v0.5.6+commit.b259423e.js'), 'utf8')
+)
+const solc = solcWrap(soljson)
 
 function getMappingSstore(slotNumber, keyType, key, value) {
 	// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
