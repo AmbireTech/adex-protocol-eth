@@ -48,10 +48,8 @@ Generator.prototype.pos = function (tag) {
 }
 
 Generator.prototype.tagSize = function (dataSize, subTagSize) {
-	if (!dataSize) dataSize = 0;
-	let tagSize = (this.tpl.length + dataSize) / 2 > 255 ? 2 : 1;
-	if (subTagSize && subTagSize > tagSize) tagSize = subTagSize;
-	return tagSize;
+	let tagSize = (dataSize ? this.tpl.length + dataSize : this.tpl.length) / 2 > 255 ? 2 : 1;
+	return (subTagSize && subTagSize > tagSize) ? subTagSize : tagSize;
 }
 
 Generator.genMetadataHashBytecode = function (content) {
