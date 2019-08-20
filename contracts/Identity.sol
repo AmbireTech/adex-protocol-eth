@@ -110,6 +110,7 @@ contract Identity {
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
 		public
 	{
+		require(txns.length > 0, 'MUST_PASS_TX');
 		address feeTokenAddr = txns[0].feeTokenAddr;
 		uint feeAmount = 0;
 		uint len = txns.length;
