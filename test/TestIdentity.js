@@ -30,7 +30,7 @@ const DAY_SECONDS = 24 * 60 * 60
 // READ THIS!
 // gasLimit must be hardcoded cause ganache cannot estimate it properly
 // that's cause of the call() that we do here; see https://github.com/AdExNetwork/adex-protocol-eth/issues/55
-const gasLimit = 400000
+const gasLimit = 1000000
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
