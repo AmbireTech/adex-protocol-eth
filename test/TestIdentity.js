@@ -19,6 +19,7 @@ const {
 	MerkleTree
 } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
+const { solcModule } = require('../js/solc')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
@@ -89,7 +90,7 @@ contract('Identity', function(accounts) {
 		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			routineAuthorizations: [defaultAuth.hash()],
 			...getStorageSlotsFromArtifact(Identity)
-		})
+		}, solcModule)
 		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
@@ -111,7 +112,7 @@ contract('Identity', function(accounts) {
 				// safeERC20Artifact: artifacts.require('SafeERC20')
 			},
 			...getStorageSlotsFromArtifact(Identity)
-		})
+		}, solcModule)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
@@ -152,7 +153,7 @@ contract('Identity', function(accounts) {
 		// Generating a proxy deploy transaction
 		const bytecode = getProxyDeployBytecode(id.address, [[userAcc, 3]], {
 			...getStorageSlotsFromArtifact(Identity)
-		})
+		}, solcModule)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const deployAndFund = identityFactory.deployAndFund.bind(
@@ -612,7 +613,7 @@ contract('Identity', function(accounts) {
 
 		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
 			...getStorageSlotsFromArtifact(Identity)
-		})
+		}, solcModule)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
