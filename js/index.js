@@ -1,10 +1,11 @@
 const channelLib = require('./Channel')
 const identityLib = require('./Identity')
-const identityDeployLib = require('./IdentityDeploy')
+const MerkleTree = require('./MerkleTree')
+const splitSig = require('./splitSig')
+
 module.exports = {
 	...channelLib,
 	...identityLib,
-	...identityDeployLib,
-	MerkleTree: require('./MerkleTree'),
-	splitSig: require('./splitSig'),
+	MerkleTree,
+	splitSig
 }
