@@ -3,6 +3,9 @@
 TODO: split in a separate repo with npm `package.json`
 
 ---
+## Descriptions
+JavaScript libraries based on the ETH implementation of the protocol.
+
 ## Channel
 
 ### Channel States:
@@ -31,9 +34,18 @@ Expired: the channel exists, but it's no longer valid
 ---
 
 ## Identity
-[(for more information)](https://github.com/AdExNetwork/adex-protocol#identity)
+The Identity layer is currently specific to our Ethereum implementation and designed to streamline the user experience of the Platform.
 
-Contains `Transaction` object and `RoutineAuthorization`
+It is a smart contract that allows the users of the Platform (publishers/advertisers) to:
+
+Use many devices (e.g. PC, mobile, HW wallet) as one identity, without having to share the same private key between them
+Interact with the Ethereum network without needing to have ETH
+Allow certain actions to be scheduled/performed automatically without needing them to be online, for example withdrawing funds from OUTPACE channels
+This solves many UX hurdles that are typical for blockchain-related applications.
+
+Some of these concepts are known to the Ethereum community as "meta tx" or "gas abstractions".
+
+Contains `Transaction` and `RoutineAuthorization` objects
 
 
 ### Transaction
@@ -54,7 +66,23 @@ Describes transactions made by user
 - `toSolidityTuple()` - Returns an array of the identityContract address, hex string of the nonce, the token address, hex string of the token amount, receiver address, hex string of the value and hex string of the data
 
 ### Routine Authorization
+Describes an object of routines ran on the identity contract (ex. withdrawing from channels, opening channels).
 
 #### Constructor Arguments
+- `relayer` - Address of the relayer through which the routines are ran
+- `outpace` - Address of the outpace channel for which the routines run
+- `registry` - Address of the registry
+- `validUntil` - Date until the channel is valid, expires after that.
+- `feeTokenAddr` - Address of the token used for the fee
+- `weeklyFeeAmount` - Weekly fee amount
 
 #### Methods
+- `hash()` - Returns a hash of the routine authorization arguments
+- `hashHex()` - Returns a hex string of the routine authorization hash
+- `toSolidityTuple()` - Returns an array of the relayer address, outpace channel address, registry address, hex string of the validUntil date, the fee token address, hex string of the weekly fee amount
+
+#### Routine Operations
+- `channelWithdraw` - Withdraws from a channel
+- `channelWithdrawExpired` - Withdraws from an expired channel
+- `channelOpen` - Opens a channel.
+- `withdraw` - Withdraws from identity contract
