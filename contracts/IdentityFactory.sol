@@ -1,7 +1,6 @@
 pragma solidity ^0.5.6;
 pragma experimental ABIEncoderV2;
 
-import "./libs/SafeERC20.sol";
 import "./Identity.sol";
 
 contract IdentityFactory {
@@ -16,19 +15,17 @@ contract IdentityFactory {
 		address addr = deploySafe(code, salt);
 		emit LogDeployed(addr, salt);
 	}
-
-	function deployAndFund(bytes memory code, uint256 salt, address tokenAddr, uint256 tokenAmount) public {
-		require(msg.sender == relayer, "ONLY_RELAYER");
-		address addr = deploySafe(code, salt);
-		SafeERC20.transfer(tokenAddr, addr, tokenAmount);
-		emit LogDeployed(addr, salt);
-	}
-
 	function deployAndExecute(bytes memory code, uint256 salt, Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
 		address addr = deploySafe(code, salt);
 		Identity(addr).execute(txns, signatures);
 		emit LogDeployed(addr, salt);
 	}
+	function deployAndExecRoutines(bytes memory code, uint256 salt, Identity.RoutineAuthorization memory auth, Identity.RoutineOperation[] memory operations) public {
+		address addr = deploySafe(code, salt);
+		Identity(addr).executeRoutines(auth, operations);
+		emit LogDeployed(addr, salt);
+	}
+
 
 	function withdraw(address tokenAddr, address to, uint256 tokenAmount) public {
 		require(msg.sender == relayer, "ONLY_RELAYER");

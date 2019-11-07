@@ -148,6 +148,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
 
+	/*
 	it('IdentityFactory - deployAndFund', async function() {
 		const fundAmnt = 10000
 		// Generating a proxy deploy transaction
@@ -196,6 +197,7 @@ contract('Identity', function(accounts) {
 			'deployed contract has received the funding amount'
 		)
 	})
+	*/
 
 	it('relay a tx', async function() {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
