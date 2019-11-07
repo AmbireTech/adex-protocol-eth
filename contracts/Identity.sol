@@ -184,7 +184,7 @@ contract Identity {
 				for (uint j=0; j<validatorsLen; j++) {
 					require(
 						ValidatorRegistry(auth.registry).whitelisted(channel.validators[j]),
-						"VALIDATOR_NOT_WHITELISTED"
+						'VALIDATOR_NOT_WHITELISTED'
 					);
 				}
 				SafeERC20.approve(channel.tokenAddr, auth.outpace, 0);
