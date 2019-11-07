@@ -70,7 +70,7 @@ contract('Identity', function(accounts) {
 		registryAddr = registryWeb3.address
 
 		// This IdentityFactory is used to test counterfactual deployment
-		const idFactoryWeb3 = await IdentityFactory.new(relayerAddr)
+		const idFactoryWeb3 = await IdentityFactory.new({ from: relayerAddr })
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 
 		// deploy an Identity
@@ -175,7 +175,7 @@ contract('Identity', function(accounts) {
 		)
 		await expectEVMError(
 			identityFactoryUser.deployAndFund(bytecode, salt, token.address, fundAmnt, { gasLimit }),
-			'ONLY_RELAYER'
+			'ONLY_CREATOR'
 		)
 
 		// No tokens, should revert
@@ -677,7 +677,7 @@ contract('Identity', function(accounts) {
 		)
 		await expectEVMError(
 			identityFactoryEvil.withdraw(token.address, evilAcc, feeAmount, { gasLimit }),
-			'ONLY_RELAYER'
+			'ONLY_CREATOR'
 		)
 
 		// Relayer can withdraw the fee
