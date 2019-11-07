@@ -621,6 +621,11 @@ contract('Identity', function(accounts) {
 		const expectedAddr = getAddress(
 			`0x${generateAddress2(identityFactory.address, salt, bytecode).toString('hex')}`
 		)
+		assert.equal(
+			(await token.balanceOf(expectedAddr)).toNumber(),
+			0,
+			'the balance of the new Identity is 0'
+		)
 
 		// Prepare all the data needed for withdrawal
 		const elem1 = Channel.getBalanceLeaf(expectedAddr, tokenAmnt)
