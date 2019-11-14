@@ -64,13 +64,7 @@ function RoutineAuthorization(args) {
 RoutineAuthorization.prototype.hash = function() {
 	const buf = abi.rawEncode(
 		['address', 'address', 'uint256', 'address', 'uint256'],
-		[
-			this.relayer,
-			this.outpace,
-			this.validUntil,
-			this.feeTokenAddr,
-			this.weeklyFeeAmount
-		]
+		[this.relayer, this.outpace, this.validUntil, this.feeTokenAddr, this.weeklyFeeAmount]
 	)
 	return Buffer.from(keccak256.arrayBuffer(buf))
 }
