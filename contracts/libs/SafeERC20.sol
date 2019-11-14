@@ -5,6 +5,7 @@ interface GeneralERC20 {
 	function transferFrom(address from, address to, uint256 value) external;
 	function approve(address spender, uint256 value) external;
 	function balanceOf(address spender) external view returns (uint);
+	function allowance(address owner, address spender) external view returns (uint);
 }
 
 library SafeERC20 {
