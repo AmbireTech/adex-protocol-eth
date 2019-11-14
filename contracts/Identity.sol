@@ -36,8 +36,6 @@ contract Identity {
 	enum RoutineOp {
 		ChannelWithdraw,
 		ChannelWithdrawExpired,
-		// @NOTE: this was deprecated, but we have to keep the enum entry so that we keep the same uint values for those operations 
-		UnusedChannelOpen,
 		Withdraw
 	}
 
