@@ -26,7 +26,7 @@ contract Token {
 		require(balances[from] >= value, 'INSUFFICIENT_FUNDS');
 		balances[from] = SafeMath.sub(balances[from], value);
 		balances[to] = SafeMath.add(balances[to], value);
-		approvals[msg.sender] = 0;
+		if (approvals[msg.sender] > 0) approvals[msg.sender] = 0;
 		emit Transfer(from, to, value);
 		return true;
 	}

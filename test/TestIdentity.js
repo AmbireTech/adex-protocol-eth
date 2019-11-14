@@ -477,10 +477,12 @@ contract('Identity', function(accounts) {
 			blockTime + DAY_SECONDS,
 			0
 		)
-		const coreInterface = new Interface(AdExCore._json.abi)
+		// we use the channelOpen on the Identity here, just to see if it works too
 		const relayerTx = await zeroFeeTx(
-			coreAddr,
-			coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
+			// coreAddr,
+			// coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
+			id.address,
+			idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()])
 		)
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
