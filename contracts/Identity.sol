@@ -6,11 +6,6 @@ import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 import "./libs/ChannelLibrary.sol";
 
-contract ValidatorRegistry {
-	// The contract will probably just use a mapping, but this is a generic interface
-	function whitelisted(address) view external returns (bool);
-}
-
 contract Identity {
 	using SafeMath for uint;
 
@@ -40,7 +35,8 @@ contract Identity {
 	enum RoutineOp {
 		ChannelWithdraw,
 		ChannelWithdrawExpired,
-		ChannelOpen,
+		// @NOTE: this was deprecated, but we have to keep the enum entry so that we keep the same uint values for those operations 
+		UnusedChannelOpen,
 		Withdraw
 	}
 
@@ -71,7 +67,8 @@ contract Identity {
 	struct RoutineAuthorization {
 		address relayer;
 		address outpace;
-		address registry;
+		// @NOTE: this is deprecated, but we keep the field to maintain the same structure
+		address unusedRegistry;
 		uint validUntil;
 		address feeTokenAddr;
 		uint weeklyFeeAmount;
@@ -174,22 +171,6 @@ contract Identity {
 			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.ChannelOpen) {
-				// Channel: open
-				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
-				// Ensure validity is sane
-				require(channel.validUntil <= (now + CHANNEL_MAX_VALIDITY), 'CHANNEL_EXCEEDED_MAX_VALID');
-				// Ensure all validators are whitelisted
-				uint validatorsLen = channel.validators.length;
-				for (uint j=0; j<validatorsLen; j++) {
-					require(
-						ValidatorRegistry(auth.registry).whitelisted(channel.validators[j]),
-						'VALIDATOR_NOT_WHITELISTED'
-					);
-				}
-				SafeERC20.approve(channel.tokenAddr, auth.outpace, 0);
-				SafeERC20.approve(channel.tokenAddr, auth.outpace, channel.tokenAmount);
-				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
 			} else if (op.mode == RoutineOp.Withdraw) {
 				// Withdraw from identity
 				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
