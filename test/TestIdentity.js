@@ -91,6 +91,13 @@ contract('Identity', function(accounts) {
 		await token.setBalanceTo(id.address, 10000)
 	})
 
+	it('protected methods', async function() {
+		await expectEVMError(id.setAddrPrivilege(userAcc, 0, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(id.setRoutineAuth(defaultAuth.hash(), true, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		const channel = sampleChannel(accounts.slice(0, 2), token.address, id.address, 0, 0, 0)
+		await expectEVMError(id.channelOpen(coreAddr, channel.toSolidityTuple(), { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+	})
+
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
 		const feeAmnt = 250
 
@@ -238,9 +245,6 @@ contract('Identity', function(accounts) {
 		)
 		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
 		// console.log('relay cost', receipt.gasUsed.toString(10))
-
-		// setAddrPrivilege can only be invoked by the contract
-		await expectEVMError(id.setAddrPrivilege(userAcc, 0), 'ONLY_IDENTITY_CAN_CALL')
 
 		// A nonce can only be used once
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
