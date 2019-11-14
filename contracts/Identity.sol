@@ -68,8 +68,6 @@ contract Identity {
 	struct RoutineAuthorization {
 		address relayer;
 		address outpace;
-		// @NOTE: this is deprecated, but we keep the field to maintain the same structure
-		address unusedRegistry;
 		uint validUntil;
 		address feeTokenAddr;
 		uint weeklyFeeAmount;
