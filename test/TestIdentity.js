@@ -429,7 +429,7 @@ contract('Identity', function(accounts) {
 		)
 
 		// Does not work with an invalid routine auth
-		const invalidAuth1 = new RoutineAuthorization({ ...auth, registry: userAcc })
+		const invalidAuth1 = new RoutineAuthorization({ ...auth, outpace: userAcc })
 		await expectEVMError(id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]), 'NOT_AUTHORIZED')
 		const invalidAuth2 = new RoutineAuthorization({ ...auth, relayer: userAcc })
 		await expectEVMError(
