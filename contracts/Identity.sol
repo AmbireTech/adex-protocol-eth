@@ -5,6 +5,7 @@ import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 import "./libs/ChannelLibrary.sol";
+import "./AdExCore.sol";
 
 contract Identity {
 	using SafeMath for uint;
@@ -102,6 +103,15 @@ contract Identity {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		routineAuthorizations[hash] = authorized;
 		emit LogRoutineAuth(hash, authorized);
+	}
+
+	function channelOpen(address coreAddr, ChannelLibrary.Channel memory channel)
+		public
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		SafeERC20.approve(channel.tokenAddr, coreAddr, 0);
+		SafeERC20.approve(channel.tokenAddr, coreAddr, channel.tokenAmount);
+		AdExCore(coreAddr).channelOpen(channel);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
