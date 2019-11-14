@@ -54,7 +54,8 @@ Transaction.prototype.toSolidityTuple = function() {
 function RoutineAuthorization(args) {
 	this.relayer = ensure.Address(args.relayer)
 	this.outpace = ensure.Address(args.outpace)
-	this.registry = ensure.Address(args.registry)
+	// Since this is unused in the core contracts, it may be omitted
+	this.registry = ensure.Address(args.registry || '0x0000000000000000000000000000000000000000')
 	this.validUntil = ensure.Uint256(args.validUntil)
 	this.feeTokenAddr = ensure.Address(args.feeTokenAddr)
 	this.weeklyFeeAmount = ensure.Uint256(args.weeklyFeeAmount)

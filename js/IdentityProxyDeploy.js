@@ -13,7 +13,7 @@ function getMappingSstore(slotNumber, keyType, key, value) {
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
-// solcWrapper: 
+// solcWrapper:
 // * wannabe temp solution to work in browsers https://github.com/ethereum/solc-js#browser-usage
 // * For node usage: pass ./solc { solcModule }
 function getProxyDeployBytecode(proxiedAddr, privLevels, opts, solcModule) {

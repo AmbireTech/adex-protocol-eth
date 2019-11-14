@@ -6,7 +6,6 @@ const { generateAddress2 } = require('ethereumjs-util')
 const AdExCore = artifacts.require('AdExCore')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
-const Registry = artifacts.require('Registry')
 const MockToken = artifacts.require('./mocks/Token')
 
 const { moveTime, sampleChannel, expectEVMError } = require('./')
@@ -41,8 +40,6 @@ contract('Identity', function(accounts) {
 	let token
 	// An instance of the AdExCore (OUTPACE) contract
 	let coreAddr
-	// the registry that's used in the RoutineAuthorizations
-	let registryAddr
 	// an Identity contract that will be used as a base for all proxies
 	let baseIdentityAddr
 	// default RoutineAuthorization that's valid forever
@@ -53,8 +50,6 @@ contract('Identity', function(accounts) {
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
-	const allowedValidator1 = accounts[6]
-	const allowedValidator2 = accounts[7]
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -62,12 +57,6 @@ contract('Identity', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
-
-		// deploy a registry; this is required by the Identity
-		const registryWeb3 = await Registry.new()
-		await registryWeb3.setWhitelisted(allowedValidator1, true)
-		await registryWeb3.setWhitelisted(allowedValidator2, true)
-		registryAddr = registryWeb3.address
 
 		// This IdentityFactory is used to test counterfactual deployment
 		const idFactoryWeb3 = await IdentityFactory.new({ from: relayerAddr })
@@ -82,15 +71,19 @@ contract('Identity', function(accounts) {
 		defaultAuth = new RoutineAuthorization({
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			registry: registryAddr,
 			validUntil: 1900000000,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: 0
 		})
-		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
-			routineAuthorizations: [defaultAuth.hash()],
-			...getStorageSlotsFromArtifact(Identity)
-		}, solcModule)
+		const bytecode = getProxyDeployBytecode(
+			baseIdentityAddr,
+			[[userAcc, 3]],
+			{
+				routineAuthorizations: [defaultAuth.hash()],
+				...getStorageSlotsFromArtifact(Identity)
+			},
+			solcModule
+		)
 		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
@@ -102,17 +95,22 @@ contract('Identity', function(accounts) {
 		const feeAmnt = 250
 
 		// Generating a proxy deploy transaction
-		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
-			fee: {
-				tokenAddr: token.address,
-				recepient: relayerAddr,
-				amount: feeAmnt,
-				// Using this option is fine if the token.address is a token that reverts on failures
-				unsafeERC20: true
-				// safeERC20Artifact: artifacts.require('SafeERC20')
+		const bytecode = getProxyDeployBytecode(
+			baseIdentityAddr,
+			[[userAcc, 3]],
+			{
+				fee: {
+					tokenAddr: token.address,
+					recepient: relayerAddr,
+					amount: feeAmnt,
+					// Using this option is fine if the token.address is a token that reverts on failures
+					unsafeERC20: true
+					// safeERC20Artifact: artifacts.require('SafeERC20')
+				},
+				...getStorageSlotsFromArtifact(Identity)
 			},
-			...getStorageSlotsFromArtifact(Identity)
-		}, solcModule)
+			solcModule
+		)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
@@ -382,7 +380,6 @@ contract('Identity', function(accounts) {
 		const auth = new RoutineAuthorization({
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			registry: registryAddr,
 			validUntil: blockTime + 14 * DAY_SECONDS,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: fee
@@ -537,42 +534,37 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('channelOpen and channelWithdrawExpired, via routines', async function() {
+	it('channelWithdrawExpired, via routines', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
 
-		const executeRoutines = id.executeRoutines.bind(id, defaultAuth.toSolidityTuple())
-
-		// a channel with non-whitelisted validators
-		const channelEvil = sampleChannel(
-			[allowedValidator1, accounts[2]],
-			token.address,
-			id.address,
-			tokenAmnt,
-			blockTime + DAY_SECONDS,
-			0
-		)
-		await expectEVMError(
-			executeRoutines([RoutineOps.channelOpen([channelEvil.toSolidityTuple()])], { gasLimit }),
-			'VALIDATOR_NOT_WHITELISTED'
-		)
-
-		// we can open a channel with the whitelisted validators
+		const validators = accounts.slice(0, 2)
 		const channel = sampleChannel(
-			[allowedValidator1, allowedValidator2],
+			validators,
 			token.address,
 			id.address,
 			tokenAmnt,
 			blockTime + DAY_SECONDS,
 			0
 		)
-		const receipt = await (await executeRoutines(
-			[RoutineOps.channelOpen([channel.toSolidityTuple()])],
-			{ gasLimit }
-		)).wait()
-		// events should be: transfer, channelOpen
-		assert.ok(receipt.events.length, 2, 'Transfer, ChannelOpen events emitted')
+		const coreInterface = new Interface(AdExCore._json.abi)
+		const relayerTx = await zeroFeeTx(
+			coreAddr,
+			coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
+		)
+		const hash = relayerTx.hashHex()
+		const sig = splitSig(await ethSign(hash, userAcc))
+		await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })).wait()
+
+		// Checks if all our funds have been locked in the channel
+		assert.equal(
+			await token.balanceOf(id.address),
+			0,
+			'channel has been opened and all our funds are locked up'
+		)
+
+		const executeRoutines = id.executeRoutines.bind(id, defaultAuth.toSolidityTuple())
 
 		// withdrawExpired should work
 		const withdrawExpiredOp = RoutineOps.channelWithdrawExpired([channel.toSolidityTuple()])
@@ -613,9 +605,14 @@ contract('Identity', function(accounts) {
 		const core = new Contract(coreAddr, AdExCore._json.abi, signer)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
-		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, 3]], {
-			...getStorageSlotsFromArtifact(Identity)
-		}, solcModule)
+		const bytecode = getProxyDeployBytecode(
+			baseIdentityAddr,
+			[[userAcc, 3]],
+			{
+				...getStorageSlotsFromArtifact(Identity)
+			},
+			solcModule
+		)
 
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
@@ -686,12 +683,9 @@ contract('Identity', function(accounts) {
 		)
 
 		// Relayer can withdraw the fee
-		await (await identityFactory.withdraw(
-			token.address,
-			relayerAddr,
-			feeAmount,
-			{ gasLimit }
-		)).wait()
+		await (await identityFactory.withdraw(token.address, relayerAddr, feeAmount, {
+			gasLimit
+		})).wait()
 		assert.equal(
 			await token.balanceOf(relayerAddr),
 			initialRelayerBal.toNumber() + feeAmount,
