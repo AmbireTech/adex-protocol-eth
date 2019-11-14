@@ -105,7 +105,9 @@ contract Identity {
 		public
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		SafeERC20.approve(channel.tokenAddr, coreAddr, 0);
+		if (GeneralERC20(channel.tokenAddr).allowance(address(this), coreAddr) > 0) {
+			SafeERC20.approve(channel.tokenAddr, coreAddr, 0);
+		}
 		SafeERC20.approve(channel.tokenAddr, coreAddr, channel.tokenAmount);
 		AdExCore(coreAddr).channelOpen(channel);
 	}
