@@ -100,12 +100,8 @@ const RoutineOps = {
 		const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
 		return [1, data]
 	},
-	channelOpen(args) {
-		const data = `0x${coreInterface.functions.channelOpen.encode(args).slice(10)}`
-		return [2, data]
-	},
 	withdraw(tokenAddr, to, amount) {
-		return [3, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
+		return [2, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
 	}
 }
 
