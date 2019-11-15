@@ -93,9 +93,15 @@ contract('Identity', function(accounts) {
 
 	it('protected methods', async function() {
 		await expectEVMError(id.setAddrPrivilege(userAcc, 0, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
-		await expectEVMError(id.setRoutineAuth(defaultAuth.hash(), true, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(
+			id.setRoutineAuth(defaultAuth.hash(), true, { gasLimit }),
+			'ONLY_IDENTITY_CAN_CALL'
+		)
 		const channel = sampleChannel(accounts.slice(0, 2), token.address, id.address, 0, 0, 0)
-		await expectEVMError(id.channelOpen(coreAddr, channel.toSolidityTuple(), { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(
+			id.channelOpen(coreAddr, channel.toSolidityTuple(), { gasLimit }),
+			'ONLY_IDENTITY_CAN_CALL'
+		)
 	})
 
 	it('deploy an Identity, counterfactually, and pay the fee', async function() {
