@@ -33,6 +33,7 @@ contract('Staking', function(accounts) {
 	it('open a bond, unbond it', async function() {
 		const user = accounts[1]
 		const bondAmount = 120000000
+
 		const bond = [bondAmount, poolId]
 
 		// slash the pool beforehand to see if math is fine
@@ -43,14 +44,14 @@ contract('Staking', function(accounts) {
 		// bond does not exist
 		await expectEVMError(staking.requestUnbond(bond), 'BOND_NOT_ACTIVE')
 
-		await token.setBalanceTo(user, bondAmount)
+		await token.setBalanceTo(userAddr, bondAmount)
 
 		const receipt = await (await staking.addBond(bond)).wait()
 		console.log(receipt.gasUsed.toString(10))
 
 		// @TODO: check if bond exists
 		assert.equal((await staking.getWithdrawAmount(bond)).toNumber(), bondAmount, 'bondAmount matches')
-		assert.equal((await token.balanceOf(user)).toNumber(), 0, 'user has no tokens now')
+		assert.equal((await token.balanceOf(userAddr)).toNumber(), 0, 'user has no tokens now')
 
 		// we cannot unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
@@ -71,7 +72,7 @@ contract('Staking', function(accounts) {
 		const receiptUnbond = await (await staking.unbond(bond)).wait()
 		console.log(receiptUnbond.gasUsed.toString(10))
 
-		assert.equal((await token.balanceOf(user)).toNumber(), bondAmount, 'user has their bond amount returned')
+		assert.equal((await token.balanceOf(userAddr)).toNumber(), bondAmount, 'user has their bond amount returned')
 
 		// await expectEVMError(stakingUser.setWhitelisted(validator, true))
 		// assert.equal(await staking.whitelisted(validator), false)
