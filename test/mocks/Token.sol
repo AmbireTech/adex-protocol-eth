@@ -10,7 +10,7 @@ contract Token {
 	function balanceOf(address owner) public view returns (uint) {
 		return balances[owner];
 	}
-	function allowance(address _owner, address spender) public view returns (uint) {
+	function allowance(address, address spender) public view returns (uint) {
 		return approvals[spender];
 	}
 
