@@ -23,7 +23,11 @@ contract('Staking', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const stakingWeb3 = await Staking.new(tokenWeb3.address, slasherAddr)
 		staking = new Contract(stakingWeb3.address, Staking._json.abi, signer)
-		stakingWithSlasher = new Contract(stakingWeb3.address, Staking._json.abi, web3Provider.getSigner(slasherAddr))
+		stakingWithSlasher = new Contract(
+			stakingWeb3.address,
+			Staking._json.abi,
+			web3Provider.getSigner(slasherAddr)
+		)
 	})
 
 	it('cannot slash', async function() {
@@ -31,7 +35,6 @@ contract('Staking', function(accounts) {
 	})
 
 	it('open a bond, unbond it', async function() {
-		const user = accounts[1]
 		const bondAmount = 120000000
 
 		const bond = [bondAmount, poolId]
@@ -46,18 +49,22 @@ contract('Staking', function(accounts) {
 
 		await token.setBalanceTo(userAddr, bondAmount)
 
-		const receipt = await (await staking.addBond(bond)).wait()
-		console.log(receipt.gasUsed.toString(10))
+		await (await staking.addBond(bond)).wait()
+		// console.log(receipt.gasUsed.toString(10))
 
 		// @TODO: check if bond exists
-		assert.equal((await staking.getWithdrawAmount(bond)).toNumber(), bondAmount, 'bondAmount matches')
+		assert.equal(
+			(await staking.getWithdrawAmount(bond)).toNumber(),
+			bondAmount,
+			'bondAmount matches'
+		)
 		assert.equal((await token.balanceOf(userAddr)).toNumber(), 0, 'user has no tokens now')
 
 		// we cannot unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
 
-		const receiptUnlock = await (await staking.requestUnbond(bond)).wait()
-		console.log(receiptUnlock.gasUsed.toString(10))
+		await (await staking.requestUnbond(bond)).wait()
+		// console.log(receiptUnlock.gasUsed.toString(10))
 
 		// @TODO test slashing
 		// 98%
@@ -69,10 +76,14 @@ contract('Staking', function(accounts) {
 		// after this, we will finally be able to unbond
 		await moveTime(web3, DAY_SECONDS * 31)
 
-		const receiptUnbond = await (await staking.unbond(bond)).wait()
-		console.log(receiptUnbond.gasUsed.toString(10))
+		await (await staking.unbond(bond)).wait()
+		// console.log(receiptUnbond.gasUsed.toString(10))
 
-		assert.equal((await token.balanceOf(userAddr)).toNumber(), bondAmount, 'user has their bond amount returned')
+		assert.equal(
+			(await token.balanceOf(userAddr)).toNumber(),
+			bondAmount,
+			'user has their bond amount returned'
+		)
 
 		// await expectEVMError(stakingUser.setWhitelisted(validator, true))
 		// assert.equal(await staking.whitelisted(validator), false)
