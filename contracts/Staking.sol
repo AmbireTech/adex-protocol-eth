@@ -57,7 +57,7 @@ contract Staking {
 		SafeERC20.transfer(tokenAddr, address(0x00), amount);
 	}
 
-	function bond(BondLibrary.Bond memory bond) public {
+	function addBond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
 		require(!bondIsActive[id], 'BOND_ALREADY_ACTIVE');
 		bondIsActive[id] = true;
