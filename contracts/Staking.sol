@@ -85,16 +85,19 @@ contract Staking {
 		// redundant
 		// require(bonds[id].active);
 		require(bonds[id].willUnlock > 0 && now > bonds[id].willUnlock, 'BOND_NOT_UNLOCKED');
-		uint amount = getWithdrawAmount(bond);
+		uint amount = calcWithdrawAmount(bond, uint(bonds[id].slashedAtStart));
 		delete bonds[id];
 		totalFunds[bond.poolId] = totalFunds[bond.poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
 	}
 
 	function getWithdrawAmount(BondLibrary.Bond memory bond) public view returns (uint) {
-		// @TODO fix this .hash() perhaps
+		return calcWithdrawAmount(bond, uint(bonds[bond.hash(msg.sender)].slashedAtStart));
+	}
+
+	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint slashedAtStart) internal view returns (uint) {
 		return (MAX_SLASH.sub(slashPoints[bond.poolId]))
 			.mul(bond.amount)
-			.div(MAX_SLASH.sub(uint(bonds[bond.hash(msg.sender)].slashedAtStart)));
+			.div(MAX_SLASH.sub(slashedAtStart));
 	}
 }
