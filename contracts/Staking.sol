@@ -75,17 +75,16 @@ contract Staking {
 	}
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
-		bytes32 id = bond.hash(msg.sender);
-		require(bonds[id].active, 'BOND_NOT_ACTIVE');
-		bonds[id].willUnlock = uint64(now + TIME_TO_UNBOND);
+		BondState storage bondState = bonds[bond.hash(msg.sender)];
+		require(bondState.active, 'BOND_NOT_ACTIVE');
+		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
 	}
 
 	function unbond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
-		// redundant
-		// require(bonds[id].active);
-		require(bonds[id].willUnlock > 0 && now > bonds[id].willUnlock, 'BOND_NOT_UNLOCKED');
-		uint amount = calcWithdrawAmount(bond, uint(bonds[id].slashedAtStart));
+		BondState storage bondState = bonds[id];
+		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
+		uint amount = calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
 		delete bonds[id];
 		totalFunds[bond.poolId] = totalFunds[bond.poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
