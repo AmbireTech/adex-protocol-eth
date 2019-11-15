@@ -41,14 +41,14 @@ contract Staking {
 	mapping (bytes32 => uint) public bondSlashedAtOpen;
 	mapping (bytes32 => uint) public bondWillUnlock;
 
-	constructor(address slasher, address token) public {
+	constructor(address token, address slasher) public {
    		tokenAddr = token;
    		slasherAddr = slasher;
 	}
 
 	function slash(bytes32 poolId, uint pts) external {
-		require(msg.sender == slasherAddr);
-		require(pts + slashPoints[poolId] <= MAX_SLASH);
+		require(msg.sender == slasherAddr, 'ONLY_SLASHER');
+		require(pts + slashPoints[poolId] <= MAX_SLASH, 'PTS_TOO_HIGH');
 		uint amount = pts
 			.mul(totalFunds[poolId])
 			.div(MAX_SLASH.sub(slashPoints[poolId]));
@@ -59,7 +59,7 @@ contract Staking {
 
 	function addBond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
-		require(!bondIsActive[id]);
+		require(!bondIsActive[id], 'BOND_ALREADY_ACTIVE');
 		bondIsActive[id] = true;
 		bondSlashedAtOpen[id] = slashPoints[bond.poolId];
 		totalFunds[bond.poolId] = totalFunds[bond.poolId].add(bond.amount);
@@ -68,7 +68,7 @@ contract Staking {
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
-		require(bondIsActive[id]);
+		require(bondIsActive[id], 'BOND_NOT_ACTIVE');
 		bondWillUnlock[id] = now + TIME_TO_UNBOND;
 	}
 
@@ -76,7 +76,7 @@ contract Staking {
 		bytes32 id = bond.hash(msg.sender);
 		// redundant
 		// require(bondIsActive[id]);
-		require(bondWillUnlock[id] > 0 && now > bondWillUnlock[id]);
+		require(bondWillUnlock[id] > 0 && now > bondWillUnlock[id], 'BOND_NOT_UNLOCKED');
 		uint amount = getWithdrawAmount(bond);
 		bondIsActive[id] = false;
 		bondWillUnlock[id] = 0;
