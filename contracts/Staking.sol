@@ -7,7 +7,7 @@ import "./libs/SafeERC20.sol";
 library BondLibrary {
 	struct Bond {
 		uint amount;
-		bytes32 bucketId;
+		bytes32 poolId;
 	}
 
 	function hash(Bond memory bond, address sender)
@@ -19,7 +19,7 @@ library BondLibrary {
 			address(this),
 			sender,
 			bond.amount,
-			bond.bucketId
+			bond.poolId
 		));
 	}
 }
@@ -33,7 +33,7 @@ contract Staking {
 
 	address public tokenAddr;
 	address public slasherAddr;
-	// Addressed by bucketId
+	// Addressed by poolId
 	mapping (bytes32 => uint) public totalFunds;
 	mapping (bytes32 => uint) public slashPoints;
 	// Addressed by bondId
@@ -46,14 +46,14 @@ contract Staking {
    		slasherAddr = slasher;
 	}
 
-	function slash(bytes32 bucketId, uint pts) external {
+	function slash(bytes32 poolId, uint pts) external {
 		require(msg.sender == slasherAddr);
-		require(pts + slashPoints[bucketId] <= MAX_SLASH);
+		require(pts + slashPoints[poolId] <= MAX_SLASH);
 		uint amount = pts
-			.mul(totalFunds[bucketId])
-			.div(MAX_SLASH.sub(slashPoints[bucketId]));
-		slashPoints[bucketId] = slashPoints[bucketId].add(pts);
-		totalFunds[bucketId] = totalFunds[bucketId].sub(amount);
+			.mul(totalFunds[poolId])
+			.div(MAX_SLASH.sub(slashPoints[poolId]));
+		slashPoints[poolId] = slashPoints[poolId].add(pts);
+		totalFunds[poolId] = totalFunds[poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, address(0x00), amount);
 	}
 
@@ -61,8 +61,8 @@ contract Staking {
 		bytes32 id = bond.hash(msg.sender);
 		require(!bondIsActive[id]);
 		bondIsActive[id] = true;
-		bondSlashedAtOpen[id] = slashPoints[bond.bucketId];
-		totalFunds[bond.bucketId] = totalFunds[bond.bucketId].add(bond.amount);
+		bondSlashedAtOpen[id] = slashPoints[bond.poolId];
+		totalFunds[bond.poolId] = totalFunds[bond.poolId].add(bond.amount);
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
 	}
 
@@ -83,14 +83,14 @@ contract Staking {
 		if (bondSlashedAtOpen[id] > 0) {
 			bondSlashedAtOpen[id] = 0;
 		}
-		totalFunds[bond.bucketId] = totalFunds[bond.bucketId].sub(amount);
+		totalFunds[bond.poolId] = totalFunds[bond.poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
 	}
 
 	function getWithdrawAmount(BondLibrary.Bond memory bond) public view returns (uint) {
 		// TODO fix this .hash() perhaps
-		// return (MAX_SLASH - slashPoints[bond.bucketId]) / (MAX_SLASH - bondSlashedAtOpen[bond.hash(msg.sender)]) * bond.amount
-		return (MAX_SLASH.sub(slashPoints[bond.bucketId]))
+		// return (MAX_SLASH - slashPoints[bond.poolId]) / (MAX_SLASH - bondSlashedAtOpen[bond.hash(msg.sender)]) * bond.amount
+		return (MAX_SLASH.sub(slashPoints[bond.poolId]))
 			.mul(bond.amount)
 			.div(MAX_SLASH.sub(bondSlashedAtOpen[bond.hash(msg.sender)]));
 	}
