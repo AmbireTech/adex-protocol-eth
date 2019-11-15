@@ -8,6 +8,7 @@ const { expectEVMError, moveTime } = require('./')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
+const gasLimit = 1000000
 
 contract('Staking', function(accounts) {
 	const userAddr = accounts[1]
@@ -40,7 +41,7 @@ contract('Staking', function(accounts) {
 		const bond = [bondAmount, poolId]
 
 		// slash the pool beforehand to see if math is fine
-		await (await stakingWithSlasher.slash(poolId, 50000000000000)).wait()
+		await (await stakingWithSlasher.slash(poolId, 50000000000000, { gasLimit })).wait()
 
 		// insufficient funds
 		await expectEVMError(staking.addBond(bond), 'INSUFFICIENT_FUNDS')
@@ -49,7 +50,7 @@ contract('Staking', function(accounts) {
 
 		await token.setBalanceTo(userAddr, bondAmount)
 
-		await (await staking.addBond(bond)).wait()
+		await (await staking.addBond(bond, { gasLimit })).wait()
 		// console.log(receipt.gasUsed.toString(10))
 
 		// @TODO: check if bond exists
@@ -63,7 +64,7 @@ contract('Staking', function(accounts) {
 		// we cannot unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
 
-		await (await staking.requestUnbond(bond)).wait()
+		await (await staking.requestUnbond(bond, { gasLimit })).wait()
 		// console.log(receiptUnlock.gasUsed.toString(10))
 
 		// @TODO test slashing
@@ -76,7 +77,7 @@ contract('Staking', function(accounts) {
 		// after this, we will finally be able to unbond
 		await moveTime(web3, DAY_SECONDS * 31)
 
-		await (await staking.unbond(bond)).wait()
+		await (await staking.unbond(bond, { gasLimit })).wait()
 		// console.log(receiptUnbond.gasUsed.toString(10))
 
 		assert.equal(
