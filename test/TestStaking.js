@@ -14,6 +14,7 @@ contract('Staking', function(accounts) {
 	const slasherAddr = accounts[2]
 	const poolId = '0x0202020202020202020202020202020202020202020202020202020202020203'
 	let staking
+	let stakingWithSlasher
 	let token
 
 	before(async function() {
@@ -22,6 +23,7 @@ contract('Staking', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const stakingWeb3 = await Staking.new(tokenWeb3.address, slasherAddr)
 		staking = new Contract(stakingWeb3.address, Staking._json.abi, signer)
+		stakingWithSlasher = new Contract(stakingWeb3.address, Staking._json.abi, web3Provider.getSigner(slasherAddr))
 	})
 
 	it('cannot slash', async function() {
@@ -30,8 +32,11 @@ contract('Staking', function(accounts) {
 
 	it('open a bond, unbond it', async function() {
 		const user = accounts[1]
-		const bondAmount = 1200000
+		const bondAmount = 120000000
 		const bond = [bondAmount, poolId]
+
+		// slash the pool beforehand to see if math is fine
+		await (await stakingWithSlasher.slash(poolId, 50000000000000)).wait()
 
 		// insufficient funds
 		await expectEVMError(staking.addBond(bond), 'INSUFFICIENT_FUNDS')
@@ -52,6 +57,10 @@ contract('Staking', function(accounts) {
 
 		const receiptUnlock = await (await staking.requestUnbond(bond)).wait()
 		console.log(receiptUnlock.gasUsed.toString(10))
+
+		// @TODO test slashing
+		// 98%
+		// await (await stakingWithSlasher.slash(poolId, '19999000000000000')).wait()
 
 		// we still can't unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
