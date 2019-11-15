@@ -40,7 +40,7 @@ contract('Staking', function(accounts) {
 
 		await token.setBalanceTo(user, bondAmount)
 
-		const receipt = await (await staking.bond(bond)).wait()
+		const receipt = await (await staking.addBond(bond)).wait()
 		console.log(receipt.gasUsed.toString(10))
 
 		// @TODO: check if bond exists
