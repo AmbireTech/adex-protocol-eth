@@ -58,6 +58,10 @@ contract('Staking', function(accounts) {
 		const receiptUnlock = await (await staking.requestUnbond(bond)).wait()
 		console.log(receiptUnlock.gasUsed.toString(10))
 
+		// @TODO test slashing
+		// 98%
+		// await (await stakingWithSlasher.slash(poolId, '19999000000000000')).wait()
+
 		// we still can't unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
 
