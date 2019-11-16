@@ -103,8 +103,8 @@ contract Staking {
 	}
 
 	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint slashedAtStart) internal view returns (uint) {
-		return (MAX_SLASH.sub(slashPoints[bond.poolId]))
-			.mul(bond.amount)
+		return bond.amount
+			.mul(MAX_SLASH.sub(slashPoints[bond.poolId]))
 			.div(MAX_SLASH.sub(slashedAtStart));
 	}
 }
