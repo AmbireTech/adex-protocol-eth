@@ -4,6 +4,14 @@ pragma experimental ABIEncoderV2;
 import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 
+// AIP: https://github.com/AdExNetwork/aips/issues/18
+// Quick overview:
+// - it's divided into pools, each pool may represent a validator; it may represent something else too (for example, we may launch staking for publishers to prove their legitimacy)
+// - the slasherAddr will be a multisig that will be controlled by the AdEx team - and later full control of the multisig will be given to a bridge to Polkadot, where we'll run the full on-chain slashing mechanism
+//   - we will clearly communicate this migration path to our community and stakers
+// - reward distribution is off-chain: depending on the pool, it may be done either via OUTPACE, via the Polkadot parachain, or via an auxilary contract that implements round-based reward distribution (you check into each round, the SC confirms you have a bond on Staking.sol, and you can withdraw your pro-rata earnings for the round)
+// - each bond will be slashed relative to the time it bonded/unbonded; e.g. if the pool is slashed 12%, you bonded, then the pool was slashed 2%, then you unbonded, you'd only suffer a 2% slash
+
 library BondLibrary {
 	struct Bond {
 		uint amount;
