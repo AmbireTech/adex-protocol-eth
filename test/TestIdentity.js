@@ -159,57 +159,6 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
 
-	/*
-	it('IdentityFactory - deployAndFund', async function() {
-		const fundAmnt = 10000
-		// Generating a proxy deploy transaction
-		const bytecode = getProxyDeployBytecode(id.address, [[userAcc, 3]], {
-			...getStorageSlotsFromArtifact(Identity)
-		}, solcModule)
-
-		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
-		const deployAndFund = identityFactory.deployAndFund.bind(
-			identityFactory,
-			bytecode,
-			salt,
-			token.address,
-			fundAmnt,
-			{ gasLimit }
-		)
-
-		// Only relayer can call
-		const userSigner = web3Provider.getSigner(userAcc)
-		const identityFactoryUser = new Contract(
-			identityFactory.address,
-			IdentityFactory._json.abi,
-			userSigner
-		)
-		await expectEVMError(
-			identityFactoryUser.deployAndFund(bytecode, salt, token.address, fundAmnt, { gasLimit }),
-			'ONLY_CREATOR'
-		)
-
-		// No tokens, should revert
-		await expectEVMError(deployAndFund(), 'INSUFFICIENT_FUNDS')
-
-		// Set tokens
-		await token.setBalanceTo(identityFactory.address, fundAmnt)
-
-		//console.log(await (await identityFactoryUser.deploy(bytecode, salt)))
-
-		// Call successfully
-		const receipt = await (await deployAndFund()).wait()
-		//console.log('gasUsed:', receipt.gasUsed.toString(10))
-		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
-		assert.ok(deployedEv, 'has deployedEv')
-		assert.equal(
-			await token.balanceOf(deployedEv.args.addr),
-			fundAmnt,
-			'deployed contract has received the funding amount'
-		)
-	})
-	*/
-
 	it('relay a tx', async function() {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
