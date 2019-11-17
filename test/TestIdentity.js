@@ -235,9 +235,11 @@ contract('Identity', function(accounts) {
 		// Do the execute() correctly, verify if it worked
 		const sig = splitSig(await ethSign(hash, userAcc))
 
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], {
-			gasLimit
-		})).wait()
+		const receipt = await (
+			await id.execute([relayerTx.toSolidityTuple()], [sig], {
+				gasLimit
+			})
+		).wait()
 
 		assert.equal(await id.privileges(userAcc), 4, 'privilege level changed')
 		assert.equal(
@@ -321,9 +323,11 @@ contract('Identity', function(accounts) {
 			'EXECUTE_NEEDS_SINGLE_TOKEN'
 		)
 
-		const receipt = await (await id.execute(getTuples(txns), await getSigs(txns), {
-			gasLimit
-		})).wait()
+		const receipt = await (
+			await id.execute(getTuples(txns), await getSigs(txns), {
+				gasLimit
+			})
+		).wait()
 		// 2 times LogPrivilegeChanged, 1 transfer (fee)
 		assert.equal(receipt.events.length, 3, 'has the right events length')
 		assert.equal(
@@ -354,9 +358,11 @@ contract('Identity', function(accounts) {
 			Identity._json.abi,
 			web3Provider.getSigner(userAcc)
 		)
-		const receipt = await (await idWithSender.executeBySender([relayerTx.toSolidityTuple()], {
-			gasLimit
-		})).wait()
+		const receipt = await (
+			await idWithSender.executeBySender([relayerTx.toSolidityTuple()], {
+				gasLimit
+			})
+		).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 
 		const initialNonce = parseInt(relayerTx.nonce, 10)
@@ -496,9 +502,11 @@ contract('Identity', function(accounts) {
 		)
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		await (await id.execute([relayerTx.toSolidityTuple()], [sig], {
-			gasLimit
-		})).wait()
+		await (
+			await id.execute([relayerTx.toSolidityTuple()], [sig], {
+				gasLimit
+			})
+		).wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
 		// console.log(receipt.gasUsed.toString(10))
 
@@ -511,20 +519,22 @@ contract('Identity', function(accounts) {
 		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
 		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
-		const routineReceipt = await (await id.executeRoutines(
-			defaultAuth.toSolidityTuple(),
-			[
-				RoutineOps.channelWithdraw([
-					channel.toSolidityTuple(),
-					stateRoot,
-					[vsig1, vsig2],
-					proof,
-					tokenAmnt
-				]),
-				RoutineOps.withdraw(token.address, userAcc, tokenAmnt)
-			],
-			{ gasLimit }
-		)).wait()
+		const routineReceipt = await (
+			await id.executeRoutines(
+				defaultAuth.toSolidityTuple(),
+				[
+					RoutineOps.channelWithdraw([
+						channel.toSolidityTuple(),
+						stateRoot,
+						[vsig1, vsig2],
+						proof,
+						tokenAmnt
+					]),
+					RoutineOps.withdraw(token.address, userAcc, tokenAmnt)
+				],
+				{ gasLimit }
+			)
+		).wait()
 		const balAfter = (await token.balanceOf(userAcc)).toNumber()
 		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
 		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
@@ -663,13 +673,11 @@ contract('Identity', function(accounts) {
 		})
 		const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
 
-		const receipt = await (await identityFactory.deployAndExecute(
-			bytecode,
-			salt,
-			[tx1.toSolidityTuple()],
-			[sig],
-			{ gasLimit }
-		)).wait()
+		const receipt = await (
+			await identityFactory.deployAndExecute(bytecode, salt, [tx1.toSolidityTuple()], [sig], {
+				gasLimit
+			})
+		).wait()
 		// LogChannelWithdraw, Transfer (withdraw), Transfer (tx fee), LogDeployed
 		assert.equal(receipt.events.length, 4, 'proper events length')
 		assert.equal(
@@ -695,9 +703,11 @@ contract('Identity', function(accounts) {
 		)
 
 		// Relayer can withdraw the fee
-		await (await identityFactory.withdraw(token.address, relayerAddr, feeAmount, {
-			gasLimit
-		})).wait()
+		await (
+			await identityFactory.withdraw(token.address, relayerAddr, feeAmount, {
+				gasLimit
+			})
+		).wait()
 		assert.equal(
 			await token.balanceOf(relayerAddr),
 			initialRelayerBal.toNumber() + feeAmount,
