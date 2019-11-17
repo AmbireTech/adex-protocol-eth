@@ -12,7 +12,8 @@ contract Identity {
 
 	// Storage
 	// WARNING: be careful when modifying this
-	// privileges and routineAuthorizations must always be 0th and 1th thing in storage
+	// privileges and routineAuthorizations must always be 0th and 1th thing in storage,
+	// because of the proxies we generate that delegatecall into this contract (which assume storage slot 0 and 1)
 	mapping (address => uint8) public privileges;
 	// Routine authorizations
 	mapping (bytes32 => bool) public routineAuthorizations;
@@ -32,8 +33,7 @@ contract Identity {
 	}
 	enum RoutineOp {
 		ChannelWithdraw,
-		ChannelWithdrawExpired,
-		Withdraw
+		ChannelWithdrawExpired
 	}
 
 	// Events
