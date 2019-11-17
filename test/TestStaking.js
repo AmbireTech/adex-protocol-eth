@@ -37,6 +37,7 @@ contract('Staking', function(accounts) {
 
 	it('open a bond, unbond it', async function() {
 		const bondAmount = 120000000
+		let gasUsage = 0
 
 		const bond = [bondAmount, poolId]
 
@@ -50,8 +51,8 @@ contract('Staking', function(accounts) {
 
 		await token.setBalanceTo(userAddr, bondAmount)
 
-		await (await staking.addBond(bond, { gasLimit })).wait()
-		// console.log(receipt.gasUsed.toString(10))
+		const receipt = await (await staking.addBond(bond, { gasLimit })).wait()
+		gasUsage += receipt.gasUsed.toNumber()
 
 		// @TODO: check if bond exists
 		assert.equal(
@@ -64,8 +65,8 @@ contract('Staking', function(accounts) {
 		// we cannot unbond yet
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
 
-		await (await staking.requestUnbond(bond, { gasLimit })).wait()
-		// console.log(receiptUnlock.gasUsed.toString(10))
+		const receiptUnlock = await (await staking.requestUnbond(bond, { gasLimit })).wait()
+		gasUsage += receiptUnlock.gasUsed.toNumber()
 
 		// @TODO test slashing
 		// 98%
@@ -77,17 +78,14 @@ contract('Staking', function(accounts) {
 		// after this, we will finally be able to unbond
 		await moveTime(web3, DAY_SECONDS * 31)
 
-		await (await staking.unbond(bond, { gasLimit })).wait()
-		// console.log(receiptUnbond.gasUsed.toString(10))
+		const receiptUnbond = await (await staking.unbond(bond, { gasLimit })).wait()
+		gasUsage += receiptUnbond.gasUsed.toNumber()
 
 		assert.equal(
 			(await token.balanceOf(userAddr)).toNumber(),
 			bondAmount,
 			'user has their bond amount returned'
 		)
-
-		// await expectEVMError(stakingUser.setWhitelisted(validator, true))
-		// assert.equal(await staking.whitelisted(validator), false)
-		// await (await staking.setWhitelisted(validator, false)).wait()
+		assert.ok(gasUsage < 180000, 'gas usage is OK')
 	})
 })
