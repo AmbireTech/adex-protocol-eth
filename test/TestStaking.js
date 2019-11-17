@@ -55,7 +55,8 @@ contract('Staking', function(accounts) {
 		const receipt = await (await staking.addBond(bond, { gasLimit })).wait()
 		gasUsage += receipt.gasUsed.toNumber()
 
-		// @TODO: check if bond exists
+		// assert that the amounts are expected
+		assert.equal(await staking.totalFunds(poolId), bondAmount, 'totalFunds is correct')
 		assert.equal(
 			(await staking.getWithdrawAmount(bond)).toNumber(),
 			bondAmount,
@@ -90,6 +91,7 @@ contract('Staking', function(accounts) {
 
 	it('bonds are slashed proportionally based on their bond/unbond time', async function() {
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202022222'
+		const sum = (a, b) => a+b
 
 		// the max slash pts are 10**18
 		// so we will slash it 3 times, all with 5% (10**18*0.05, and then multiplying that by 0.95)
@@ -97,6 +99,8 @@ contract('Staking', function(accounts) {
 		// since those bonds are by the same sender, they need to have different amounts so that they
 		// are understood as different bonds (bondId is derived from the amount/poolId)
 		const bonds = [
+			// this one will suffer 2 slashes cause it will be unbonded after two
+			//[100000000, poolId],
 			// this one would suffer all 3 slashes
 			[120000000, poolId],
 			// this one will suffer 2 slashes
@@ -113,7 +117,7 @@ contract('Staking', function(accounts) {
 			bonds[3][0],
 		]
 		// @TODO unbond one of them
-		await token.setBalanceTo(userAddr, bonds.map(bond => bond[0]).reduce((a, b) => a+b, 0))
+		await token.setBalanceTo(userAddr, bonds.map(bond => bond[0]).reduce(sum, 0))
 		await (await staking.addBond(bonds[0], { gasLimit })).wait()
 		await (await stakingWithSlasher.slash(poolId, slashes[0], { gasLimit })).wait()
 		await (await staking.addBond(bonds[1], { gasLimit })).wait()
@@ -121,5 +125,9 @@ contract('Staking', function(accounts) {
 		await (await staking.addBond(bonds[2], { gasLimit })).wait()
 		await (await stakingWithSlasher.slash(poolId, slashes[2], { gasLimit })).wait()
 		await (await staking.addBond(bonds[3], { gasLimit })).wait()
+
+		const amounts = await Promise.all(bonds.map(bond => staking.getWithdrawAmount(bond)))
+		assert.deepEqual(amounts.map(x => x.toNumber()), bondExpected, 'amounts are as expected')
+		assert.equal(await staking.totalFunds(poolId), bondExpected.reduce(sum, 0), 'totalFunds is as expected')
 	})
 })
