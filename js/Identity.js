@@ -92,7 +92,7 @@ const RoutineOps = {
 	channelWithdrawExpired(args) {
 		const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
 		return [1, data]
-	},
+	}
 }
 
 module.exports = { Transaction, RoutineAuthorization, RoutineOps }

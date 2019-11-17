@@ -316,10 +316,9 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	/*
-	it('relay routine operations', async function() {
-		// NOTE: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
-		const toWithdraw = 150
+	it('routines: open a channel, channelWithdraw', async function() {
+		const tokenAmnt = 500
+
 		const fee = 20
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		const auth = new RoutineAuthorization({
@@ -330,30 +329,67 @@ contract('Identity', function(accounts) {
 			weeklyFeeAmount: fee
 		})
 
-		// Activate this routine authorization
-		const tx = await zeroFeeTx(
+		// Open a channel via the identity
+		const channel = sampleChannel(
+			accounts,
+			token.address,
 			id.address,
-			idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true])
+			tokenAmnt,
+			blockTime + 40 * DAY_SECONDS,
+			0
 		)
-		const sig = splitSig(await ethSign(tx.hashHex(), userAcc))
-		await (await id.execute([tx.toSolidityTuple()], [sig], { gasLimit })).wait()
+		const txns = [
+			// we use the channelOpen on the Identity here, just to see if it works too
+			await zeroFeeTx(
+				// coreAddr,
+				// coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
+				id.address,
+				idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()])
+			),
+			await zeroFeeTx(
+				id.address,
+				idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true]),
+				1
+			)
+		]
+		const sigs = await Promise.all(
+			txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
+		)
+		await (
+			await id.execute(
+				txns.map(x => x.toSolidityTuple()),
+				sigs,
+				{ gasLimit }
+			)
+		).wait()
 
-		// Create the operation and relay it
-		// the operation is simply to withdraw from the id contract to userAcc
-		const op = RoutineOps.withdraw(token.address, userAcc, toWithdraw)
-		const initialUserBal = await token.balanceOf(userAcc)
-		const initialRelayerBal = await token.balanceOf(relayerAddr)
+		// getting this far, we should have a channel open; now let's withdraw from it
+		// Prepare all the data needed for withdrawal
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, id.address, tokenAmnt)
+		const op = RoutineOps.channelWithdraw([
+			channel.toSolidityTuple(),
+			stateRoot,
+			[vsig1, vsig2],
+			proof,
+			tokenAmnt
+		])
+
+		const [initialIdentityBal, initialRelayerBal] = await Promise.all([
+			token.balanceOf(id.address),
+			token.balanceOf(relayerAddr)
+		])
+
 		const executeRoutines = id.executeRoutines.bind(id, auth.toSolidityTuple(), [op], { gasLimit })
-		const receipt = await (await executeRoutines()).wait()
-		// console.log(receipt.gasUsed.toString(10))
-
-		// Transfer (withdraw), Transfer (fee)
-		assert.equal(receipt.events.length, 2, 'has right number of events')
+		const routineReceipt = await (await executeRoutines()).wait()
+		const balAfter = (await token.balanceOf(id.address)).toNumber()
 		assert.equal(
-			await token.balanceOf(userAcc),
-			initialUserBal.toNumber() + toWithdraw,
-			'user has the right balance after withdrawal'
+			balAfter - initialIdentityBal.toNumber() + fee,
+			tokenAmnt,
+			'token amount withdrawn is right'
 		)
+		// Transfer (channel to Identity), LogChannelWithdraw, Transfer (fee)
+		assert.equal(routineReceipt.events.length, 3, 'right number of events')
+
 		assert.equal(
 			await token.balanceOf(relayerAddr),
 			initialRelayerBal.toNumber() + fee,
@@ -361,12 +397,8 @@ contract('Identity', function(accounts) {
 		)
 
 		// Do it again to make sure the fee is not paid out twice
+		// this will work just ifne cause we can call channelWithdraw again as long as the channel is not expired
 		await (await executeRoutines()).wait()
-		assert.equal(
-			await token.balanceOf(userAcc),
-			initialUserBal.toNumber() + toWithdraw * 2,
-			'user has the right balance after second withdrawal'
-		)
 		assert.equal(
 			await token.balanceOf(relayerAddr),
 			initialRelayerBal.toNumber() + fee,
@@ -375,18 +407,9 @@ contract('Identity', function(accounts) {
 
 		// Does not work with an invalid routine auth
 		const invalidAuth1 = new RoutineAuthorization({ ...auth, outpace: userAcc })
-		await expectEVMError(id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]), 'NOT_AUTHORIZED')
-		const invalidAuth2 = new RoutineAuthorization({ ...auth, relayer: userAcc })
 		await expectEVMError(
-			id.executeRoutines(invalidAuth2.toSolidityTuple(), [op]),
-			'NOT_AUTHORIZED_ADDR'
-		)
-
-		// Does not allow withdrawals to an unauthorized addr
-		const evilOp = RoutineOps.withdraw(token.address, evilAcc, toWithdraw)
-		await expectEVMError(
-			id.executeRoutines(auth.toSolidityTuple(), [evilOp]),
-			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
+			id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]),
+			'NO_AUTHORIZATION'
 		)
 
 		// Fee will be paid again, since it's weekly
@@ -402,61 +425,11 @@ contract('Identity', function(accounts) {
 		await moveTime(web3, DAY_SECONDS * 7 + 10)
 		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
-	*/
-
-	it('routines: open a channel, channelWithdraw', async function() {
-		const tokenAmnt = 500
-		// Open a channel via the identity
-		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
-		// so we need to workaround with + 8 * DAY_SECONDS
-		const blockTime = (await web3.eth.getBlock('latest')).timestamp + 8 * DAY_SECONDS
-		const channel = sampleChannel(
-			accounts,
-			token.address,
-			id.address,
-			tokenAmnt,
-			blockTime + DAY_SECONDS,
-			0
-		)
-		// we use the channelOpen on the Identity here, just to see if it works too
-		const relayerTx = await zeroFeeTx(
-			// coreAddr,
-			// coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
-			id.address,
-			idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()])
-		)
-		const hash = relayerTx.hashHex()
-		const sig = splitSig(await ethSign(hash, userAcc))
-		const handle = await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })
-		await handle.wait()
-		// getting this far, we should have a channel open; now let's withdraw from it
-
-		// Prepare all the data needed for withdrawal
-		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, id.address, tokenAmnt)
-		const balBefore = (await token.balanceOf(id.address)).toNumber()
-		const routineReceipt = await (
-			await id.executeRoutines(
-				defaultAuth.toSolidityTuple(),
-				[
-					RoutineOps.channelWithdraw([
-						channel.toSolidityTuple(),
-						stateRoot,
-						[vsig1, vsig2],
-						proof,
-						tokenAmnt
-					]),
-				],
-				{ gasLimit }
-			)
-		).wait()
-		const balAfter = (await token.balanceOf(id.address)).toNumber()
-		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
-		// Transfer (channel to Identity), ChannelWithdraw
-		assert.equal(routineReceipt.events.length, 2, 'right number of events')
-	})
 
 	it('routines: open a channel, and channelWithdrawExpired', async function() {
-		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
+		// hack: blockTime is not moved sufficiently from the previous test for some reason
+		// so we just + 40 days
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp + 40 * DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
 
@@ -491,7 +464,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(executeRoutines([withdrawExpiredOp]), 'NOT_EXPIRED')
 
 		// move time, withdrawExpired successfully and check results
-		await moveTime(web3, DAY_SECONDS * 3)
+		await moveTime(web3, DAY_SECONDS * 41)
 		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit })).wait()
 		// LogWithdrawExpired and Transfer
 		assert.equal(expiredReceipt.events.length, 2, 'right event count')
@@ -723,10 +696,10 @@ contract('Identity', function(accounts) {
 		const [sig1, sig2] = await Promise.all(validators.map(v => ethSign(hashToSignHex, v)))
 		return [stateRoot, splitSig(sig1), splitSig(sig2), proof]
 	}
-	async function zeroFeeTx(to, data) {
+	async function zeroFeeTx(to, data, nonceOffset = 0) {
 		return new Transaction({
 			identityContract: id.address,
-			nonce: (await id.nonce()).toNumber(),
+			nonce: (await id.nonce()).toNumber() + nonceOffset,
 			feeTokenAddr: token.address,
 			feeAmount: 0,
 			to,
