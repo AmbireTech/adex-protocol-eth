@@ -142,7 +142,7 @@ contract('Staking', function(accounts) {
 			bondsExpected[0],
 			'the amount withdrawn is correct'
 		)
-		// assert.equal(staking.getWithdrawAmount(bonds[0]), 0, 'no more to withdraw')
+		assert.equal(await staking.getWithdrawAmount(bonds[0]), 0, 'no more to withdraw')
 		const remainingBonds = bonds.slice(1)
 		const remainingBondsExpected = bondsExpected.slice(1)
 
