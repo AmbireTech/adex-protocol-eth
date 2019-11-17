@@ -163,10 +163,9 @@ contract Identity {
 	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(msg.sender == auth.relayer || msg.sender == address(this), 'NOT_AUTHORIZED_ADDR');
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
-		require(routineAuthorizations[hash], 'NOT_AUTHORIZED');
+		require(routineAuthorizations[hash], 'NO_AUTHORIZATION');
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
