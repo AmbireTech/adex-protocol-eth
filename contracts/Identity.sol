@@ -166,7 +166,7 @@ contract Identity {
 	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(auth.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
+		require(msg.sender == auth.relayer || msg.sender == address(this), 'NOT_AUTHORIZED_ADDR');
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
 		require(routineAuthorizations[hash], 'NOT_AUTHORIZED');
