@@ -153,8 +153,8 @@ contract('Identity', function(accounts) {
 			web3Provider.getSigner(relayerAddr)
 		)
 		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
-
-		// console.log('deploy cost', deployReceipt.gasUsed.toString(10))
+		// it's usually around 155k
+		assert.ok(deployReceipt.gasUsed.toNumber() < 200000, 'gas used for deploying is under 200k')
 		// check if deploy fee is paid out
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
