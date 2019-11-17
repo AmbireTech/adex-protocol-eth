@@ -57,8 +57,8 @@ contract Identity {
 	}
 
 	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a relayer to do any number of routines
-	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
-	// while the fee will be paid only ONCE per auth, the authorization can be used until validUntil
+	// those routines are safe: e.g. sweeping channels (withdrawing off-chain balances to the identity)
+	// while the fee will be paid only ONCE per auth per period (1 week), the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
 		address relayer;
