@@ -34,6 +34,8 @@ const gasLimit = 1000000
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
+	const coreInterface = new Interface(AdExCore._json.abi)
+
 	// The Identity contract factory
 	let identityFactory
 	// A dummy token
@@ -47,6 +49,7 @@ contract('Identity', function(accounts) {
 	// The Identity contract instance that will be used
 	let id
 
+	const validators = accounts.slice(0, 2)
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
@@ -301,11 +304,7 @@ contract('Identity', function(accounts) {
 			'INSUFFICIENT_PRIVILEGE_SENDER'
 		)
 
-		const idWithUser = new Contract(
-			id.address,
-			Identity._json.abi,
-			web3Provider.getSigner(userAcc)
-		)
+		const idWithUser = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
 		const receipt = await (
 			await idWithUser.executeBySender([relayerTx.toSolidityTuple()], {
 				gasLimit
@@ -449,13 +448,7 @@ contract('Identity', function(accounts) {
 		// console.log(receipt.gasUsed.toString(10))
 
 		// Prepare all the data needed for withdrawal
-		const elem1 = Channel.getBalanceLeaf(id.address, tokenAmnt)
-		const tree = new MerkleTree([elem1])
-		const proof = tree.proof(elem1)
-		const stateRoot = tree.getRoot()
-		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
-		const vsig1 = splitSig(await ethSign(hashToSignHex, accounts[0]))
-		const vsig2 = splitSig(await ethSign(hashToSignHex, accounts[1]))
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, id.address, tokenAmnt)
 		const balBefore = (await token.balanceOf(userAcc)).toNumber()
 		const routineReceipt = await (
 			await id.executeRoutines(
@@ -499,7 +492,6 @@ contract('Identity', function(accounts) {
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
 
-		const validators = accounts.slice(0, 2)
 		const channel = sampleChannel(
 			validators,
 			token.address,
@@ -508,7 +500,6 @@ contract('Identity', function(accounts) {
 			blockTime + DAY_SECONDS,
 			0
 		)
-		const coreInterface = new Interface(AdExCore._json.abi)
 		const relayerTx = await zeroFeeTx(
 			coreAddr,
 			coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
@@ -553,7 +544,6 @@ contract('Identity', function(accounts) {
 			await token.balanceOf(relayerAddr)
 		])
 
-		const validators = accounts.slice(0, 2)
 		const channel = sampleChannel(
 			validators,
 			token.address,
@@ -585,15 +575,8 @@ contract('Identity', function(accounts) {
 		)
 
 		// Prepare all the data needed for withdrawal
-		const elem1 = Channel.getBalanceLeaf(expectedAddr, tokenAmnt)
-		const tree = new MerkleTree([elem1])
-		const proof = tree.proof(elem1)
-		const stateRoot = tree.getRoot()
-		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
-		const vsig1 = splitSig(await ethSign(hashToSignHex, validators[0]))
-		const vsig2 = splitSig(await ethSign(hashToSignHex, validators[1]))
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, expectedAddr, tokenAmnt)
 
-		const coreInterface = new Interface(AdExCore._json.abi)
 		const tx1 = new Transaction({
 			identityContract: expectedAddr,
 			nonce: 0,
@@ -629,7 +612,7 @@ contract('Identity', function(accounts) {
 			'IdentityFactory balance is correct'
 		)
 
-		// Only relayer allowed to withdraw
+		// Only relayer allowed to withdraw fee
 		const identityFactoryEvil = new Contract(
 			identityFactory.address,
 			IdentityFactory._json.abi,
@@ -653,6 +636,15 @@ contract('Identity', function(accounts) {
 		)
 	})
 
+	async function getWithdrawData(channel, expectedAddr, tokenAmnt) {
+		const elem1 = Channel.getBalanceLeaf(expectedAddr, tokenAmnt)
+		const tree = new MerkleTree([elem1])
+		const proof = tree.proof(elem1)
+		const stateRoot = tree.getRoot()
+		const hashToSignHex = channel.hashToSignHex(coreAddr, stateRoot)
+		const [sig1, sig2] = await Promise.all(validators.map(v => ethSign(hashToSignHex, v)))
+		return [stateRoot, splitSig(sig1), splitSig(sig2), proof]
+	}
 	async function zeroFeeTx(to, data) {
 		return new Transaction({
 			identityContract: id.address,
