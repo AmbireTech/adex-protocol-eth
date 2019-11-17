@@ -159,7 +159,7 @@ contract('Identity', function(accounts) {
 		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
 	})
 
-	it('relay a tx', async function() {
+	it('relay a tx: setAddrPrivilege', async function() {
 		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
 
 		const initialBal = await token.balanceOf(relayerAddr)
@@ -207,15 +207,14 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
 
 		// Try to downgrade the privilege: should not be allowed
-		const relayerNextTx = await zeroFeeTx(
+		const relayerDowngradeTx = await zeroFeeTx(
 			id.address,
 			idInterface.functions.setAddrPrivilege.encode([userAcc, 1])
 		)
-
-		const newHash = relayerNextTx.hashHex()
+		const newHash = relayerDowngradeTx.hashHex()
 		const newSig = splitSig(await ethSign(newHash, userAcc))
 		await expectEVMError(
-			id.execute([relayerNextTx.toSolidityTuple()], [newSig]),
+			id.execute([relayerDowngradeTx.toSolidityTuple()], [newSig]),
 			'PRIVILEGE_NOT_DOWNGRADED'
 		)
 
@@ -302,13 +301,13 @@ contract('Identity', function(accounts) {
 			'INSUFFICIENT_PRIVILEGE_SENDER'
 		)
 
-		const idWithSender = new Contract(
+		const idWithUser = new Contract(
 			id.address,
 			Identity._json.abi,
 			web3Provider.getSigner(userAcc)
 		)
 		const receipt = await (
-			await idWithSender.executeBySender([relayerTx.toSolidityTuple()], {
+			await idWithUser.executeBySender([relayerTx.toSolidityTuple()], {
 				gasLimit
 			})
 		).wait()
@@ -322,18 +321,8 @@ contract('Identity', function(accounts) {
 			nonce: relayerTx.nonce - 1
 		})
 		await expectEVMError(
-			idWithSender.executeBySender([invalidNonceTx.toSolidityTuple()]),
+			idWithUser.executeBySender([invalidNonceTx.toSolidityTuple()]),
 			'WRONG_NONCE'
-		)
-
-		const invalidPrivTx = new Transaction({
-			...relayerTx,
-			nonce: (await id.nonce()).toNumber(),
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, 1])
-		})
-		await expectEVMError(
-			idWithSender.executeBySender([invalidPrivTx.toSolidityTuple()]),
-			'PRIVILEGE_NOT_DOWNGRADED'
 		)
 	})
 
@@ -428,7 +417,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
 
-	it('open a channel, withdraw it via routines', async function() {
+	it('open a channel, channelWithdraw it via routines', async function() {
 		const tokenAmnt = 500
 		// Open a channel via the identity
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
@@ -505,7 +494,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('channelWithdrawExpired, via routines', async function() {
+	it('open a channel, and channelWithdrawExpired via routines', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
