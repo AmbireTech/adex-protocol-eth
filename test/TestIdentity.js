@@ -617,7 +617,7 @@ contract('Identity', function(accounts) {
 
 	// This is a "super-counterfactual" test: we will create an account, this account will earn from a channel,
 	// and THEN we will, at once, create the contract, sweep the channel and allow the account to withdraw their funds
-	it('IdentityFactory: deployAndRoutinesAndExec: create a new account after it has already earned from channels', async function() {
+	it('IdentityFactory: deployAndExecute: create a new account after it has already earned from channels, withdraw via routines', async function() {
 		const tokenAmnt = 100000
 		await token.setBalanceTo(channelCreatorAddr, tokenAmnt)
 
@@ -625,8 +625,7 @@ contract('Identity', function(accounts) {
 		// the relayer can decide whether to relay the tx if this fee is sufficient
 		const weeklyFeeAmount = 250
 		const auth = new RoutineAuthorization({
-			// Caveat: we authorize the identity factory as the relayer
-			relayer: identityFactory.address,
+			relayer: relayerAddr,
 			outpace: coreAddr,
 			validUntil: 1900000000,
 			feeTokenAddr: token.address,
@@ -634,8 +633,10 @@ contract('Identity', function(accounts) {
 		})
 		const txFeeAmount = 100
 
-		const initialFactoryBal = await token.balanceOf(identityFactory.address)
-		const expectedFactoryBal = initialFactoryBal.toNumber() + weeklyFeeAmount + txFeeAmount
+		const [initialRelayerBal, initialFactoryBal] = await Promise.all([
+			token.balanceOf(relayerAddr),
+			token.balanceOf(identityFactory.address)
+		])
 
 		const maxToWithdraw = tokenAmnt - (weeklyFeeAmount + txFeeAmount)
 		const accountToWithdrawTo = accounts[9]
@@ -671,25 +672,36 @@ contract('Identity', function(accounts) {
 			tokenAmnt
 		])
 
+		// Make the tx that will call the rotuines
+		const txRoutines = new Transaction({
+			identityContract: expectedAddr,
+			nonce: 0,
+			feeTokenAddr: token.address,
+			feeAmount: 0,
+			to: expectedAddr,
+			data: idInterface.functions.executeRoutines.encode([auth.toSolidityTuple(), [channelSweepOp]])
+		})
+
 		// Now the regular tx to withdraw our funds out of our Identity
 		const tokenInterface = new Interface(MockToken._json.abi)
 		const txToWithdraw = new Transaction({
 			identityContract: expectedAddr,
-			nonce: 0,
+			nonce: 1,
 			feeTokenAddr: token.address,
 			feeAmount: txFeeAmount,
 			to: token.address,
 			data: tokenInterface.functions.transfer.encode([accountToWithdrawTo, maxToWithdraw])
 		})
-		const sig = splitSig(await ethSign(txToWithdraw.hashHex(), userAcc))
+		const txns = [txRoutines, txToWithdraw]
+		const sigs = await Promise.all(
+			txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
+		)
 
-		const handle = await identityFactory.deployAndRoutinesAndExec(
+		const handle = await identityFactory.deployAndExecute(
 			bytecode,
 			salt,
-			auth.toSolidityTuple(),
-			[channelSweepOp],
-			[txToWithdraw.toSolidityTuple()],
-			[sig],
+			txns.map(tx => tx.toSolidityTuple()),
+			sigs,
 			{ gasLimit }
 		)
 		const receipt = await handle.wait()
@@ -703,10 +715,17 @@ contract('Identity', function(accounts) {
 			maxToWithdraw,
 			'we managed to withdraw our balance out of the identity'
 		)
+
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialRelayerBal.toNumber() + weeklyFeeAmount,
+			'relayer has received fee'
+		)
+		// since the factory is the sender...
 		assert.equal(
 			await token.balanceOf(identityFactory.address),
-			expectedFactoryBal,
-			'factory balance is as expected'
+			initialFactoryBal.toNumber() + txFeeAmount,
+			'factory has received fee'
 		)
 	})
 
