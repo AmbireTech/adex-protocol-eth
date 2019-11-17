@@ -12,8 +12,7 @@ contract IdentityFactory {
 	}
 
 	function deploy(bytes memory code, uint256 salt) public {
-		address addr = deploySafe(code, salt);
-		emit LogDeployed(addr, salt);
+		deploySafe(code, salt);
 	}
 
 	function deployAndExecute(
@@ -22,7 +21,6 @@ contract IdentityFactory {
 	) public {
 		address addr = deploySafe(code, salt);
 		Identity(addr).execute(txns, signatures);
-		emit LogDeployed(addr, salt);
 	}
 
 	function deployAndRoutines(
@@ -31,7 +29,6 @@ contract IdentityFactory {
 	) public {
 		address addr = deploySafe(code, salt);
 		Identity(addr).executeRoutines(auth, operations);
-		emit LogDeployed(addr, salt);
 	}
 
 	function deployAndRoutinesAndExec(
@@ -42,7 +39,6 @@ contract IdentityFactory {
 		address addr = deploySafe(code, salt);
 		Identity(addr).executeRoutines(auth, operations);
 		Identity(addr).execute(txns, signatures);
-		emit LogDeployed(addr, salt);
 	}
 
 	function routinesAndExec(
@@ -75,6 +71,7 @@ contract IdentityFactory {
 			assembly { addr := create2(0, add(code, 0x20), mload(code), salt) }
 			require(addr != address(0), 'FAILED_DEPLOYING');
 			require(addr == expectedAddr, 'FAILED_MATCH');
+			emit LogDeployed(addr, salt);
 		}
 		return expectedAddr;
 	}
