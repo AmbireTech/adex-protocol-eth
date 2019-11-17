@@ -121,10 +121,7 @@ contract('Staking', function(accounts) {
 
 		// prepare the token amount
 		const totalAmount = bonds.map(bond => bond[0]).reduce(sum, 0)
-		await Promise.all([
-			token.setBalanceTo(userAddr, totalAmount),
-			token.setBalanceTo(zeroAddr, 0)
-		])
+		await Promise.all([token.setBalanceTo(userAddr, totalAmount), token.setBalanceTo(zeroAddr, 0)])
 
 		// the first bond will be unbonded immediately, and withdrawn after the second slash
 		await (await staking.addBond(bonds[0], { gasLimit })).wait()
