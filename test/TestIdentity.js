@@ -378,7 +378,7 @@ contract('Identity', function(accounts) {
 		const invalidAuth2 = new RoutineAuthorization({ ...auth, relayer: userAcc })
 		await expectEVMError(
 			id.executeRoutines(invalidAuth2.toSolidityTuple(), [op]),
-			'ONLY_RELAYER_CAN_CALL'
+			'NOT_AUTHORIZED_ADDR'
 		)
 
 		// Does not allow withdrawals to an unauthorized addr
