@@ -388,11 +388,6 @@ contract('Identity', function(accounts) {
 			'INSUFFICIENT_PRIVILEGE_WITHDRAW'
 		)
 
-		// We can't tamper with authentication params (outpace in this case)
-		const evilTuple = auth.toSolidityTuple()
-		evilTuple[2] = token.address // set any other address
-		await expectEVMError(id.executeRoutines(evilTuple, [op]), 'NOT_AUTHORIZED')
-
 		// Fee will be paid again, since it's weekly
 		await moveTime(web3, DAY_SECONDS * 7 + 10)
 		await (await executeRoutines()).wait()
@@ -430,11 +425,9 @@ contract('Identity', function(accounts) {
 		)
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
-		await (
-			await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })
-		).wait()
+		const handle = await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })
+		await handle.wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
-		// console.log(receipt.gasUsed.toString(10))
 
 		// Prepare all the data needed for withdrawal
 		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, id.address, tokenAmnt)
@@ -459,21 +452,6 @@ contract('Identity', function(accounts) {
 		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
 		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
 		assert.equal(routineReceipt.events.length, 3, 'right number of events')
-
-		// wrongWithdrawArgs: flipped the signatures
-		const wrongWithdrawArgs = [
-			channel.toSolidityTuple(),
-			stateRoot,
-			[vsig2, vsig1],
-			proof,
-			tokenAmnt
-		]
-		await expectEVMError(
-			id.executeRoutines(defaultAuth.toSolidityTuple(), [
-				RoutineOps.channelWithdraw(wrongWithdrawArgs)
-			]),
-			'NOT_SIGNED_BY_VALIDATORS'
-		)
 	})
 
 	it('routines: open a channel, and channelWithdrawExpired', async function() {
