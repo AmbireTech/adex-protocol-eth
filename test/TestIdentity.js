@@ -82,7 +82,7 @@ contract('Identity', function(accounts) {
 		})
 		const bytecode = getProxyDeployBytecode(
 			baseIdentityAddr,
-			[[userAcc, 3]],
+			[[userAcc, 2]],
 			{
 				routineAuthorizations: [defaultAuth.hash()],
 				...getStorageSlotsFromArtifact(Identity)
@@ -113,7 +113,7 @@ contract('Identity', function(accounts) {
 		const feeAmnt = 250
 
 		// Generating a proxy deploy transaction
-		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 3]], {
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
 			fee: {
 				tokenAddr: token.address,
 				recepient: relayerAddr,
@@ -146,7 +146,7 @@ contract('Identity', function(accounts) {
 			Identity._json.abi,
 			web3Provider.getSigner(relayerAddr)
 		)
-		assert.equal(await newIdentity.privileges(userAcc), 3, 'privilege level is OK')
+		assert.equal(await newIdentity.privileges(userAcc), 2, 'privilege level is OK')
 		// it's usually around 155k
 		assert.ok(deployReceipt.gasUsed.toNumber() < 200000, 'gas used for deploying is under 200k')
 		// check if deploy fee is paid out
@@ -154,7 +154,7 @@ contract('Identity', function(accounts) {
 	})
 
 	it('relay a tx: setAddrPrivilege', async function() {
-		assert.equal(await id.privileges(userAcc), 3, 'privilege is 3 to start with')
+		assert.equal(await id.privileges(userAcc), 2, 'privilege is 2 to start with')
 
 		const initialBal = await token.balanceOf(relayerAddr)
 		const initialNonce = (await id.nonce()).toNumber()
@@ -316,6 +316,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
+	/*
 	it('relay routine operations', async function() {
 		// NOTE: the balance of id.address is way higher than toWithdraw, allowing us to do the withdraw multiple times in the test
 		const toWithdraw = 150
@@ -401,6 +402,7 @@ contract('Identity', function(accounts) {
 		await moveTime(web3, DAY_SECONDS * 7 + 10)
 		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
+	*/
 
 	it('routines: open a channel, channelWithdraw', async function() {
 		const tokenAmnt = 500
@@ -431,7 +433,7 @@ contract('Identity', function(accounts) {
 
 		// Prepare all the data needed for withdrawal
 		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, id.address, tokenAmnt)
-		const balBefore = (await token.balanceOf(userAcc)).toNumber()
+		const balBefore = (await token.balanceOf(id.address)).toNumber()
 		const routineReceipt = await (
 			await id.executeRoutines(
 				defaultAuth.toSolidityTuple(),
@@ -443,15 +445,14 @@ contract('Identity', function(accounts) {
 						proof,
 						tokenAmnt
 					]),
-					RoutineOps.withdraw(token.address, userAcc, tokenAmnt)
 				],
 				{ gasLimit }
 			)
 		).wait()
-		const balAfter = (await token.balanceOf(userAcc)).toNumber()
+		const balAfter = (await token.balanceOf(id.address)).toNumber()
 		assert.equal(balAfter - balBefore, tokenAmnt, 'token amount withdrawn is right')
-		// Transfer (channel to Identity), ChannelWithdraw, Transfer (Identity to userAcc)
-		assert.equal(routineReceipt.events.length, 3, 'right number of events')
+		// Transfer (channel to Identity), ChannelWithdraw
+		assert.equal(routineReceipt.events.length, 2, 'right number of events')
 	})
 
 	it('routines: open a channel, and channelWithdrawExpired', async function() {
@@ -519,7 +520,7 @@ contract('Identity', function(accounts) {
 		const core = new Contract(coreAddr, AdExCore._json.abi, channelSigner)
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
-		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 3]], {
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
 			...getStorageSlotsFromArtifact(Identity)
 		})
 		assert.equal(
@@ -631,7 +632,7 @@ contract('Identity', function(accounts) {
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		// Create a new account
-		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 3]], {
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
 			routineAuthorizations: [auth.hash()],
 			...getStorageSlotsFromArtifact(Identity)
 		})
