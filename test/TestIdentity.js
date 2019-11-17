@@ -407,7 +407,7 @@ contract('Identity', function(accounts) {
 		await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
 
-	it('open a channel, channelWithdraw it via routines', async function() {
+	it('routines: open a channel, channelWithdraw', async function() {
 		const tokenAmnt = 500
 		// Open a channel via the identity
 		// WARNING: for some reason the latest block timestamp here is not updated after the last test...
@@ -431,9 +431,7 @@ contract('Identity', function(accounts) {
 		const hash = relayerTx.hashHex()
 		const sig = splitSig(await ethSign(hash, userAcc))
 		await (
-			await id.execute([relayerTx.toSolidityTuple()], [sig], {
-				gasLimit
-			})
+			await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })
 		).wait()
 		// getting this far, we should have a channel open; now let's withdraw from it
 		// console.log(receipt.gasUsed.toString(10))
@@ -478,7 +476,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('open a channel, and channelWithdrawExpired via routines', async function() {
+	it('routines: open a channel, and channelWithdrawExpired', async function() {
 		const blockTime = (await web3.eth.getBlock('latest')).timestamp + DAY_SECONDS
 		const tokenAmnt = 1066
 		await token.setBalanceTo(id.address, tokenAmnt)
