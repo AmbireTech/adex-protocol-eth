@@ -85,7 +85,6 @@ RoutineAuthorization.prototype.toSolidityTuple = function() {
 }
 
 const RoutineOps = {
-	// @TODO is there a more elegant way to remove the SELECTOR than .slice(10)?
 	channelWithdraw(args) {
 		const data = `0x${coreInterface.functions.channelWithdraw.encode(args).slice(10)}`
 		return [0, data]
@@ -94,9 +93,6 @@ const RoutineOps = {
 		const data = `0x${coreInterface.functions.channelWithdrawExpired.encode(args).slice(10)}`
 		return [1, data]
 	},
-	withdraw(tokenAddr, to, amount) {
-		return [2, abi.rawEncode(['address', 'address', 'uint256'], [tokenAddr, to, amount])]
-	}
 }
 
 module.exports = { Transaction, RoutineAuthorization, RoutineOps }

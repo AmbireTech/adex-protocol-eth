@@ -28,8 +28,7 @@ contract Identity {
 	enum PrivilegeLevel {
 		None,
 		Routines,
-		Transactions,
-		WithdrawTo
+		Transactions
 	}
 	enum RoutineOp {
 		ChannelWithdraw,
@@ -57,7 +56,7 @@ contract Identity {
 		bytes data;
 	}
 
-	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
+	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a relayer to do any number of routines
 	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
 	// while the fee will be paid only ONCE per auth, the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
@@ -177,11 +176,6 @@ contract Identity {
 			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.Withdraw) {
-				// Withdraw from identity
-				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
-				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
 				revert('INVALID_MODE');
 			}
