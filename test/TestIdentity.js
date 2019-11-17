@@ -55,6 +55,7 @@ contract('Identity', function(accounts) {
 	const evilAcc = accounts[5]
 	const channelCreatorAddr = accounts[7]
 	const channelSigner = web3Provider.getSigner(channelCreatorAddr)
+	const validUntil = 4000000000
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -76,7 +77,7 @@ contract('Identity', function(accounts) {
 		defaultAuth = new RoutineAuthorization({
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: 1900000000,
+			validUntil,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: 0
 		})
@@ -406,7 +407,7 @@ contract('Identity', function(accounts) {
 		)
 
 		// Does not work with an invalid routine auth
-		const invalidAuth1 = new RoutineAuthorization({ ...auth, outpace: userAcc })
+		const invalidAuth1 = new RoutineAuthorization({ ...auth, relayer: userAcc })
 		await expectEVMError(
 			id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]),
 			'NO_AUTHORIZATION'
@@ -577,7 +578,7 @@ contract('Identity', function(accounts) {
 		const auth = new RoutineAuthorization({
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil: 1900000000,
+			validUntil,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount
 		})
@@ -676,6 +677,70 @@ contract('Identity', function(accounts) {
 			await token.balanceOf(identityFactory.address),
 			initialFactoryBal.toNumber() + txFeeAmount,
 			'factory has received fee'
+		)
+	})
+
+	it('IdentityFactory: deployAndRoutines', async function() {
+		const tokenAmnt = 120000
+		await token.setBalanceTo(channelCreatorAddr, tokenAmnt)
+
+		const weeklyFeeAmount = 330
+		const auth = new RoutineAuthorization({
+			relayer: relayerAddr,
+			outpace: coreAddr,
+			validUntil,
+			feeTokenAddr: token.address,
+			weeklyFeeAmount
+		})
+
+		const initialRelayerBal = await token.balanceOf(relayerAddr)
+
+		// Create a new channel
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+		const channel = sampleChannel(
+			validators,
+			token.address,
+			channelCreatorAddr,
+			tokenAmnt,
+			blockTime + DAY_SECONDS,
+			0
+		)
+		const core = new Contract(coreAddr, AdExCore._json.abi, channelSigner)
+		await (await core.channelOpen(channel.toSolidityTuple())).wait()
+
+		// Create a new account
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
+			routineAuthorizations: [auth.hash()],
+			...getStorageSlotsFromArtifact(Identity)
+		})
+
+		// Prepare all the data needed for withdrawal
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, expectedAddr, tokenAmnt)
+
+		// We will sweep the channel (channelWithdraw) via a routine
+		const op = RoutineOps.channelWithdraw([
+			channel.toSolidityTuple(),
+			stateRoot,
+			[vsig1, vsig2],
+			proof,
+			tokenAmnt
+		])
+
+		const receipt = await (
+			await identityFactory.deployAndRoutines(bytecode, salt, auth.toSolidityTuple(), [op], { gasLimit })
+		).wait()
+		assert.ok(receipt.events.some(x => x.event === 'LogDeployed'))
+		// console.log('gas used:', receipt.gasUsed.toNumber())
+
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialRelayerBal.toNumber() + weeklyFeeAmount,
+			'relayer has received fee'
+		)
+		assert.equal(
+			await token.balanceOf(expectedAddr),
+			tokenAmnt - weeklyFeeAmount,
+			'the identity has the earnings from the channel'
 		)
 	})
 
