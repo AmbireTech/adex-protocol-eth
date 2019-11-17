@@ -99,7 +99,9 @@ contract Staking {
 	}
 
 	function getWithdrawAmount(BondLibrary.Bond memory bond) public view returns (uint) {
-		return calcWithdrawAmount(bond, uint(bonds[bond.hash(msg.sender)].slashedAtStart));
+		BondState storage bondState = bonds[bond.hash(msg.sender)];
+		if (!bondState.active) return 0;
+		return calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
 	}
 
 	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint slashedAtStart) internal view returns (uint) {
