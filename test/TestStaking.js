@@ -90,6 +90,7 @@ contract('Staking', function(accounts) {
 	})
 
 	it('bonds are slashed proportionally based on their bond/unbond time', async function() {
+		const zeroAddr = '0x0000000000000000000000000000000000000000'
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202222222'
 		const sum = (a, b) => a + b
 
@@ -120,7 +121,10 @@ contract('Staking', function(accounts) {
 
 		// prepare the token amount
 		const totalAmount = bonds.map(bond => bond[0]).reduce(sum, 0)
-		await token.setBalanceTo(userAddr, totalAmount)
+		await Promise.all([
+			token.setBalanceTo(userAddr, totalAmount),
+			token.setBalanceTo(zeroAddr, 0)
+		])
 
 		// the first bond will be unbonded immediately, and withdrawn after the second slash
 		await (await staking.addBond(bonds[0], { gasLimit })).wait()
@@ -164,5 +168,8 @@ contract('Staking', function(accounts) {
 			remainingBondsExpected.reduce(sum, 0),
 			'totalFunds is as expected'
 		)
+
+		const totalSlashed = bonds.map(bond => bond[0]).reduce(sum, 0) - bondsExpected.reduce(sum, 0)
+		assert.equal(await token.balanceOf(zeroAddr), totalSlashed, 'slashed amount is correct')
 	})
 })
