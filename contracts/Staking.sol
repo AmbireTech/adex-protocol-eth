@@ -45,11 +45,11 @@ contract Staking {
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
 	uint constant TIME_TO_UNBOND = 30 days;
+	address constant BURN_ADDR = address(0xaDbeEF0000000000000000000000000000000000);
 
 	address public tokenAddr;
 	address public slasherAddr;
 	// Addressed by poolId
-	mapping (bytes32 => uint) public totalFunds;
 	mapping (bytes32 => uint) public slashPoints;
 	// Addressed by bondId
 	mapping (bytes32 => BondState) public bonds;
@@ -63,12 +63,7 @@ contract Staking {
 		require(msg.sender == slasherAddr, 'ONLY_SLASHER');
 		uint newSlashPts = slashPoints[poolId].add(pts);
 		require(newSlashPts <= MAX_SLASH, 'PTS_TOO_HIGH');
-		uint amount = pts
-			.mul(totalFunds[poolId])
-			.div(MAX_SLASH.sub(slashPoints[poolId]));
 		slashPoints[poolId] = newSlashPts;
-		totalFunds[poolId] = totalFunds[poolId].sub(amount);
-		SafeERC20.transfer(tokenAddr, address(0x00), amount);
 	}
 
 	function addBond(BondLibrary.Bond memory bond) public {
@@ -79,7 +74,6 @@ contract Staking {
 			slashedAtStart: uint64(slashPoints[bond.poolId]),
 			willUnlock: 0
 		});
-		totalFunds[bond.poolId] = totalFunds[bond.poolId].add(bond.amount);
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
 	}
 
@@ -94,9 +88,10 @@ contract Staking {
 		BondState storage bondState = bonds[id];
 		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
 		uint amount = calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
+		uint toBurn = bond.amount - amount;
 		delete bonds[id];
-		totalFunds[bond.poolId] = totalFunds[bond.poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
+		SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
 	}
 
 	function getWithdrawAmount(BondLibrary.Bond memory bond) public view returns (uint) {

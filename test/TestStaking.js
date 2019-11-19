@@ -56,7 +56,7 @@ contract('Staking', function(accounts) {
 		gasUsage += receipt.gasUsed.toNumber()
 
 		// assert that the amounts are expected
-		assert.equal(await staking.totalFunds(poolId), bondAmount, 'totalFunds is correct')
+		// assert.equal(await staking.totalFunds(poolId), bondAmount, 'totalFunds is correct')
 		assert.equal(
 			(await staking.getWithdrawAmount(bond)).toNumber(),
 			bondAmount,
@@ -90,7 +90,7 @@ contract('Staking', function(accounts) {
 	})
 
 	it('bonds are slashed proportionally based on their bond/unbond time', async function() {
-		const zeroAddr = '0x0000000000000000000000000000000000000000'
+		const slashAddr = '0xaDbeEF0000000000000000000000000000000000'
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202222222'
 		const sum = (a, b) => a + b
 
@@ -121,7 +121,7 @@ contract('Staking', function(accounts) {
 
 		// prepare the token amount
 		const totalAmount = bonds.map(bond => bond[0]).reduce(sum, 0)
-		await Promise.all([token.setBalanceTo(userAddr, totalAmount), token.setBalanceTo(zeroAddr, 0)])
+		await token.setBalanceTo(userAddr, totalAmount)
 
 		// the first bond will be unbonded immediately, and withdrawn after the second slash
 		await (await staking.addBond(bonds[0], { gasLimit })).wait()
@@ -160,13 +160,23 @@ contract('Staking', function(accounts) {
 			remainingBondsExpected,
 			'amounts are as expected'
 		)
-		assert.equal(
-			await staking.totalFunds(poolId),
-			remainingBondsExpected.reduce(sum, 0),
-			'totalFunds is as expected'
+
+		// unbond all bonds
+		await Promise.all(
+			remainingBonds.map(bond => staking.requestUnbond(bond, { gasLimit }).then(tx => tx.wait()))
+		)
+		await moveTime(web3, DAY_SECONDS * 31)
+		await Promise.all(
+			remainingBonds.map(bond => staking.unbond(bond, { gasLimit }).then(tx => tx.wait()))
 		)
 
+		// check if we've properly slashed and withdrawn
 		const totalSlashed = bonds.map(bond => bond[0]).reduce(sum, 0) - bondsExpected.reduce(sum, 0)
-		assert.equal(await token.balanceOf(zeroAddr), totalSlashed, 'slashed amount is correct')
+		assert.equal(
+			await token.balanceOf(userAddr),
+			bondsExpected.reduce(sum, 0),
+			'user amount is correct'
+		)
+		assert.equal(await token.balanceOf(slashAddr), totalSlashed, 'slashed amount is correct')
 	})
 })
