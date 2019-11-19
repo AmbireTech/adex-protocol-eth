@@ -94,8 +94,8 @@ contract Staking {
 		SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
 	}
 
-	function getWithdrawAmount(BondLibrary.Bond memory bond) public view returns (uint) {
-		BondState storage bondState = bonds[bond.hash(msg.sender)];
+	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
+		BondState storage bondState = bonds[bond.hash(owner)];
 		if (!bondState.active) return 0;
 		return calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
 	}

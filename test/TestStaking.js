@@ -58,7 +58,7 @@ contract('Staking', function(accounts) {
 		// assert that the amounts are expected
 		// assert.equal(await staking.totalFunds(poolId), bondAmount, 'totalFunds is correct')
 		assert.equal(
-			(await staking.getWithdrawAmount(bond)).toNumber(),
+			(await staking.getWithdrawAmount(userAddr, bond)).toNumber(),
 			bondAmount,
 			'bondAmount matches'
 		)
@@ -133,7 +133,7 @@ contract('Staking', function(accounts) {
 		// now we will take out bonds[0]
 		await moveTime(web3, DAY_SECONDS * 31)
 		assert.equal(
-			await staking.getWithdrawAmount(bonds[0]),
+			await staking.getWithdrawAmount(userAddr, bonds[0]),
 			bondsExpected[0],
 			'getWithdrawAmount is correct'
 		)
@@ -143,7 +143,7 @@ contract('Staking', function(accounts) {
 			bondsExpected[0],
 			'the amount withdrawn is correct'
 		)
-		assert.equal(await staking.getWithdrawAmount(bonds[0]), 0, 'no more to withdraw')
+		assert.equal(await staking.getWithdrawAmount(userAddr, bonds[0]), 0, 'no more to withdraw')
 		const remainingBonds = bonds.slice(1)
 		const remainingBondsExpected = bondsExpected.slice(1)
 
@@ -154,7 +154,7 @@ contract('Staking', function(accounts) {
 		await (await stakingWithSlasher.slash(poolId, slashes[2], { gasLimit })).wait()
 		await (await staking.addBond(bonds[4], { gasLimit })).wait()
 
-		const amounts = await Promise.all(remainingBonds.map(bond => staking.getWithdrawAmount(bond)))
+		const amounts = await Promise.all(remainingBonds.map(bond => staking.getWithdrawAmount(userAddr, bond)))
 		assert.deepEqual(
 			amounts.map(x => x.toNumber()),
 			remainingBondsExpected,
