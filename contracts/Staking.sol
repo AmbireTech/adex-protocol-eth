@@ -61,11 +61,12 @@ contract Staking {
 
 	function slash(bytes32 poolId, uint pts) external {
 		require(msg.sender == slasherAddr, 'ONLY_SLASHER');
-		require(pts + slashPoints[poolId] <= MAX_SLASH, 'PTS_TOO_HIGH');
+		uint newSlashPts = slashPoints[poolId].add(pts);
+		require(newSlashPts <= MAX_SLASH, 'PTS_TOO_HIGH');
 		uint amount = pts
 			.mul(totalFunds[poolId])
 			.div(MAX_SLASH.sub(slashPoints[poolId]));
-		slashPoints[poolId] = slashPoints[poolId].add(pts);
+		slashPoints[poolId] = newSlashPts;
 		totalFunds[poolId] = totalFunds[poolId].sub(amount);
 		SafeERC20.transfer(tokenAddr, address(0x00), amount);
 	}
