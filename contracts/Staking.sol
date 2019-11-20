@@ -69,6 +69,7 @@ contract Staking {
 	function addBond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
 		require(!bonds[id].active, 'BOND_ALREADY_ACTIVE');
+		require(slashPoints[bond.poolId] < MAX_SLASH, 'POOL_SLASHED');
 		bonds[id] = BondState({
 			active: true,
 			slashedAtStart: uint64(slashPoints[bond.poolId]),
