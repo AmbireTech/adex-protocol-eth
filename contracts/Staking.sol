@@ -82,7 +82,7 @@ contract Staking {
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
 		BondState storage bondState = bonds[bond.hash(msg.sender)];
-		require(bondState.active, 'BOND_NOT_ACTIVE');
+		require(bondState.active && bondState.willUnlock == 0, 'BOND_NOT_ACTIVE');
 		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
 	}
 
