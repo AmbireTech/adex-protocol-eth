@@ -7,6 +7,10 @@
   },
   "main": "js/index.js",
   "dependencies": {
+    "@ensdomains/buffer": "^0.0.10",
+    "@ensdomains/dnssec-oracle": "^0.1.2",
+    "@ensdomains/ens": "^0.3.11",
+    "@ensdomains/resolver": "^0.1.13",
     "bn.js": "^4.11.8",
     "ethereumjs-abi": "^0.6.5",
     "ethereumjs-util": "^6.1.0",

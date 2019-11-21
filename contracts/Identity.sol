@@ -6,6 +6,10 @@ import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 import "./libs/ChannelLibrary.sol";
 import "./AdExCore.sol";
+import "@ensdomains/ens/contracts/ENS.sol";
+import "@ensdomains/ens/contracts/FIFSRegistrar.sol";
+import "@ensdomains/ens/contracts/ReverseRegistrar.sol";
+import "@ensdomains/resolver/contracts/PublicResolver.sol";
 
 contract Identity {
 	using SafeMath for uint;
@@ -107,6 +111,18 @@ contract Identity {
 		}
 		SafeERC20.approve(channel.tokenAddr, coreAddr, channel.tokenAmount);
 		AdExCore(coreAddr).channelOpen(channel);
+	}
+
+	function registerAndSetupENS(bytes32 label, string memory name, bytes32 node, ENS ens, FIFSRegistrar registrar, PublicResolver resolver)
+		public
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		registrar.register(label, address(this));
+		ens.setResolver(node, address(resolver));
+		resolver.setAddr(node, address(this));
+		// The reverse node is namehash("addr.reverse")
+		ReverseRegistrar reverseRegistrar = ReverseRegistrar(ens.owner(0x91d1777781884d03a6757a803996e38de2a42967fb37eeaca72729271025a9e2));
+		reverseRegistrar.setName(name);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
