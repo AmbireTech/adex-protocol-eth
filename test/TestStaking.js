@@ -40,7 +40,7 @@ contract('Staking', function(accounts) {
 		const bondAmount = 120000000
 		let gasUsage = 0
 
-		const bond = [bondAmount, poolId]
+		const bond = [bondAmount, poolId, 0]
 
 		// slash the pool beforehand to see if math is fine
 		await (await stakingWithSlasher.slash(poolId, 50000000000000, { gasLimit })).wait()
@@ -101,15 +101,15 @@ contract('Staking', function(accounts) {
 		// are understood as different bonds (bondId is derived from the amount/poolId)
 		const bonds = [
 			// this one will suffer 1 slash cause it will be unbonded after the first one
-			[133000000, poolId],
+			[133000000, poolId, 0],
 			// this one would suffer all 3 slashes
-			[120000000, poolId],
+			[120000000, poolId, 0],
 			// this one will suffer 2 slashes
-			[230000000, poolId],
+			[230000000, poolId, 0],
 			// this one will suffer 1 slash
-			[130000000, poolId],
+			[130000000, poolId, 0],
 			// this one will suffer 0 slashes
-			[399000000, poolId]
+			[399000000, poolId, 0]
 		]
 		const bondsExpected = [
 			bonds[0][0] * 0.95,

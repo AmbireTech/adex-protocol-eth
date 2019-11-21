@@ -16,6 +16,7 @@ library BondLibrary {
 	struct Bond {
 		uint amount;
 		bytes32 poolId;
+		uint nonce;
 	}
 
 	function hash(Bond memory bond, address sender)
@@ -27,7 +28,8 @@ library BondLibrary {
 			address(this),
 			sender,
 			bond.amount,
-			bond.poolId
+			bond.poolId,
+			bond.nonce
 		));
 	}
 }
