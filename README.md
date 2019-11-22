@@ -72,6 +72,14 @@ execRoutines: 114440
 channelOpen, through execute: 115086
 ```
 
+### ENS
+
+This is not a part of the adex-protocol-eth source code, but it may be useful for anyone building on top of adex-protocol-eth who wishes to integrate with ENS.
+
+* ENS Contract mainnet address: 0x314159265dd8dbb310642f98f50c066173c1259b
+* ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
+* adex.eth subdomain registrar (adex.eth controller): 0x06a18c145bc71ee2324f245f394e39102a83ba8c
+
 ## Audits
 
 * [G0 Group](https://github.com/g0-group/Audits/blob/master/AdExNetwork.md): all issues discovered were of Low severity, and all were resolved
