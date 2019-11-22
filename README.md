@@ -79,7 +79,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * ENS Contract mainnet address: 0x314159265dd8dbb310642f98f50c066173c1259b
 * ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
 * adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
-* adex.eth subdomain registrar (adex.eth controller): 0x06a18c145bc71ee2324f245f394e39102a83ba8c
+* adex.eth subdomain registrar (adex.eth controller): 0xa3f69f48d4a45419d48b56b1cfbf4af2d4586728
 
 ## Audits
 
