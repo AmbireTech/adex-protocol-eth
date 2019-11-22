@@ -1,42 +1,48 @@
 pragma solidity ^0.5.6;
 pragma experimental ABIEncoderV2;
 
-import "./libs/SafeERC20.sol";
 import "./Identity.sol";
 
 contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
 
-	address public relayer;
-	constructor(address relayerAddr) public {
-		relayer = relayerAddr;
+	address public creator;
+	constructor() public {
+		creator = msg.sender;
 	}
 
 	function deploy(bytes memory code, uint256 salt) public {
-		address addr = deploySafe(code, salt);
-		emit LogDeployed(addr, salt);
+		deploySafe(code, salt);
 	}
 
-	function deployAndFund(bytes memory code, uint256 salt, address tokenAddr, uint256 tokenAmount) public {
-		require(msg.sender == relayer, "ONLY_RELAYER");
-		address addr = deploySafe(code, salt);
-		SafeERC20.transfer(tokenAddr, addr, tokenAmount);
-		emit LogDeployed(addr, salt);
-	}
-
-	function deployAndExecute(bytes memory code, uint256 salt, Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
+	// When the relayer needs to act upon an /execute call, it'll either call execute on the Identity directly
+	// if it's already deployed, or call `deployAndExecute` if the account is still counterfactual
+	function deployAndExecute(
+		bytes memory code, uint256 salt,
+		Identity.Transaction[] memory txns, bytes32[3][] memory signatures
+	) public {
 		address addr = deploySafe(code, salt);
 		Identity(addr).execute(txns, signatures);
-		emit LogDeployed(addr, salt);
 	}
 
+	// When the relayer needs to do routines, it'll either call executeRoutines on the Identity directly
+	// if it's already deployed, or call `deployAndRoutines` if the account is still counterfactual
+	function deployAndRoutines(
+		bytes memory code, uint256 salt,
+		Identity.RoutineAuthorization memory auth, Identity.RoutineOperation[] memory operations
+	) public {
+		address addr = deploySafe(code, salt);
+		Identity(addr).executeRoutines(auth, operations);
+	}
+
+	// Withdraw the earnings from various fees (deploy fees and execute fees earned cause of `deployAndExecute`)
 	function withdraw(address tokenAddr, address to, uint256 tokenAmount) public {
-		require(msg.sender == relayer, "ONLY_RELAYER");
+		require(msg.sender == creator, 'ONLY_CREATOR');
 		SafeERC20.transfer(tokenAddr, to, tokenAmount);
 	}
 
 	// This is done to mitigate possible frontruns where, for example, deploying the same code/salt via deploy()
-	// would make a pending deployAndFund fail
+	// would make a pending deployAndExecute fail
 	// The way we mitigate that is by checking if the contract is already deployed and if so, we continue execution
 	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
 		address expectedAddr = address(uint160(uint256(
@@ -49,8 +55,9 @@ contract IdentityFactory {
 		if (size == 0) {
 			address addr;
 			assembly { addr := create2(0, add(code, 0x20), mload(code), salt) }
-			require(addr != address(0), "FAILED_DEPLOYING");
-			require(addr == expectedAddr, "FAILED_MATCH");
+			require(addr != address(0), 'FAILED_DEPLOYING');
+			require(addr == expectedAddr, 'FAILED_MATCH');
+			emit LogDeployed(addr, salt);
 		}
 		return expectedAddr;
 	}
