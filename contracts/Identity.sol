@@ -5,18 +5,15 @@ import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 import "./libs/ChannelLibrary.sol";
-
-contract ValidatorRegistry {
-	// The contract will probably just use a mapping, but this is a generic interface
-	function whitelisted(address) view external returns (bool);
-}
+import "./AdExCore.sol";
 
 contract Identity {
 	using SafeMath for uint;
 
 	// Storage
 	// WARNING: be careful when modifying this
-	// privileges and routineAuthorizations must always be 0th and 1th thing in storage
+	// privileges and routineAuthorizations must always be 0th and 1th thing in storage,
+	// because of the proxies we generate that delegatecall into this contract (which assume storage slot 0 and 1)
 	mapping (address => uint8) public privileges;
 	// Routine authorizations
 	mapping (bytes32 => bool) public routineAuthorizations;
@@ -28,20 +25,15 @@ contract Identity {
 	// Constants
 	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
 	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
-	bytes4 private constant CHANNEL_OPEN_SELECTOR = bytes4(keccak256('channelOpen((address,address,uint256,uint256,address[],bytes32))'));
-	uint256 private constant CHANNEL_MAX_VALIDITY = 90 days;
 
 	enum PrivilegeLevel {
 		None,
 		Routines,
-		Transactions,
-		WithdrawTo
+		Transactions
 	}
 	enum RoutineOp {
 		ChannelWithdraw,
-		ChannelWithdrawExpired,
-		ChannelOpen,
-		Withdraw
+		ChannelWithdrawExpired
 	}
 
 	// Events
@@ -64,14 +56,13 @@ contract Identity {
 		bytes data;
 	}
 
-	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a particular relayer to do any number of routines
-	// those routines are safe: e.g. withdrawing channels to the identity, or from the identity to the pre-approved withdraw (>= PrivilegeLevel.Withdraw) address
-	// while the fee will be paid only ONCE per auth, the authorization can be used until validUntil
+	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a relayer to do any number of routines
+	// those routines are safe: e.g. sweeping channels (withdrawing off-chain balances to the identity)
+	// while the fee will be paid only ONCE per auth per period (1 week), the authorization can be used until validUntil
 	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
 	struct RoutineAuthorization {
 		address relayer;
 		address outpace;
-		address registry;
 		uint validUntil;
 		address feeTokenAddr;
 		uint weeklyFeeAmount;
@@ -105,6 +96,17 @@ contract Identity {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		routineAuthorizations[hash] = authorized;
 		emit LogRoutineAuth(hash, authorized);
+	}
+
+	function channelOpen(address coreAddr, ChannelLibrary.Channel memory channel)
+		public
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		if (GeneralERC20(channel.tokenAddr).allowance(address(this), coreAddr) > 0) {
+			SafeERC20.approve(channel.tokenAddr, coreAddr, 0);
+		}
+		SafeERC20.approve(channel.tokenAddr, coreAddr, channel.tokenAmount);
+		AdExCore(coreAddr).channelOpen(channel);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
@@ -161,10 +163,9 @@ contract Identity {
 	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(auth.relayer == msg.sender, 'ONLY_RELAYER_CAN_CALL');
 		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
-		require(routineAuthorizations[hash], 'NOT_AUTHORIZED');
+		require(routineAuthorizations[hash], 'NO_AUTHORIZATION');
 		uint len = operations.length;
 		for (uint i=0; i<len; i++) {
 			RoutineOperation memory op = operations[i];
@@ -174,34 +175,13 @@ contract Identity {
 			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
 				// Channel: Withdraw Expired
 				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.ChannelOpen) {
-				// Channel: open
-				(ChannelLibrary.Channel memory channel) = abi.decode(op.data, (ChannelLibrary.Channel));
-				// Ensure validity is sane
-				require(channel.validUntil <= (now + CHANNEL_MAX_VALIDITY), 'CHANNEL_EXCEEDED_MAX_VALID');
-				// Ensure all validators are whitelisted
-				uint validatorsLen = channel.validators.length;
-				for (uint j=0; j<validatorsLen; j++) {
-					require(
-						ValidatorRegistry(auth.registry).whitelisted(channel.validators[j]),
-						'VALIDATOR_NOT_WHITELISTED'
-					);
-				}
-				SafeERC20.approve(channel.tokenAddr, auth.outpace, 0);
-				SafeERC20.approve(channel.tokenAddr, auth.outpace, channel.tokenAmount);
-				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_OPEN_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.Withdraw) {
-				// Withdraw from identity
-				(address tokenAddr, address to, uint amount) = abi.decode(op.data, (address, address, uint));
-				require(privileges[to] >= uint8(PrivilegeLevel.WithdrawTo), 'INSUFFICIENT_PRIVILEGE_WITHDRAW');
-				SafeERC20.transfer(tokenAddr, to, amount);
 			} else {
 				revert('INVALID_MODE');
 			}
 		}
 		if (auth.weeklyFeeAmount > 0 && (now - routinePaidFees[hash]) >= 7 days) {
 			routinePaidFees[hash] = now;
-			SafeERC20.transfer(auth.feeTokenAddr, msg.sender, auth.weeklyFeeAmount);
+			SafeERC20.transfer(auth.feeTokenAddr, auth.relayer, auth.weeklyFeeAmount);
 		}
 	}
 
