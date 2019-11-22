@@ -33,6 +33,7 @@ contract('Staking', function(accounts) {
 	it('cannot slash', async function() {
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202020203'
 		await expectEVMError(staking.slash(poolId, 10), 'ONLY_SLASHER')
+		await expectEVMError(stakingWithSlasher.slash(poolId, (11**18).toString(10)), 'PTS_TOO_HIGH')
 	})
 
 	it('open a bond, unbond it', async function() {
@@ -179,4 +180,15 @@ contract('Staking', function(accounts) {
 		)
 		assert.equal(await token.balanceOf(slashAddr), totalSlashed, 'slashed amount is correct')
 	})
+
+	it('fully slash a pool', async function() {
+		const poolId = '0x9992020202020202020202020202020202020202020202020202020299990203'
+		const bond = [3000000, poolId, 0]
+
+		await (await stakingWithSlasher.slash(poolId, (10**18).toString(10), { gasLimit })).wait()
+
+		await token.setBalanceTo(userAddr, bond[0])
+		await expectEVMError(staking.addBond(bond), 'POOL_SLASHED')
+	})
+
 })
