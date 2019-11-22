@@ -85,6 +85,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 
 * [G0 Group](https://github.com/g0-group/Audits/blob/master/AdExNetwork.md): all issues discovered were of Low severity, and all were resolved
 * [Sigma Prime](https://github.com/sigp/public-audits/blob/master/adex/review.pdf): 4 issues discovered with "Informational" severity, all resolved
+* [G0 Group, Staking contract](https://github.com/g0-group/Audits/blob/master/G0Group-AdExStaking.pdf): all issues discovered were resolved
 
 ## Credits
 
