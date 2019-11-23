@@ -50,14 +50,17 @@ All contracts here were compiled with solc v0.5.13.
 
 The `Identity`, initialized with no privileges, to be used as a basis for `IdentityProxy`:
 
+* Mainnet: https://etherscan.io/address/0x96e3cb4b4632ed45363ff2c9f0fbec9b583d9d3a
 * Goerli: https://goerli.etherscan.io/address/0x96e3cb4b4632ed45363ff2c9f0fbec9b583d9d3a
 
 An `IdentityFactory`, set up with the AdEx relayer:
 
+* Mainnet: https://etherscan.io/address/0xd5a1c8a5ea507ea459216ff34939cae3326dba6f
 * Goerli: https://goerli.etherscan.io/address/0xd5a1c8a5ea507ea459216ff34939cae3326dba6f
 
 And the `Staking`:
 
+* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x0d1ba07d3eb0ae02999a4dec7b71ddd7b9e0431d
 * Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x0d1ba07d3eb0ae02999a4dec7b71ddd7b9e0431d
 
 ### Deployment strategy
