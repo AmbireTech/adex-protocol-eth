@@ -14,6 +14,8 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 
 ## Testing
 
+First, run `ganache-cli` in a separate terminal
+
 ```
 truffle build # This is important cause js/IdentityProxyDeploy uses artifacts from there
 npm test
