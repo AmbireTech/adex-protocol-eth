@@ -2,7 +2,7 @@ language: node_js
 node_js:
   - "10"
 script:
-  - node_modules/.bin/ganache-cli &
+  - node_modules/.bin/ganache-cli 2>&1 >ganache-log.txt &
   - sleep 5
   - npm run lint
   - npm test
