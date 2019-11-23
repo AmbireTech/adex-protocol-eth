@@ -14,6 +14,8 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 
 ## Testing
 
+First, run `ganache-cli` in a separate terminal
+
 ```
 truffle build # This is important cause js/IdentityProxyDeploy uses artifacts from there
 npm test
@@ -37,7 +39,7 @@ An `IdentityFactory`, set up with the AdEx relayer:
 * Mainnet: https://etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
 * Goerli: https://goerli.etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
 
-And the `Registry`:
+And the `Registry` (now obsolete, no longer used):
 
 * Mainnet: https://etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
 * Goerli: https://goerli.etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
@@ -49,7 +51,7 @@ The full deploy processis as follows
 * Deploy AdExCore
 * Deploy an IdentityFactory
 * Deploy a single Identity, with no owners and no registry
-* Deploy a Registry
+* Deploy a Staking
 
 ### Verifying on etherscan
 
@@ -79,7 +81,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * ENS Contract mainnet address: 0x314159265dd8dbb310642f98f50c066173c1259b
 * ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
 * adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
-* adex.eth subdomain registrar (adex.eth controller): 0xa3f69f48d4a45419d48b56b1cfbf4af2d4586728
+* adex.eth subdomain registrar (adex.eth controller), compiled with solc v0.5.6: [0xa3f69f48d4a45419d48b56b1cfbf4af2d4586728](https://etherscan.io/address/0xa3f69f48d4a45419d48b56b1cfbf4af2d4586728#code)
 
 ## Audits
 

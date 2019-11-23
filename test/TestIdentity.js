@@ -461,11 +461,11 @@ contract('Identity', function(accounts) {
 
 		// withdrawExpired should work
 		const withdrawExpiredOp = RoutineOps.channelWithdrawExpired([channel.toSolidityTuple()])
-		// ensure we report the underlying OUTPACE error properly
-		await expectEVMError(executeRoutines([withdrawExpiredOp]), 'NOT_EXPIRED')
+		// ensure we report the underlying OUTPACE error properly, through the Identity contract
+		await expectEVMError(executeRoutines([withdrawExpiredOp], { gasLimit }), 'NOT_EXPIRED')
 
 		// move time, withdrawExpired successfully and check results
-		await moveTime(web3, DAY_SECONDS * 41)
+		await moveTime(web3, DAY_SECONDS * 80)
 		const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit })).wait()
 		// LogWithdrawExpired and Transfer
 		assert.equal(expiredReceipt.events.length, 2, 'right event count')
