@@ -44,6 +44,22 @@ And the `Registry` (now obsolete, no longer used):
 * Mainnet: https://etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
 * Goerli: https://goerli.etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
 
+### v4.1
+
+All contracts here were compiled with solc v0.5.13.
+
+The `Identity`, initialized with no privileges, to be used as a basis for `IdentityProxy`:
+
+* Goerli: https://goerli.etherscan.io/address/0x96e3cb4b4632ed45363ff2c9f0fbec9b583d9d3a
+
+An `IdentityFactory`, set up with the AdEx relayer:
+
+* Goerli: https://goerli.etherscan.io/address/0xd5a1c8a5ea507ea459216ff34939cae3326dba6f
+
+And the `Staking`:
+
+* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x0d1ba07d3eb0ae02999a4dec7b71ddd7b9e0431d
+
 ### Deployment strategy
 
 The full deploy processis as follows
