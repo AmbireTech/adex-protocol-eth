@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 mkdir -p temp 
 solc --abi --bin contracts/AdExCore.sol -o temp 
