@@ -607,7 +607,7 @@ contract('Identity', function(accounts) {
 
 		// Create a new account
 		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
-			routineAuthorizations: [auth.hash()],
+			routineAuthorizations: [auth.hashHex()],
 			...getStorageSlotsFromArtifact(Identity)
 		})
 
