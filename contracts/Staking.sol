@@ -44,6 +44,11 @@ contract Staking {
 		uint64 willUnlock;
 	}
 
+	// Events
+	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce);
+	event LogUnbondRequested(address indexed owner, bytes32 bondId);
+	event LogUnbonded(address indexed owner, bytes32 bondId);
+
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
 	uint constant TIME_TO_UNBOND = 30 days;
@@ -78,12 +83,15 @@ contract Staking {
 			willUnlock: 0
 		});
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
+		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce);
 	}
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
-		BondState storage bondState = bonds[bond.hash(msg.sender)];
+		bytes32 id = bond.hash(msg.sender);
+		BondState storage bondState = bonds[id];
 		require(bondState.active && bondState.willUnlock == 0, 'BOND_NOT_ACTIVE');
 		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
+		emit LogUnbondRequested(msg.sender, id);
 	}
 
 	function unbond(BondLibrary.Bond memory bond) public {
@@ -95,6 +103,7 @@ contract Staking {
 		delete bonds[id];
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
 		SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
+		emit LogUnbonded(msg.sender, id);
 	}
 
 	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
