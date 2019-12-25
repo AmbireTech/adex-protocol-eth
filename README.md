@@ -60,8 +60,8 @@ An `IdentityFactory`, set up with the AdEx relayer:
 
 And the `Staking`:
 
-* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0xb2cdea5147f7d51f5f49f2bd91fec04b6999a0fe
-* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0xb2cdea5147f7d51f5f49f2bd91fec04b6999a0fe
+* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
+* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 
 ### Deployment strategy
 
