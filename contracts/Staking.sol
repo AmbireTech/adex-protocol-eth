@@ -46,7 +46,7 @@ contract Staking {
 
 	// Events
 	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce);
-	event LogUnbondRequested(address indexed owner, bytes32 bondId);
+	event LogUnbondRequested(address indexed owner, bytes32 bondId, uint64 willUnlock);
 	event LogUnbonded(address indexed owner, bytes32 bondId);
 
 	// could be 2**64 too, since we use uint64
@@ -91,7 +91,7 @@ contract Staking {
 		BondState storage bondState = bonds[id];
 		require(bondState.active && bondState.willUnlock == 0, 'BOND_NOT_ACTIVE');
 		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
-		emit LogUnbondRequested(msg.sender, id);
+		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock);
 	}
 
 	function unbond(BondLibrary.Bond memory bond) public {
