@@ -45,9 +45,10 @@ contract Staking {
 	}
 
 	// Events
+	event LogSlash(bytes32 indexed poolId, uint newSlashPts);
 	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart);
-	event LogUnbondRequested(address indexed owner, bytes32 bondId, uint64 willUnlock);
-	event LogUnbonded(address indexed owner, bytes32 bondId);
+	event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock);
+	event LogUnbonded(address indexed owner, bytes32 indexed bondId);
 
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
@@ -71,6 +72,7 @@ contract Staking {
 		uint newSlashPts = slashPoints[poolId].add(pts);
 		require(newSlashPts <= MAX_SLASH, 'PTS_TOO_HIGH');
 		slashPoints[poolId] = newSlashPts;
+		emit LogSlash(poolId, newSlashPts);
 	}
 
 	function addBond(BondLibrary.Bond memory bond) public {
