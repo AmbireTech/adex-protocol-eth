@@ -45,7 +45,7 @@ contract Staking {
 	}
 
 	// Events
-	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce);
+	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart);
 	event LogUnbondRequested(address indexed owner, bytes32 bondId, uint64 willUnlock);
 	event LogUnbonded(address indexed owner, bytes32 bondId);
 
@@ -83,7 +83,7 @@ contract Staking {
 			willUnlock: 0
 		});
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
-		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce);
+		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart);
 	}
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
