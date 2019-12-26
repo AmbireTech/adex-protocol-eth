@@ -104,7 +104,7 @@ contract Staking {
 		uint toBurn = bond.amount - amount;
 		delete bonds[id];
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
-		SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
+		if (toBurn > 0) SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
 		emit LogUnbonded(msg.sender, id);
 	}
 
