@@ -97,7 +97,7 @@ channelOpen, through execute: 115086
 
 This is not a part of the adex-protocol-eth source code, but it may be useful for anyone building on top of adex-protocol-eth who wishes to integrate with ENS.
 
-* ENS Contract mainnet address: 0x314159265dd8dbb310642f98f50c066173c1259b
+* ENS Contract mainnet address: 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
 * ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
 * adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
 * adex.eth subdomain registrar (adex.eth controller), compiled with solc v0.5.6: [0x7bc082552b1a195813ddb500600ce2b544d579cb](https://etherscan.io/address/0x7bc082552b1a195813ddb500600ce2b544d579cb)
