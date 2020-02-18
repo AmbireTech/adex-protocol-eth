@@ -1,4 +1,4 @@
-const solc = require('solc')
+const wrapper = require('solc/wrapper')
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 const assert = require('assert')
@@ -13,7 +13,10 @@ function getMappingSstore(slotNumber, keyType, key, value) {
 // opts:
 // * privSlot: the storage slots used by the proxiedAddr
 // * unsafeERC20: true OR safeERC20Artifact
-function getProxyDeployBytecode(proxiedAddr, privLevels, opts) {
+// solcWrapper:
+// * wannabe temp solution to work in browsers https://github.com/ethereum/solc-js#browser-usage
+// * For node usage: pass ./solc { solcModule }
+function getProxyDeployBytecode(proxiedAddr, privLevels, opts, solcModule) {
 	assert.ok(opts, 'opts not passed')
 	const { privSlot, routineAuthsSlot } = opts
 	assert.ok(typeof privSlot === 'number', 'privSlot must be a number')
@@ -88,6 +91,7 @@ contract IdentityProxy {
 			}
 		}
 	}
+	const solc = wrapper(solcModule)
 	const output = JSON.parse(solc.compile(JSON.stringify(input)))
 	assert.ifError(output.errors)
 	return `0x${output.contracts['Proxy.sol'].IdentityProxy.evm.bytecode.object}`

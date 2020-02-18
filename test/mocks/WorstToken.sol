@@ -1,4 +1,4 @@
-pragma solidity ^0.5.6;
+pragma solidity ^0.5.13;
 
 contract WorstToken {
 	mapping (address => uint) balances;

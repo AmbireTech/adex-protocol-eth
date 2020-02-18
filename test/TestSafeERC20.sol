@@ -6,6 +6,8 @@ import "../contracts/libs/SafeERC20.sol";
 import "./mocks/Token.sol";
 import "./mocks/BadToken.sol";
 import "./mocks/WorstToken.sol";
+// hack to force Truffle to compile this
+import "./mocks/Libs.sol";
 
 contract TestSafeERC20 {
 	Token public token;
