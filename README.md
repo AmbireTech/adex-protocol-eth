@@ -14,6 +14,8 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 
 ## Testing
 
+First, run `ganache-cli` in a separate terminal
+
 ```
 truffle build # This is important cause js/IdentityProxyDeploy uses artifacts from there
 npm test
@@ -37,10 +39,29 @@ An `IdentityFactory`, set up with the AdEx relayer:
 * Mainnet: https://etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
 * Goerli: https://goerli.etherscan.io/address/0x801dbbb2fcbf9f4c3865c6ba5c5012ee19ec283a
 
-And the `Registry`:
+And the `Registry` (now obsolete, no longer used):
 
 * Mainnet: https://etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
 * Goerli: https://goerli.etherscan.io/address/0x7671db0a70fa0196071d634f26971b9371627dc0
+
+### v4.1
+
+All contracts here were compiled with solc v0.5.13.
+
+The `Identity`, initialized with no privileges, to be used as a basis for `IdentityProxy`:
+
+* Mainnet: https://etherscan.io/address/0x96e3cb4b4632ed45363ff2c9f0fbec9b583d9d3a
+* Goerli: https://goerli.etherscan.io/address/0x96e3cb4b4632ed45363ff2c9f0fbec9b583d9d3a
+
+An `IdentityFactory`, set up with the AdEx relayer:
+
+* Mainnet: https://etherscan.io/address/0xd5a1c8a5ea507ea459216ff34939cae3326dba6f
+* Goerli: https://goerli.etherscan.io/address/0xd5a1c8a5ea507ea459216ff34939cae3326dba6f
+
+And the `Staking`:
+
+* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
+* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 
 ### Deployment strategy
 
@@ -49,7 +70,7 @@ The full deploy processis as follows
 * Deploy AdExCore
 * Deploy an IdentityFactory
 * Deploy a single Identity, with no owners and no registry
-* Deploy a Registry
+* Deploy a Staking
 
 ### Verifying on etherscan
 
@@ -71,6 +92,21 @@ execute: 89900
 execRoutines: 114440
 channelOpen, through execute: 115086
 ```
+
+### ENS
+
+This is not a part of the adex-protocol-eth source code, but it may be useful for anyone building on top of adex-protocol-eth who wishes to integrate with ENS.
+
+* ENS Contract mainnet address: 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
+* ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
+* adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
+* adex.eth subdomain registrar (adex.eth controller), compiled with solc v0.5.6: [0x7bc082552b1a195813ddb500600ce2b544d579cb](https://etherscan.io/address/0x7bc082552b1a195813ddb500600ce2b544d579cb)
+
+## Audits
+
+* [G0 Group](https://github.com/g0-group/Audits/blob/master/AdExNetwork.md): all issues discovered were of Low severity, and all were resolved
+* [Sigma Prime](https://github.com/sigp/public-audits/blob/master/adex/review.pdf): 4 issues discovered with "Informational" severity, all resolved
+* [G0 Group, Staking contract](https://github.com/g0-group/Audits/blob/master/G0Group-AdExStaking.pdf): all issues discovered were resolved
 
 ## Credits
 
