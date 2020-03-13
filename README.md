@@ -113,3 +113,4 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61
 * @decanus for SignatureValidator
 * @ConnextProject for `merkletree.js`
+
