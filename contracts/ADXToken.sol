@@ -36,8 +36,8 @@ contract ADXToken {
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
 
-	address public supplyController = address(0x0000000000000000000000000000000000000000);
-	address public prevToken = address(0x0000000000000000000000000000000000000000);
+	address public supplyController = address(0);
+	address public prevToken = address(0);
 	constructor(address supplyControllerAddr, address prevTokenAddr) public {
 		supplyController = supplyControllerAddr;
 		prevToken = prevTokenAddr;
@@ -78,7 +78,7 @@ contract ADXToken {
 		totalSupply = totalSupply.add(amount);
 		balances[owner] = balances[owner].add(amount);
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
-		emit Transfer(address(0x0000000000000000000000000000000000000000), owner, amount);
+		emit Transfer(address(0), owner, amount);
 	}
 
 	function upgradeSupplyController(address newSupplyController) public {
