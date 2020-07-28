@@ -85,6 +85,12 @@ contract ADXToken {
 		supplyController = newSupplyController;
 	}
 
-	// Swapping
-	// @TODO
+	// Swapping: multiplier is 10**(18-4)
+	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
+	function swap(uint prevTokenAmount) public {
+		uint amount = prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER);
+		totalSupply = totalSupply.add(amount);
+		balances[msg.sender] = balances[msg.sender].add(amount);
+		SafeERC20.transferFrom(prevToken, msg.sender, address(0xaDbeEF0000000000000000000000000000000000), prevTokenAmount);
+	}
 }
