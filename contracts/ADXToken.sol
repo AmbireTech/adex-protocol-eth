@@ -5,20 +5,12 @@ pragma experimental ABIEncoderV2;
 import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 
-/*
-contract ADXSupplyController {
-	address public constant prevToken = "0x4470BB87d77b963A013DB939BE332f927f2b992e";
-
-	function mintFromPrevTokenBurn() public {
-	
-	}
-
-	function mintBondFromBondBurn() {
+/*contract ADXSupplyController {
+	function mintBondFromBondBurn() public {
 		// @TODO: check if this staking contract is allowed
 		// this presumes the token of the staking contract as well
 	}
-}
-*/
+}*/
 
 contract ADXToken {
 	using SafeMath for uint;
@@ -73,12 +65,15 @@ contract ADXToken {
 	}
 
 	// Supply control
-	function mint(address owner, uint amount) public {
-		require(msg.sender == supplyController);
+	function innerMint(address owner, uint amount) internal {
 		totalSupply = totalSupply.add(amount);
 		balances[owner] = balances[owner].add(amount);
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
 		emit Transfer(address(0), owner, amount);
+	}
+	function mint(address owner, uint amount) public {
+		require(msg.sender == supplyController);
+		innerMint(owner, amount);
 	}
 
 	function upgradeSupplyController(address newSupplyController) public {
@@ -89,9 +84,7 @@ contract ADXToken {
 	// Swapping: multiplier is 10**(18-4)
 	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
 	function swap(uint prevTokenAmount) public {
-		uint amount = prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER);
-		totalSupply = totalSupply.add(amount);
-		balances[msg.sender] = balances[msg.sender].add(amount);
+		innerMint(msg.sender, prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER));
 		SafeERC20.transferFrom(prevToken, msg.sender, address(0), prevTokenAmount);
 	}
 }
