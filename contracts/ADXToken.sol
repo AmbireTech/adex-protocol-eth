@@ -6,7 +6,7 @@ import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 
 /*
-contract SupplyController {
+contract ADXSupplyController {
 	address public constant prevToken = "0x4470BB87d77b963A013DB939BE332f927f2b992e";
 
 	function mintFromPrevTokenBurn() public {
@@ -83,12 +83,6 @@ contract ADXToken {
 	function upgradeSupplyController(address newSupplyController) public {
 		require(msg.sender == supplyController);
 		supplyController = newSupplyController;
-	}
-
-	// should we allow this? prob not as people can mess with the supply
-	function burn(uint amount) public {
-		totalSupply = totalSupply.sub(amount);
-		balances[msg.sender] = balances[msg.sender].sub(amount);
 	}
 
 	// Swapping
