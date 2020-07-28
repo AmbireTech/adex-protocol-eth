@@ -72,13 +72,13 @@ contract ADXToken {
 		return true;
 	}
 
-	// Outside of ERC20
 	// Supply control
 	function mint(address owner, uint amount) public {
 		require(msg.sender == supplyController);
 		totalSupply = totalSupply.add(amount);
 		balances[owner] = balances[owner].add(amount);
-		// @TODO emit Transfer?
+		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
+		emit Transfer(address(0x0000000000000000000000000000000000000000), owner, amount)
 	}
 	function upgradeSupplyController(address newSupplyController) public {
 		require(msg.sender == supplyController);
