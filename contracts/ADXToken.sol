@@ -26,17 +26,22 @@ contract ADXToken {
 	string public constant symbol = "ADX";
 	string public constant name = "AdEx Network";
 	uint8 public constant decimals = 18;
-	// @TODO dynamic
+
 	address public supplyController = address(0x0000000000000000000000000000000000000000);
+	address public prevToken = address(0x0000000000000000000000000000000000000000);
 
 	// Variables
 	uint public totalSupply;
 	mapping(address => uint) balances;
 	mapping(address => mapping(address => uint)) allowed;
 
-	// @TODO order?
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
+
+	constructor(address supplyControllerAddr, address prevTokenAddr) public {
+		supplyController = supplyControllerAddr;
+		prevToken = prevTokenAddr;
+	}
 
 	function balanceOf(address owner) public view returns (uint balance) {
 		return balances[owner];
@@ -74,6 +79,10 @@ contract ADXToken {
 		totalSupply = totalSupply.add(amount);
 		balances[owner] = balances[owner].add(amount);
 		// @TODO emit Transfer?
+	}
+	function upgradeSupplyController(address newSupplyController) public {
+		require(msg.sender == supplyController);
+		supplyController = newSupplyController;
 	}
 
 	// should we allow this? prob not as people can mess with the supply
