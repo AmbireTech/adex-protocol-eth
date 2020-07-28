@@ -92,7 +92,6 @@ contract ADXToken {
 		uint amount = prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER);
 		totalSupply = totalSupply.add(amount);
 		balances[msg.sender] = balances[msg.sender].add(amount);
-		// @TODO consider whether we should use the same burn addr sa staking
-		SafeERC20.transferFrom(prevToken, msg.sender, address(0xaDbeEF0000000000000000000000000000000000), prevTokenAmount);
+		SafeERC20.transferFrom(prevToken, msg.sender, address(0), prevTokenAmount);
 	}
 }
