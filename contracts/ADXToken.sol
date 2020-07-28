@@ -23,14 +23,12 @@ contract ADXSupplyController {
 contract ADXToken {
 	using SafeMath for uint;
 
+	// Constants
 	string public constant symbol = "ADX";
 	string public constant name = "AdEx Network";
 	uint8 public constant decimals = 18;
 
-	address public supplyController = address(0x0000000000000000000000000000000000000000);
-	address public prevToken = address(0x0000000000000000000000000000000000000000);
-
-	// Variables
+	// Mutable variables
 	uint public totalSupply;
 	mapping(address => uint) balances;
 	mapping(address => mapping(address => uint)) allowed;
@@ -38,6 +36,8 @@ contract ADXToken {
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
 
+	address public supplyController = address(0x0000000000000000000000000000000000000000);
+	address public prevToken = address(0x0000000000000000000000000000000000000000);
 	constructor(address supplyControllerAddr, address prevTokenAddr) public {
 		supplyController = supplyControllerAddr;
 		prevToken = prevTokenAddr;
@@ -78,8 +78,9 @@ contract ADXToken {
 		totalSupply = totalSupply.add(amount);
 		balances[owner] = balances[owner].add(amount);
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
-		emit Transfer(address(0x0000000000000000000000000000000000000000), owner, amount)
+		emit Transfer(address(0x0000000000000000000000000000000000000000), owner, amount);
 	}
+
 	function upgradeSupplyController(address newSupplyController) public {
 		require(msg.sender == supplyController);
 		supplyController = newSupplyController;
@@ -91,6 +92,7 @@ contract ADXToken {
 		uint amount = prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER);
 		totalSupply = totalSupply.add(amount);
 		balances[msg.sender] = balances[msg.sender].add(amount);
+		// @TODO consider whether we should use the same burn addr sa staking
 		SafeERC20.transferFrom(prevToken, msg.sender, address(0xaDbeEF0000000000000000000000000000000000), prevTokenAmount);
 	}
 }
