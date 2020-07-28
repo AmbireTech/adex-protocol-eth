@@ -72,6 +72,16 @@ contract ADXToken {
 		return true;
 	}
 
+	// Flash loans: max 50 mil
+	// @TODO can we use .call here? should it be delegatecall?
+	uint constant public MAX_FLASH = 50000000000000000000000000;
+	function flash(uint amount, address to, bytes memory data) public {
+		require(amount <= MAX_FLASH, 'MAX_FLASH_EXCEEDED');
+		balances[msg.sender] = balances[msg.sender].add(amount);
+		to.call(data);
+		balances[msg.sender] = balances[msg.sender].sub(amount);
+	}
+
 	// Supply control
 	function mint(address owner, uint amount) public {
 		require(msg.sender == supplyController);
