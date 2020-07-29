@@ -27,11 +27,12 @@ contract ADXToken {
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
 
-	address public supplyController = address(0);
-	address public prevToken = address(0);
+	address public supplyController;
+	address public immutable PREV_TOKEN;
+
 	constructor(address supplyControllerAddr, address prevTokenAddr) public {
 		supplyController = supplyControllerAddr;
-		prevToken = prevTokenAddr;
+		PREV_TOKEN = prevTokenAddr;
 	}
 
 	function balanceOf(address owner) public view returns (uint balance) {
@@ -84,6 +85,6 @@ contract ADXToken {
 	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
 	function swap(uint prevTokenAmount) public {
 		innerMint(msg.sender, prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER));
-		SafeERC20.transferFrom(prevToken, msg.sender, address(0), prevTokenAmount);
+		SafeERC20.transferFrom(PREV_TOKEN, msg.sender, address(0), prevTokenAmount);
 	}
 }
