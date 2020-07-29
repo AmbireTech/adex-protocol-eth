@@ -1,9 +1,9 @@
-pragma solidity ^0.5.13;
+pragma solidity ^0.6.12;
 
 interface GeneralERC20 {
-	function transfer(address to, uint256 value) external;
-	function transferFrom(address from, address to, uint256 value) external;
-	function approve(address spender, uint256 value) external;
+	function transfer(address to, uint256 amount) external;
+	function transferFrom(address from, address to, uint256 amount) external;
+	function approve(address spender, uint256 amount) external;
 	function balanceOf(address spender) external view returns (uint);
 	function allowance(address owner, address spender) external view returns (uint);
 }
@@ -18,7 +18,7 @@ library SafeERC20 {
 
 		assembly {
 			// check number of bytes returned from last function call
-			switch returndatasize
+			switch returndatasize()
 
 			// no bytes returned: assume success
 			case 0x0 {
