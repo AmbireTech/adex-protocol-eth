@@ -1,4 +1,5 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: agpl-3.0
+pragma solidity ^0.6.12;
 
 library MerkleProof {
 	function isContained(bytes32 valueHash, bytes32[] memory proof, bytes32 root) internal pure returns (bool) {
