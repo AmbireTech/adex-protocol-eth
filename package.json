@@ -14,7 +14,7 @@
     "ganache-cli": "^6.4.2",
     "js-sha3": "^0.8.0",
     "solc": "0.5.13",
-    "truffle": "^5.1.1"
+    "truffle": "^5.1.5"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
