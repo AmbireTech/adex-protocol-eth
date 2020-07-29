@@ -4,7 +4,13 @@ pragma solidity ^0.6.12;
 import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 
-/*contract ADXSupplyController {
+
+/*
+contract ADXFlashLoans {
+}
+
+contract ADXSupplyController {
+	address public constant STAKING_POOL = address();
 	function mintBondFromBondBurn() public {
 		// @TODO: check if this staking contract is allowed
 		// this presumes the token of the staking contract as well
