@@ -97,13 +97,6 @@ contract IdentityProxy {
 	return `0x${output.contracts['Proxy.sol'].IdentityProxy.evm.bytecode.object}`
 }
 
-/*
-function getProxyDeploy(proxiedAddr, privLevels, opts) {
-	const bytecode = getProxyDeployBytecode(proxiedAddr, privLevels, opts)
-	return { bytecode, address, salt }
-}
-*/
-
 function getStorageSlotsFromArtifact(IdentityArtifact) {
 	// Find storage locations of privileges
 	const identityNode = IdentityArtifact.ast.nodes.find(
