@@ -8,14 +8,26 @@ import "./libs/SafeERC20.sol";
 /*
 contract ADXFlashLoans {
 }
-
+*/
 contract ADXSupplyController {
-	address public constant STAKING_POOL = address();
-	function mintBondFromBondBurn() public {
-		// @TODO: check if this staking contract is allowed
-		// this presumes the token of the staking contract as well
+	address public governance;
+	constructor(address governanceAddr) public {
+		governance = governanceAddr;
 	}
-}*/
+
+	function mint(ADXToken token, address owner, uint amount) public {
+		require(msg.sender == governance);
+		require(token.totalSupply() < 150000000000000000000000000);
+		require(now > 1597017600);
+		token.mint(owner, amount);
+	}
+
+	function upgradeSupplyController(ADXToken token, address newSupplyController) public {
+		require(msg.sender == governance);
+		token.upgradeSupplyController(newSupplyController);
+	}
+
+}
 
 contract ADXToken {
 	using SafeMath for uint;
