@@ -1,6 +1,4 @@
-// @TODO: should we use a newer solidity?
-pragma solidity ^0.5.13;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.6.12;
 
 import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
