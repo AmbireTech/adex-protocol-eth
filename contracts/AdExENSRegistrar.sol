@@ -59,8 +59,8 @@ interface Resolver {
 
 
 contract AdExENSManager {
-    ENS ens;
-    bytes32 rootNode;
+    ENS immutable ens;
+    bytes32 immutable rootNode;
 
     constructor(ENS ensAddr, bytes32 node) public {
         ens = ensAddr;
