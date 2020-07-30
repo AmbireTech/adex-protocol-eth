@@ -24,13 +24,14 @@ contract ADXFlashLoans {
 }
 
 contract ADXSupplyController {
-	mapping (address => bool) governance;
+	enum GovernanceLevel { None, Mint, All }
+	mapping (address => uint8) governance;
 	constructor() public {
-		governance[msg.sender] = true;
+		governance[msg.sender] = uint8(GovernanceLevel.All);
 	}
 
 	function mint(ADXToken token, address owner, uint amount) public {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
+		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		// 150M * 10**18
 		require((token.totalSupply() + amount) <= 150000000000000000000000000, 'MINT_TOO_LARGE');
 		// 10 August 2020
@@ -39,8 +40,13 @@ contract ADXSupplyController {
 	}
 
 	function upgradeSupplyController(ADXToken token, address newSupplyController) public {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
+		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
 		token.upgradeSupplyController(newSupplyController);
+	}
+
+	function setGovernance(address addr, uint8 level) public {
+		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
+		governance[addr] = level;
 	}
 }
 
