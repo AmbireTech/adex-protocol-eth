@@ -27,7 +27,7 @@ contract('ADXToken', function(accounts) {
 
 	it('swap previous tokens', async function() {
 		await prevToken.setBalanceTo(userAddr, 10000)
-		const receipt = await adxToken.swap(10000)
+		const receipt = await (await adxToken.swap(10000)).wait()
 		assert.deepEqual(
 			await adxToken.balanceOf(userAddr),
 			bigNumberify('1000000000000000000'),
