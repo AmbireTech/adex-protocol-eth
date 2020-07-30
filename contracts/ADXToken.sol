@@ -33,7 +33,7 @@ contract ADXSupplyController {
 	function mint(ADXToken token, address owner, uint amount) public {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		// 150M * 10**18
-		require((token.totalSupply() + amount) <= 150000000000000000000000000, 'MINT_TOO_LARGE');
+		require(SafeMath.add(token.totalSupply(), amount) <= 150000000000000000000000000, 'MINT_TOO_LARGE');
 		// 10 August 2020
 		require(now > 1597017600, 'MINT_TOO_EARLY');
 		token.mint(owner, amount);
