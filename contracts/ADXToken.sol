@@ -110,13 +110,14 @@ contract ADXToken {
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
 		emit Transfer(address(0), owner, amount);
 	}
+
 	function mint(address owner, uint amount) public {
-		require(msg.sender == supplyController);
+		require(msg.sender == supplyController, 'NOT_SUPPLYCONTROLLER');
 		innerMint(owner, amount);
 	}
 
 	function upgradeSupplyController(address newSupplyController) public {
-		require(msg.sender == supplyController);
+		require(msg.sender == supplyController, 'NOT_SUPPLYCONTROLLER');
 		supplyController = newSupplyController;
 	}
 
