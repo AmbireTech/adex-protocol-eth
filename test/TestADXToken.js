@@ -1,7 +1,7 @@
 const { providers, Contract } = require('ethers')
 const { bigNumberify } = require('ethers').utils
 
-const { expectEVMError, moveTime } = require('./')
+// const { expectEVMError, moveTime } = require('./')
 
 const ADXToken = artifacts.require('ADXToken')
 const MockToken = artifacts.require('./mocks/Token')
