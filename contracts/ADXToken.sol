@@ -24,23 +24,24 @@ contract ADXFlashLoans {
 }
 
 contract ADXSupplyController {
-	address public governance;
-	constructor(address governanceAddr) public {
-		governance = governanceAddr;
+	mapping (address => bool) governance;
+	constructor() public {
+		governance[msg.sender] = true;
 	}
 
 	function mint(ADXToken token, address owner, uint amount) public {
-		require(msg.sender == governance);
-		require(token.totalSupply() < 150000000000000000000000000);
-		require(now > 1597017600);
+		require(governance[msg.sender]);
+		// 150M * 10**18
+		require((token.totalSupply() + amount) <= 150000000000000000000000000, 'MINT_TOO_LARGE');
+		// 10 August 2020
+		require(now > 1597017600, 'MINT_TOO_EARLY');
 		token.mint(owner, amount);
 	}
 
 	function upgradeSupplyController(ADXToken token, address newSupplyController) public {
-		require(msg.sender == governance);
+		require(governance[msg.sender]);
 		token.upgradeSupplyController(newSupplyController);
 	}
-
 }
 
 contract ADXToken {
