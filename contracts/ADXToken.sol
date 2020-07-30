@@ -30,7 +30,7 @@ contract ADXSupplyController {
 	}
 
 	function mint(ADXToken token, address owner, uint amount) public {
-		require(governance[msg.sender]);
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		// 150M * 10**18
 		require((token.totalSupply() + amount) <= 150000000000000000000000000, 'MINT_TOO_LARGE');
 		// 10 August 2020
@@ -39,7 +39,7 @@ contract ADXSupplyController {
 	}
 
 	function upgradeSupplyController(ADXToken token, address newSupplyController) public {
-		require(governance[msg.sender]);
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		token.upgradeSupplyController(newSupplyController);
 	}
 }
