@@ -44,6 +44,11 @@ contract TestSafeERC20 {
 		Assert.equal(success, false, "token transfer is failing when amnt too big");
 	}
 
+	function testNoneToken() public {
+		(bool success,)  = address(this).call(abi.encodeWithSelector(TestSafeERC20(this).noneTokenFail.selector));
+		Assert.equal(success, false, "token transfer is failing");
+	}
+
 	function tokenFail() public {
 		SafeERC20.transfer(address(token), address(0x0), 10001);
 	}
@@ -52,5 +57,8 @@ contract TestSafeERC20 {
 	}
 	function worstTokenFail() public {
 		SafeERC20.transfer(address(worstToken), address(0x0), 10001);
+	}
+	function noneTokenFail() public {
+		SafeERC20.transfer(address(0), address(0x0), 500);
 	}
 }
