@@ -1,7 +1,7 @@
 const { providers, Contract } = require('ethers')
 const { bigNumberify } = require('ethers').utils
 
-// const { expectEVMError, moveTime } = require('./')
+const { expectEVMError } = require('./')
 
 const ADXToken = artifacts.require('ADXToken')
 const MockToken = artifacts.require('./mocks/Token')
@@ -10,7 +10,6 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('ADXToken', function(accounts) {
 	const userAddr = accounts[1]
-	// @TODO contract
 	const supplyCtrlAddr = accounts[2]
 	const anotherUser = accounts[3]
 
@@ -26,7 +25,13 @@ contract('ADXToken', function(accounts) {
 		adxToken = new Contract(adxTokenWeb3.address, ADXToken._json.abi, signer)
 	})
 
+	it('cannot change supply controller externally', async function() {
+		await expectEVMError(adxToken.changeSupplyController(userAddr), 'NOT_SUPPLYCONTROLLER')
+	})
+
 	it('swap previous tokens', async function() {
+		await expectEVMError(adxToken.swap(100000), 'INSUFFICIENT_FUNDS')
+
 		await prevToken.setBalanceTo(userAddr, 15000)
 		const receipt = await (await adxToken.swap(10000)).wait()
 		const expectedAmnt = bigNumberify('1000000000000000000')
@@ -67,7 +72,5 @@ contract('ADXToken', function(accounts) {
 		assert.ok(receipt.gasUsed.toNumber() < 56000, 'gas usage is OK')
 	})
 
-	// @TODO change supply controller
-	// @TODO supply controller minting
-	// @TODO flash loans
+	// @TODO supply controller minting, changing it
 })
