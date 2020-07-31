@@ -102,6 +102,18 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
 * adex.eth subdomain registrar (adex.eth controller), compiled with solc v0.5.6: [0x7bc082552b1a195813ddb500600ce2b544d579cb](https://etherscan.io/address/0x7bc082552b1a195813ddb500600ce2b544d579cb)
 
+## Code style and design principles
+
+* Minimalistic use of smart contracts in general
+   * Avoid putting logic in SCs if it's outcome is controlled by a single entity anyway
+   * Do not add complexity and centralization to address various "what ifs" that should be addressed off-chain, e.g. "what if users send tokens to this contract by accident"
+* No Solidity warnings allowed
+* No modifiers allowed
+* Limited use of inheritance
+* No reentrancy guards allowed, instead we use the Checks-Effects-Interactions pattern
+* All `require`s should have an error message
+* No `delegatecall` upgradability; upgradability is achieved via off-chain social consensus
+
 ## Audits
 
 * [G0 Group](https://github.com/g0-group/Audits/blob/master/AdExNetwork.md): all issues discovered were of Low severity, and all were resolved
