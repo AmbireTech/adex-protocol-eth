@@ -39,9 +39,9 @@ contract ADXSupplyController {
 		token.mint(owner, amount);
 	}
 
-	function upgradeSupplyController(ADXToken token, address newSupplyController) public {
+	function changeSupplyController(ADXToken token, address newSupplyController) public {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
-		token.upgradeSupplyController(newSupplyController);
+		token.changeSupplyController(newSupplyController);
 	}
 
 	function setGovernance(address addr, uint8 level) public {
@@ -116,7 +116,7 @@ contract ADXToken {
 		innerMint(owner, amount);
 	}
 
-	function upgradeSupplyController(address newSupplyController) public {
+	function changeSupplyController(address newSupplyController) public {
 		require(msg.sender == supplyController, 'NOT_SUPPLYCONTROLLER');
 		supplyController = newSupplyController;
 	}
