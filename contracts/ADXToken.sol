@@ -42,8 +42,8 @@ contract ADXToken {
 	using SafeMath for uint;
 
 	// Constants
-	string public constant symbol = "ADX";
 	string public constant name = "AdEx Network";
+	string public constant symbol = "ADX";
 	uint8 public constant decimals = 18;
 
 	// Mutable variables
@@ -73,8 +73,12 @@ contract ADXToken {
 		return true;
 	}
 
-	function allowance(address owner, address spender) public view returns (uint remaining) {
-		return allowed[owner][spender];
+	function transferFrom(address from, address to, uint amount) public returns (bool success) {
+		balances[from] = balances[from].sub(amount);
+		allowed[from][msg.sender] = allowed[from][msg.sender].sub(amount);
+		balances[to] = balances[to].add(amount);
+		emit Transfer(from, to, amount);
+		return true;
 	}
 
 	function approve(address spender, uint amount) public returns (bool success) {
@@ -83,12 +87,8 @@ contract ADXToken {
 		return true;
 	}
 
-	function transferFrom(address from, address to, uint amount) public returns (bool success) {
-		balances[from] = balances[from].sub(amount);
-		allowed[from][msg.sender] = allowed[from][msg.sender].sub(amount);
-		balances[to] = balances[to].add(amount);
-		emit Transfer(from, to, amount);
-		return true;
+	function allowance(address owner, address spender) public view returns (uint remaining) {
+		return allowed[owner][spender];
 	}
 
 	// Supply control
