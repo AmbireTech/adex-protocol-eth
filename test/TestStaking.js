@@ -23,6 +23,7 @@ contract('Staking', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const stakingWeb3 = await Staking.new(tokenWeb3.address, slasherAddr)
 		staking = new Contract(stakingWeb3.address, Staking._json.abi, signer)
+		console.log(await web3Provider.getLogs({ address: stakingWeb3.address }))
 		stakingWithSlasher = new Contract(
 			stakingWeb3.address,
 			Staking._json.abi,
@@ -33,7 +34,7 @@ contract('Staking', function(accounts) {
 	it('cannot slash', async function() {
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202020203'
 		await expectEVMError(staking.slash(poolId, 10), 'ONLY_SLASHER')
-		await expectEVMError(stakingWithSlasher.slash(poolId, (11**18).toString(10)), 'PTS_TOO_HIGH')
+		await expectEVMError(stakingWithSlasher.slash(poolId, (11 ** 18).toString(10)), 'PTS_TOO_HIGH')
 	})
 
 	it('open a bond, unbond it', async function() {
@@ -155,7 +156,9 @@ contract('Staking', function(accounts) {
 		await (await stakingWithSlasher.slash(poolId, slashes[2], { gasLimit })).wait()
 		await (await staking.addBond(bonds[4], { gasLimit })).wait()
 
-		const amounts = await Promise.all(remainingBonds.map(bond => staking.getWithdrawAmount(userAddr, bond)))
+		const amounts = await Promise.all(
+			remainingBonds.map(bond => staking.getWithdrawAmount(userAddr, bond))
+		)
 		assert.deepEqual(
 			amounts.map(x => x.toNumber()),
 			remainingBondsExpected,
@@ -185,10 +188,9 @@ contract('Staking', function(accounts) {
 		const poolId = '0x9992020202020202020202020202020202020202020202020202020299990203'
 		const bond = [3000000, poolId, 0]
 
-		await (await stakingWithSlasher.slash(poolId, (10**18).toString(10), { gasLimit })).wait()
+		await (await stakingWithSlasher.slash(poolId, (10 ** 18).toString(10), { gasLimit })).wait()
 
 		await token.setBalanceTo(userAddr, bond[0])
 		await expectEVMError(staking.addBond(bond), 'POOL_SLASHED')
 	})
-
 })

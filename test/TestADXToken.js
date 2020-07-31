@@ -35,11 +35,7 @@ contract('ADXToken', function(accounts) {
 		await prevToken.setBalanceTo(userAddr, 15000)
 		const receipt = await (await adxToken.swap(10000)).wait()
 		const expectedAmnt = bigNumberify('1000000000000000000')
-		assert.deepEqual(
-			await adxToken.balanceOf(userAddr),
-			expectedAmnt,
-			'migrated amount is correct'
-		)
+		assert.deepEqual(await adxToken.balanceOf(userAddr), expectedAmnt, 'migrated amount is correct')
 		assert.equal(
 			(await prevToken.balanceOf(userAddr)).toNumber(),
 			5000,
@@ -57,7 +53,7 @@ contract('ADXToken', function(accounts) {
 			'total supply is reflected'
 		)
 	})
-	
+
 	it('transfer some tokens', async function() {
 		const transferredAmount = bigNumberify('550000000000000000')
 		const receipt = await (await adxToken.transfer(anotherUser, transferredAmount)).wait()

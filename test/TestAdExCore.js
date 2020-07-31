@@ -210,9 +210,9 @@ contract('AdExCore', function(accounts) {
 		await expectEVMError(validWithdraw(), 'EXPIRED')
 
 		// Now we withdrawExpired, and we can only get the rest
-		const expiredReceipt = await (
-			await core.channelWithdrawExpired(channel.toSolidityTuple())
-		).wait()
+		const expiredReceipt = await (await core.channelWithdrawExpired(
+			channel.toSolidityTuple()
+		)).wait()
 		const expiredEv = expiredReceipt.events.find(x => x.event === 'LogChannelWithdrawExpired')
 		assert.equal(
 			expiredEv.args.amount.toNumber() + incUserLeafAmnt,
