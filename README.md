@@ -107,12 +107,14 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * Minimalistic use of smart contracts in general
    * Avoid putting logic in SCs if it's outcome is controlled by a single entity anyway
    * Do not add complexity and centralization to address various "what ifs" that should be addressed off-chain, e.g. "what if users send tokens to this contract by accident"
+* Detailed tests for every contract
 * No Solidity warnings allowed
 * No modifiers allowed
 * Limited use of inheritance
 * No reentrancy guards allowed, instead we use the Checks-Effects-Interactions pattern
 * All `require`s should have an error message
 * No `delegatecall` upgradability; upgradability is achieved via off-chain social consensus
+* No emergency stops or pausability: it dilutes the value of smart contracts
 
 ## Audits
 
