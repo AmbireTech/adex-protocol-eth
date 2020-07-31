@@ -23,7 +23,6 @@ contract('Staking', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const stakingWeb3 = await Staking.new(tokenWeb3.address, slasherAddr)
 		staking = new Contract(stakingWeb3.address, Staking._json.abi, signer)
-		console.log(await web3Provider.getLogs({ address: stakingWeb3.address }))
 		stakingWithSlasher = new Contract(
 			stakingWeb3.address,
 			Staking._json.abi,
