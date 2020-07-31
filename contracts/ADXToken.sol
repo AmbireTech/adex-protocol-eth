@@ -15,8 +15,8 @@ contract ADXSupplyController {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		// 10 August 2020
 		require(now > 1597017600, 'MINT_TOO_EARLY');
-		// 10 September 2020
 		uint totalSupplyAfter = SafeMath.add(token.totalSupply(), amount);
+		// 10 September 2020
 		if (now < 1599696000) {
 			// 50M * 10**18
 			require(totalSupplyAfter <= 50000000000000000000000000, 'EARLY_MINT_TOO_LARGE');
