@@ -27,7 +27,7 @@ contract('ADXToken', function(accounts) {
 	})
 
 	it('swap previous tokens', async function() {
-		await prevToken.setBalanceTo(userAddr, 10000)
+		await prevToken.setBalanceTo(userAddr, 15000)
 		const receipt = await (await adxToken.swap(10000)).wait()
 		const expectedAmnt = bigNumberify('1000000000000000000')
 		assert.deepEqual(
@@ -37,13 +37,20 @@ contract('ADXToken', function(accounts) {
 		)
 		assert.equal(
 			(await prevToken.balanceOf(userAddr)).toNumber(),
-			0,
-			'prev token amount is 0'
+			5000,
+			'prev token amount is 5000'
 		)
 		assert.equal(receipt.events.length, 2, '2 Transfer events')
 		assert.ok(receipt.gasUsed.toNumber() < 100000, 'gas usage is OK')
 
 		assert.deepEqual(await adxToken.totalSupply(), expectedAmnt, 'total supply is reflected')
+
+		await (await adxToken.swap(5000)).wait()
+		assert.deepEqual(
+			await adxToken.totalSupply(),
+			bigNumberify('1500000000000000000'),
+			'total supply is reflected'
+		)
 	})
 	
 	it('transfer some tokens', async function() {
@@ -60,6 +67,7 @@ contract('ADXToken', function(accounts) {
 		assert.ok(receipt.gasUsed.toNumber() < 56000, 'gas usage is OK')
 	})
 
+	// @TODO change supply controller
 	// @TODO supply controller minting
 	// @TODO flash loans
 })
