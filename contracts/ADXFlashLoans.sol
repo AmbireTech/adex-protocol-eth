@@ -6,11 +6,13 @@ import "./libs/SafeERC20.sol";
 import "./Identity.sol";
 
 contract ADXFlashLoans {
-	function flash(GeneralERC20 token, uint amount, Identity receiver, Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
-		uint bal = token.balanceOf(address(this));
-		token.transfer(address(receiver), amount);
+	// Note: we need to get funds back via transferFrom, rather than performing a balance check,
+	// since some ERC20s have built-in token lockup; the new ADXToken is not one of them,
+	// but it's the better way to approach things given that this contract can be used for any token
+	function flash(address token, uint amount, Identity receiver, Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
+		SafeERC20.transfer(token, address(receiver), amount);
 		receiver.execute(txns, signatures);
-		require(token.balanceOf(address(this)) == bal, 'FLASHLOAN_NOT_RETURNED');
+		SafeERC20.transferFrom(token, address(receiver), address(this), amount);
 	}
 }
 

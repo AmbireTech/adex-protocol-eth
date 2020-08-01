@@ -60,17 +60,17 @@ contract('ADXFlashLoans', function(accounts) {
 				[maliciousTx.toSolidityTuple()],
 				[maliciousSig]
 			),
-			'FLASHLOAN_NOT_RETURNED'
+			'INSUFFICIENT_FUNDS'
 		)
 
-		// This should be OK as we send the tokens back to the flash loans contract
-		const goodData = tokenInterface.functions.transfer.encode([flashLoans.address, fullAmnt])
+		// This should be OK as we approve the tokens to be sent back to the flash loans contract
+		const goodData = tokenInterface.functions.approve.encode([flashLoans.address, fullAmnt])
 		const goodTx = zeroFeeTx(0, mockToken.address, goodData)
 		const goodSig = splitSig(await ethSign(goodTx.hashHex(), userAddr))
 		const receipt = await (await flashLoans
 			.flash(mockToken.address, fullAmnt, id.address, [goodTx.toSolidityTuple()], [goodSig]))
 			.wait()
 		assert.equal(receipt.events.length, 2, '2 events for Transfer')
-		//console.log(receipt)
+		assert.equal(await mockToken.balanceOf(flashLoans.address), fullAmnt, 'balance is consistent')
 	})
 })
