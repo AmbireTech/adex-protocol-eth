@@ -25,6 +25,12 @@ function sampleChannel(accounts, tokenAddr, creator, amount, validUntil, nonce) 
 	})
 }
 
+function handleJsonRPCErr(resolve, reject, err, res) {
+	if (err) reject(err)
+	else if (res.error) reject(res.error)
+	else resolve(res)
+}
+
 function moveTime(web3, time) {
 	return new Promise(function(resolve, reject) {
 		web3.currentProvider.send(
@@ -34,7 +40,7 @@ function moveTime(web3, time) {
 				params: [time],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : res.error ? reject(res.error) : resolve(res))
+			handleJsonRPCErr.bind(null, resolve, reject)
 		)
 	})
 }
@@ -49,7 +55,7 @@ async function setTime(web3, time) {
 				params: [new Date(time * 1000)],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : res.error ? reject(res.error) : resolve(res))
+			handleJsonRPCErr.bind(null, resolve, reject)
 		)
 	})
 }
