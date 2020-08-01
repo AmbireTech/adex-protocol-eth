@@ -38,7 +38,9 @@ function moveTime(web3, time) {
 		)
 	})
 }
-function setTime(web3, time) {
+
+async function setTime(web3, time) {
+	// Doesn't work cause of a ganache bug: `e.getTime is not a function` cause it doesn't construct a date from the JSONRPC input
 	return new Promise(function(resolve, reject) {
 		web3.currentProvider.send(
 			{
