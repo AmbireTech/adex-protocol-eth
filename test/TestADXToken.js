@@ -1,28 +1,42 @@
 const { providers, Contract } = require('ethers')
 const { bigNumberify } = require('ethers').utils
 
-const { expectEVMError } = require('./')
+const { expectEVMError, setTime } = require('./')
 
-const ADXToken = artifacts.require('ADXToken')
 const MockToken = artifacts.require('./mocks/Token')
+const ADXToken = artifacts.require('ADXToken')
+const ADXSupplyController = artifacts.require('ADXSupplyController')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('ADXToken', function(accounts) {
 	const userAddr = accounts[1]
-	const supplyCtrlAddr = accounts[2]
+	const governance = accounts[2]
 	const anotherUser = accounts[3]
 
 	let prevToken
 	let adxToken
+	let adxSupplyController
 
 	before(async function() {
 		const signer = web3Provider.getSigner(userAddr)
+		const signerWithGovernance = web3Provider.getSigner(governance)
 
 		const tokenWeb3 = await MockToken.new()
 		prevToken = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
-		const adxTokenWeb3 = await ADXToken.new(supplyCtrlAddr, prevToken.address)
+		const adxSupplyControllerWeb3 = await ADXSupplyController.new({ from: governance })
+		adxSupplyController = new Contract(adxSupplyControllerWeb3.address, ADXSupplyController._json.abi, signerWithGovernance)
+		const adxTokenWeb3 = await ADXToken.new(adxSupplyController.address, prevToken.address)
 		adxToken = new Contract(adxTokenWeb3.address, ADXToken._json.abi, signer)
+	})
+
+	it('token meta', async function() {
+		const allMeta = [
+			adxToken.name(),
+			adxToken.symbol(),
+			adxToken.decimals()
+		]
+		assert.deepEqual(await Promise.all(allMeta), ['AdEx Network', 'ADX', 18])
 	})
 
 	it('cannot change supply controller externally', async function() {
@@ -68,5 +82,34 @@ contract('ADXToken', function(accounts) {
 		assert.ok(receipt.gasUsed.toNumber() < 56000, 'gas usage is OK')
 	})
 
-	// @TODO supply controller minting, changing it
+	it('supply controller - mint and step down', async function() {
+		const tokenAddr = adxToken.address
+		const [initialSupply, initialBal] = await Promise.all([
+			adxToken.totalSupply(),
+			adxToken.balanceOf(userAddr)
+		])
+
+		/*
+		console.log(await setTime(web3, 1597010000))
+		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, 10000), 'MINT_TOO_EARLY')
+
+		// After Aug 10
+		await setTime(web3, 1599697000)
+		const largeAmnt = bigNumberify('60000000000000000000')
+		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'EARLY_MINT_TOO_LARGE')
+		// After Sep 10
+		await setTime(web3, 1599697000)
+		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)), 'MINT_TOO_LARGE')
+		const receipt = await (adxSupplyController.mint(tokenAddr, userAddr, largeAmnt)).wait()
+		assert.equal(receipt.events[0].event, 'Transfer', 'event is a transfer')
+
+		assert.deepEqual(receipt.events[0].amount, largeAmnt, 'Transfer amount is OK')
+		assert.deepEqual(await adxToken.totalSupply(), initialSupply.add(largeAmnt), 'supply is OK')
+		assert.deepEqual(await adxToken.balanceOf(userAddr), initialBal.add(largeAmnt), 'balance is OK')
+
+		// Governance can step down
+		await adxSupplyController.setGovernance(governance, 0)
+		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'NOT_GOVERNANCE')
+		*/
+	})
 })
