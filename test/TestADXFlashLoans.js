@@ -52,7 +52,7 @@ contract('ADXFlashLoans', function(accounts) {
 		const maliciousTx = zeroFeeTx(0, mockToken.address, maliciousData)
 		const maliciousSig = splitSig(await ethSign(maliciousTx.hashHex(), userAddr))
 		// Try to get all the tokens by sending them to ourselves (by calling the token)
-		expectEVMError(
+		await expectEVMError(
 			flashLoans.flash(
 				mockToken.address,
 				fullAmnt,
@@ -67,9 +67,13 @@ contract('ADXFlashLoans', function(accounts) {
 		const goodData = tokenInterface.functions.approve.encode([flashLoans.address, fullAmnt])
 		const goodTx = zeroFeeTx(0, mockToken.address, goodData)
 		const goodSig = splitSig(await ethSign(goodTx.hashHex(), userAddr))
-		const receipt = await (await flashLoans
-			.flash(mockToken.address, fullAmnt, id.address, [goodTx.toSolidityTuple()], [goodSig]))
-			.wait()
+		const receipt = await (await flashLoans.flash(
+			mockToken.address,
+			fullAmnt,
+			id.address,
+			[goodTx.toSolidityTuple()],
+			[goodSig]
+		)).wait()
 		assert.equal(receipt.events.length, 2, '2 events for Transfer')
 		assert.equal(await mockToken.balanceOf(flashLoans.address), fullAmnt, 'balance is consistent')
 	})
