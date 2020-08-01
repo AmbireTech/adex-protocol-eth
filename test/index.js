@@ -34,7 +34,7 @@ function moveTime(web3, time) {
 				params: [time],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : (res.error ? reject(res.error) : resolve(res)))
+			(err, res) => (err ? reject(err) : res.error ? reject(res.error) : resolve(res))
 		)
 	})
 }
@@ -49,7 +49,7 @@ async function setTime(web3, time) {
 				params: [new Date(time * 1000)],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : (res.error ? reject(res.error) : resolve(res)))
+			(err, res) => (err ? reject(err) : res.error ? reject(res.error) : resolve(res))
 		)
 	})
 }

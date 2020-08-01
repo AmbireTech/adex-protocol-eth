@@ -25,17 +25,17 @@ contract('ADXToken', function(accounts) {
 		const tokenWeb3 = await MockToken.new()
 		prevToken = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const adxSupplyControllerWeb3 = await ADXSupplyController.new({ from: governance })
-		adxSupplyController = new Contract(adxSupplyControllerWeb3.address, ADXSupplyController._json.abi, signerWithGovernance)
+		adxSupplyController = new Contract(
+			adxSupplyControllerWeb3.address,
+			ADXSupplyController._json.abi,
+			signerWithGovernance
+		)
 		const adxTokenWeb3 = await ADXToken.new(adxSupplyController.address, prevToken.address)
 		adxToken = new Contract(adxTokenWeb3.address, ADXToken._json.abi, signer)
 	})
 
 	it('token meta', async function() {
-		const allMeta = [
-			adxToken.name(),
-			adxToken.symbol(),
-			adxToken.decimals()
-		]
+		const allMeta = [adxToken.name(), adxToken.symbol(), adxToken.decimals()]
 		assert.deepEqual(await Promise.all(allMeta), ['AdEx Network', 'ADX', 18])
 	})
 
