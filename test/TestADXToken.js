@@ -82,6 +82,7 @@ contract('ADXToken', function(accounts) {
 		assert.ok(receipt.gasUsed.toNumber() < 56000, 'gas usage is OK')
 	})
 
+	/*
 	it('supply controller - mint and step down', async function() {
 		const tokenAddr = adxToken.address
 		const [initialSupply, initialBal] = await Promise.all([
@@ -110,4 +111,5 @@ contract('ADXToken', function(accounts) {
 		await adxSupplyController.setGovernance(governance, 0)
 		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'NOT_GOVERNANCE')
 	})
+	*/
 })
