@@ -24,6 +24,7 @@ function sampleChannel(accounts, tokenAddr, creator, amount, validUntil, nonce) 
 		spec
 	})
 }
+
 function moveTime(web3, time) {
 	return new Promise(function(resolve, reject) {
 		web3.currentProvider.send(
@@ -33,8 +34,22 @@ function moveTime(web3, time) {
 				params: [time],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : resolve(res))
+			(err, res) => (err ? reject(err) : (res.error ? reject(res.error) : resolve(res)))
 		)
 	})
 }
-module.exports = { expectEVMError, sampleChannel, moveTime }
+function setTime(web3, time) {
+	return new Promise(function(resolve, reject) {
+		web3.currentProvider.send(
+			{
+				jsonrpc: '2.0',
+				method: 'evm_setTime',
+				params: [new Date(time * 1000)],
+				id: 0
+			},
+			(err, res) => (err ? reject(err) : (res.error ? reject(res.error) : resolve(res)))
+		)
+	})
+}
+
+module.exports = { expectEVMError, sampleChannel, moveTime, setTime }
