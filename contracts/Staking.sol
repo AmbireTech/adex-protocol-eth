@@ -89,19 +89,6 @@ contract Staking {
 		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart);
 	}
 
-	function replaceBond(BondLibrary.Bond memory bond, BondLibrary.Bond memory newBond) public {
-		bytes32 id = bond.hash(msg.sender);
-		BondState storage bondState = bonds[id];
-		// We allow replacing the bond even if it's still unbonding
-		require(bondState.active, 'BOND_NOT_ACTIVE');
-		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
-		// @TODO: consider allowing re-bonding even if the amount is not larger (and error will be BOND_SMALLER)
-		require(newBond.amount > bond.amount, 'NEW_BOND_NOT_BIGGER');
-		// @TODO check for reentrancy
-		unbondInternal(bond, id, bondState);
-		addBond(newBond);
-	}
-
 	function requestUnbond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
 		BondState storage bondState = bonds[id];
@@ -124,6 +111,18 @@ contract Staking {
 		BondState storage bondState = bonds[id];
 		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
 		unbondInternal(bond, id, bondState);
+	}
+
+	function replaceBond(BondLibrary.Bond memory bond, BondLibrary.Bond memory newBond) public {
+		bytes32 id = bond.hash(msg.sender);
+		BondState storage bondState = bonds[id];
+		// We allow replacing the bond even if it's still unbonding
+		require(bondState.active, 'BOND_NOT_ACTIVE');
+		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
+		// @TODO: consider allowing re-bonding even if the amount is not larger (and error will be BOND_SMALLER)
+		require(newBond.amount > bond.amount, 'NEW_BOND_NOT_BIGGER');
+		unbondInternal(bond, id, bondState);
+		addBond(newBond);
 	}
 
 	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
