@@ -99,7 +99,7 @@ contract Staking {
 	}
 
 	function unbondInternal(BondLibrary.Bond memory bond, bytes32 id, BondState storage bondState) internal {
-		uint amount = calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
+		uint amount = calcWithdrawAmount(bond, bondState.slashedAtStart);
 		uint toBurn = bond.amount - amount;
 		delete bonds[id];
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
@@ -120,7 +120,7 @@ contract Staking {
 		// We allow replacing the bond even if it's requested to be unbonded, so that you can re-bond
 		require(bondState.active, 'BOND_NOT_ACTIVE');
 		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
-		require(newBond.amount >= calcWithdrawAmount(bond, uint(bondState.slashedAtStart)), 'NEW_BOND_SMALLER');
+		require(newBond.amount >= calcWithdrawAmount(bond, bondState.slashedAtStart), 'NEW_BOND_SMALLER');
 		unbondInternal(bond, id, bondState);
 		addBond(newBond);
 	}
@@ -128,12 +128,12 @@ contract Staking {
 	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
 		BondState storage bondState = bonds[bond.hash(owner)];
 		if (!bondState.active) return 0;
-		return calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
+		return calcWithdrawAmount(bond, bondState.slashedAtStart);
 	}
 
-	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint slashedAtStart) internal view returns (uint) {
+	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint64 slashedAtStart) internal view returns (uint) {
 		return bond.amount
 			.mul(MAX_SLASH.sub(slashPoints[bond.poolId]))
-			.div(MAX_SLASH.sub(slashedAtStart));
+			.div(MAX_SLASH.sub(uint(slashedAtStart)));
 	}
 }
