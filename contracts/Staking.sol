@@ -57,8 +57,8 @@ contract Staking {
 	uint constant TIME_TO_UNBOND = 30 days;
 	address constant BURN_ADDR = address(0xaDbeEF0000000000000000000000000000000000);
 
-	address public tokenAddr;
-	address public slasherAddr;
+	address public immutable tokenAddr;
+	address public immutable slasherAddr;
 	// Addressed by poolId
 	mapping (bytes32 => uint) public slashPoints;
 	// Addressed by bondId
