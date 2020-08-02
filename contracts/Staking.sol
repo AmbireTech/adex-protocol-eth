@@ -41,6 +41,7 @@ contract Staking {
 
 	struct BondState {
 		bool active;
+		// Data type must be larger than MAX_SLASH (2**64 > 10**18)
 		uint64 slashedAtStart;
 		uint64 willUnlock;
 	}
@@ -116,11 +117,10 @@ contract Staking {
 	function replaceBond(BondLibrary.Bond memory bond, BondLibrary.Bond memory newBond) public {
 		bytes32 id = bond.hash(msg.sender);
 		BondState storage bondState = bonds[id];
-		// We allow replacing the bond even if it's still unbonding
+		// We allow replacing the bond even if it's requested to be unbonded, so that you can re-bond
 		require(bondState.active, 'BOND_NOT_ACTIVE');
 		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
-		// @TODO: consider allowing re-bonding even if the amount is not larger (and error will be BOND_SMALLER)
-		require(newBond.amount > bond.amount, 'NEW_BOND_NOT_BIGGER');
+		require(newBond.amount >= calcWithdrawAmount(bond, uint(bondState.slashedAtStart)), 'NEW_BOND_SMALLER');
 		unbondInternal(bond, id, bondState);
 		addBond(newBond);
 	}
