@@ -47,10 +47,10 @@ contract Staking {
 	}
 
 	// Events
-	event LogSlash(bytes32 indexed poolId, uint newSlashPts);
-	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart);
-	event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock);
-	event LogUnbonded(address indexed owner, bytes32 indexed bondId);
+	event LogSlash(bytes32 indexed poolId, uint newSlashPts, uint time);
+	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart, uint time);
+	event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock, uint time);
+	event LogUnbonded(address indexed owner, bytes32 indexed bondId, uint time);
 
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
@@ -74,7 +74,7 @@ contract Staking {
 		uint newSlashPts = slashPoints[poolId].add(pts);
 		require(newSlashPts <= MAX_SLASH, 'PTS_TOO_HIGH');
 		slashPoints[poolId] = newSlashPts;
-		emit LogSlash(poolId, newSlashPts);
+		emit LogSlash(poolId, newSlashPts, now);
 	}
 
 	function addBond(BondLibrary.Bond memory bond) public {
@@ -87,7 +87,7 @@ contract Staking {
 			willUnlock: 0
 		});
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
-		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart);
+		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart, now);
 	}
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
@@ -95,7 +95,7 @@ contract Staking {
 		BondState storage bondState = bonds[id];
 		require(bondState.active && bondState.willUnlock == 0, 'BOND_NOT_ACTIVE');
 		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
-		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock);
+		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock, now);
 	}
 
 	function unbondInternal(BondLibrary.Bond memory bond, bytes32 id, BondState storage bondState) internal {
@@ -104,7 +104,7 @@ contract Staking {
 		delete bonds[id];
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
 		if (toBurn > 0) SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
-		emit LogUnbonded(msg.sender, id);
+		emit LogUnbonded(msg.sender, id, now);
 	}
 
 	function unbond(BondLibrary.Bond memory bond) public {
