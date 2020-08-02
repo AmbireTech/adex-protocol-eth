@@ -39,6 +39,7 @@ contract Staking {
 	using SafeMath for uint;
 	using BondLibrary for BondLibrary.Bond;
 
+	// This fits in a storage slot so we can only use one when saving bond state
 	struct BondState {
 		bool active;
 		// Data type must be larger than MAX_SLASH (2**64 > 10**18)
@@ -55,6 +56,7 @@ contract Staking {
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
 	uint constant TIME_TO_UNBOND = 30 days;
+	// A non-0x00 address since some ERC20 tokens do not allow sending to 0x00; although we intend to only use this contract with ADX
 	address constant BURN_ADDR = address(0xaDbeEF0000000000000000000000000000000000);
 
 	address public immutable tokenAddr;
