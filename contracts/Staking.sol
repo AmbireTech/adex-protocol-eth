@@ -89,6 +89,19 @@ contract Staking {
 		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart);
 	}
 
+	function replaceBond(BondLibrary.Bond memory bond, BondLibrary.Bond memory newBond) public {
+		bytes32 id = bond.hash(msg.sender);
+		BondState storage bondState = bonds[id];
+		// We allow replacing the bond even if it's still unbonding
+		require(bondState.active, 'BOND_NOT_ACTIVE');
+		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
+		// @TODO: consider allowing re-bonding even if the amount is not larger (and error will be BOND_SMALLER)
+		require(newBond.amount > bond.amount, 'NEW_BOND_NOT_BIGGER');
+		// @TODO check for reentrancy
+		unbondInternal(bond, id, bondState);
+		addBond(newBond);
+	}
+
 	function requestUnbond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
 		BondState storage bondState = bonds[id];
@@ -97,16 +110,20 @@ contract Staking {
 		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock);
 	}
 
-	function unbond(BondLibrary.Bond memory bond) public {
-		bytes32 id = bond.hash(msg.sender);
-		BondState storage bondState = bonds[id];
-		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
+	function unbondInternal(BondLibrary.Bond memory bond, bytes32 id, BondState storage bondState) internal {
 		uint amount = calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
 		uint toBurn = bond.amount - amount;
 		delete bonds[id];
 		SafeERC20.transfer(tokenAddr, msg.sender, amount);
 		if (toBurn > 0) SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
 		emit LogUnbonded(msg.sender, id);
+	}
+
+	function unbond(BondLibrary.Bond memory bond) public {
+		bytes32 id = bond.hash(msg.sender);
+		BondState storage bondState = bonds[id];
+		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
+		unbondInternal(bond, id, bondState);
 	}
 
 	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
