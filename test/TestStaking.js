@@ -204,17 +204,31 @@ contract('Staking', function(accounts) {
 		await expectEVMError(staking.replaceBond(bond, [bondAmount / 2, poolId, 0]), 'NEW_BOND_SMALLER')
 		await expectEVMError(staking.replaceBond(bond, [bondAmount, anotherPoolId, 0]), 'POOL_ID_DIFFERENT')
 
-
 		// Now, replace the bond to add another 1090000000 token units
 		const receipt = await (await staking.replaceBond(bond, bondReplacement)).wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogUnbonded'), 'has LogUnbonded')
 		const logBond = receipt.events.find(x => x.event === 'LogBond') 
 		assert.ok(logBond, 'has LogBond')
-		//console.log(await staking.bonds(logBond.args.bondId))
 
-		// Now after a slash, add another 100 to the bond's effective amount (calcWithdrawAmount), while still being less than the original bond.amount
-		//await stakingWithSlasher.slash(poolId, (10**18)/2, { gasLimit })
+		// Now after a slash, add another 15000 to the bond's withdraw amount, while still being less than the original bond.amount
+		const addedAfterSlash = 15000
+		await stakingWithSlasher.slash(poolId, '500000000000000000', { gasLimit })
+		const currentBondAmount = await staking.getWithdrawAmount(userAddr, bondReplacement)
+		assert.equal(currentBondAmount, (bondAmount + addedOnReplaceAmount) / 2, 'was slashed in half')
+		// just an internal assurance that we're indeed testing this
+		assert.ok(currentBondAmount.add(addedAfterSlash).lt(bondAmount + addedOnReplaceAmount))
+		// Now replace the bond with one that adds addedAfterSlash
+		await token.setBalanceTo(userAddr, addedAfterSlash)
+		// use a different nonce for a change: should not be a problem
+		const bondAfterSlash = [currentBondAmount.add(addedAfterSlash), poolId, Date.now()]
+		await staking.replaceBond(bondReplacement, bondAfterSlash)
 
+		// Finally, we can withdraw this bond
+		await staking.requestUnbond(bondAfterSlash)
+		await moveTime(web3, DAY_SECONDS * 31)
+		await staking.unbond(bondAfterSlash)
+
+		assert.deepEqual(await token.balanceOf(userAddr), bondAfterSlash[0], 'user balance has been returned')
 	})
 
 	it('replace bond - can rebond', async function() {
@@ -226,7 +240,16 @@ contract('Staking', function(accounts) {
 		const receipt = await (await staking.requestUnbond(bond)).wait()
 		const unbondRequestedEv = receipt.events[0]
 		assert.equal(unbondRequestedEv.event, 'LogUnbondRequested')
-		//console.log(await staking.bonds(unbondRequestedEv.args.bondId))
+		assert.ok((await staking.bonds(unbondRequestedEv.args.bondId)).willUnlock.gt(0), 'has willUnlock set')
+
+		// replace the bond with the same one - effectively rebonding
+		const receiptReplace = await (await staking.replaceBond(bond, bond)).wait()
+		assert.ok(receiptReplace.events.find(x => x.event === 'LogBond'), 'has LogBond emitted, which will cause this bond to be counted again')
+
+		// after we rebond we preserve the same ID
+		const bondState = await staking.bonds(unbondRequestedEv.args.bondId)
+		assert.ok(bondState.active, 'bond is active')
+		assert.ok(bondState.willUnlock.eq(0), 'does not have willUnlock set')
 	})
 
 	it('fully slash a pool', async function() {
