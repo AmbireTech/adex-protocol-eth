@@ -110,6 +110,7 @@ contract ADXToken {
 	}
 
 	// Swapping: multiplier is 10**(18-4)
+	// NOTE: Burning by sending to 0x00 is not possible with many ERC20 implementations, but this one is made specifically for the old ADX
 	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
 	function swap(uint prevTokenAmount) public {
 		innerMint(msg.sender, prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER));
