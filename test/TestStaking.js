@@ -44,7 +44,7 @@ contract('Staking', function(accounts) {
 		const bond = [bondAmount, poolId, 0]
 
 		// slash the pool beforehand to see if math is fine
-		await (await stakingWithSlasher.slash(poolId, 50000000000000, { gasLimit })).wait()
+		await stakingWithSlasher.slash(poolId, 50000000000000, { gasLimit })
 
 		// insufficient funds
 		await expectEVMError(staking.addBond(bond), 'INSUFFICIENT_FUNDS')
@@ -125,11 +125,11 @@ contract('Staking', function(accounts) {
 		await token.setBalanceTo(userAddr, totalAmount)
 
 		// the first bond will be unbonded immediately, and withdrawn after the second slash
-		await (await staking.addBond(bonds[0], { gasLimit })).wait()
-		await (await staking.requestUnbond(bonds[0], { gasLimit })).wait()
+		await staking.addBond(bonds[0], { gasLimit })
+		await staking.requestUnbond(bonds[0], { gasLimit })
 
-		await (await staking.addBond(bonds[1], { gasLimit })).wait()
-		await (await stakingWithSlasher.slash(poolId, slashes[0], { gasLimit })).wait()
+		await staking.addBond(bonds[1], { gasLimit })
+		await stakingWithSlasher.slash(poolId, slashes[0], { gasLimit })
 
 		// now we will take out bonds[0]
 		await moveTime(web3, DAY_SECONDS * 31)
@@ -149,11 +149,11 @@ contract('Staking', function(accounts) {
 		const remainingBondsExpected = bondsExpected.slice(1)
 
 		// continue as planned
-		await (await staking.addBond(bonds[2], { gasLimit })).wait()
-		await (await stakingWithSlasher.slash(poolId, slashes[1], { gasLimit })).wait()
-		await (await staking.addBond(bonds[3], { gasLimit })).wait()
-		await (await stakingWithSlasher.slash(poolId, slashes[2], { gasLimit })).wait()
-		await (await staking.addBond(bonds[4], { gasLimit })).wait()
+		await staking.addBond(bonds[2], { gasLimit })
+		await stakingWithSlasher.slash(poolId, slashes[1], { gasLimit })
+		await staking.addBond(bonds[3], { gasLimit })
+		await stakingWithSlasher.slash(poolId, slashes[2], { gasLimit })
+		await staking.addBond(bonds[4], { gasLimit })
 
 		const amounts = await Promise.all(
 			remainingBonds.map(bond => staking.getWithdrawAmount(userAddr, bond))
@@ -166,11 +166,11 @@ contract('Staking', function(accounts) {
 
 		// unbond all bonds
 		await Promise.all(
-			remainingBonds.map(bond => staking.requestUnbond(bond, { gasLimit }).then(tx => tx.wait()))
+			remainingBonds.map(bond => staking.requestUnbond(bond, { gasLimit }))
 		)
 		await moveTime(web3, DAY_SECONDS * 31)
 		await Promise.all(
-			remainingBonds.map(bond => staking.unbond(bond, { gasLimit }).then(tx => tx.wait()))
+			remainingBonds.map(bond => staking.unbond(bond, { gasLimit }))
 		)
 
 		// check if we've properly slashed and withdrawn
@@ -210,10 +210,10 @@ contract('Staking', function(accounts) {
 		assert.ok(receipt.events.find(x => x.event === 'LogUnbonded'), 'has LogUnbonded')
 		const logBond = receipt.events.find(x => x.event === 'LogBond') 
 		assert.ok(logBond, 'has LogBond')
-		//console.log(logBond.args)
+		//console.log(await staking.bonds(logBond.args.bondId))
 
 		// Now after a slash, add another 100 to the bond's effective amount (calcWithdrawAmount), while still being less than the original bond.amount
-		await stakingWithSlasher.slash(poolId, (10**18)/2, { gasLimit })
+		//await stakingWithSlasher.slash(poolId, (10**18)/2, { gasLimit })
 
 	})
 
@@ -233,7 +233,7 @@ contract('Staking', function(accounts) {
 		const poolId = '0x9992020202020202020202020202020202020202020202020202020299990203'
 		const bond = [3000000, poolId, 0]
 
-		await (await stakingWithSlasher.slash(poolId, (10 ** 18).toString(10), { gasLimit }))).wait()
+		await stakingWithSlasher.slash(poolId, (10 ** 18).toString(10), { gasLimit })
 
 		await token.setBalanceTo(userAddr, bond[0])
 		await expectEVMError(staking.addBond(bond), 'POOL_SLASHED')
