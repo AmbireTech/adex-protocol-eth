@@ -11,7 +11,7 @@ contract ADXSupplyController {
 		governance[msg.sender] = uint8(GovernanceLevel.All);
 	}
 
-	function mint(ADXToken token, address owner, uint amount) public {
+	function mint(ADXToken token, address owner, uint amount) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		// 10 August 2020
 		require(now > 1597017600, 'MINT_TOO_EARLY');
@@ -27,12 +27,12 @@ contract ADXSupplyController {
 		token.mint(owner, amount);
 	}
 
-	function changeSupplyController(ADXToken token, address newSupplyController) public {
+	function changeSupplyController(ADXToken token, address newSupplyController) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
 		token.changeSupplyController(newSupplyController);
 	}
 
-	function setGovernance(address addr, uint8 level) public {
+	function setGovernance(address addr, uint8 level) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
 		governance[addr] = level;
 	}
@@ -62,18 +62,18 @@ contract ADXToken {
 		PREV_TOKEN = prevTokenAddr;
 	}
 
-	function balanceOf(address owner) public view returns (uint balance) {
+	function balanceOf(address owner) external view returns (uint balance) {
 		return balances[owner];
 	}
 
-	function transfer(address to, uint amount) public returns (bool success) {
+	function transfer(address to, uint amount) external returns (bool success) {
 		balances[msg.sender] = balances[msg.sender].sub(amount);
 		balances[to] = balances[to].add(amount);
 		emit Transfer(msg.sender, to, amount);
 		return true;
 	}
 
-	function transferFrom(address from, address to, uint amount) public returns (bool success) {
+	function transferFrom(address from, address to, uint amount) external returns (bool success) {
 		balances[from] = balances[from].sub(amount);
 		allowed[from][msg.sender] = allowed[from][msg.sender].sub(amount);
 		balances[to] = balances[to].add(amount);
@@ -81,13 +81,13 @@ contract ADXToken {
 		return true;
 	}
 
-	function approve(address spender, uint amount) public returns (bool success) {
+	function approve(address spender, uint amount) external returns (bool success) {
 		allowed[msg.sender][spender] = amount;
 		emit Approval(msg.sender, spender, amount);
 		return true;
 	}
 
-	function allowance(address owner, address spender) public view returns (uint remaining) {
+	function allowance(address owner, address spender) external view returns (uint remaining) {
 		return allowed[owner][spender];
 	}
 
@@ -99,12 +99,12 @@ contract ADXToken {
 		emit Transfer(address(0), owner, amount);
 	}
 
-	function mint(address owner, uint amount) public {
+	function mint(address owner, uint amount) external {
 		require(msg.sender == supplyController, 'NOT_SUPPLYCONTROLLER');
 		innerMint(owner, amount);
 	}
 
-	function changeSupplyController(address newSupplyController) public {
+	function changeSupplyController(address newSupplyController) external {
 		require(msg.sender == supplyController, 'NOT_SUPPLYCONTROLLER');
 		supplyController = newSupplyController;
 	}
@@ -112,7 +112,7 @@ contract ADXToken {
 	// Swapping: multiplier is 10**(18-4)
 	// NOTE: Burning by sending to 0x00 is not possible with many ERC20 implementations, but this one is made specifically for the old ADX
 	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
-	function swap(uint prevTokenAmount) public {
+	function swap(uint prevTokenAmount) external {
 		innerMint(msg.sender, prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER));
 		SafeERC20.transferFrom(PREV_TOKEN, msg.sender, address(0), prevTokenAmount);
 	}
