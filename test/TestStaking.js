@@ -91,7 +91,7 @@ contract('Staking', function(accounts) {
 	})
 
 	it('bonds are slashed proportionally based on their bond/unbond time', async function() {
-		const slashAddr = '0xaDbeEF0000000000000000000000000000000000'
+		const burnAddr = '0xaDbeEF0000000000000000000000000000000000'
 		const poolId = '0x0202020202020202020202020202020202020202020202020202020202222222'
 		const sum = (a, b) => a + b
 
@@ -180,14 +180,60 @@ contract('Staking', function(accounts) {
 			bondsExpected.reduce(sum, 0),
 			'user amount is correct'
 		)
-		assert.equal(await token.balanceOf(slashAddr), totalSlashed, 'slashed amount is correct')
+		assert.equal(await token.balanceOf(burnAddr), totalSlashed, 'slashed amount is correct')
+	})
+
+	it('replace bond - can stake more', async function() {
+		const poolId = '0x0202020202020202020202020202020202020202020202020202020202020215'
+		const anotherPoolId = '0x0202020202020202020202020202020202020202020202020202020202020216'
+		const bondAmount = 120000000
+		const addedOnReplaceAmount = 100000000
+		const bond = [bondAmount, poolId, 0]
+		const bondReplacement = [bondAmount + addedOnReplaceAmount, poolId, 0]
+
+		await token.setBalanceTo(userAddr, bondAmount + addedOnReplaceAmount)
+
+		await staking.addBond(bond)
+		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
+
+		// We can't unbond this bond but we can replace it with a larger one
+		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
+
+		// We can't replace unless it's the same size or bigger and it's 
+		await expectEVMError(staking.replaceBond(bondReplacement, [bondAmount * 2, poolId, 0]), 'BOND_NOT_ACTIVE')
+		await expectEVMError(staking.replaceBond(bond, [bondAmount / 2, poolId, 0]), 'NEW_BOND_SMALLER')
+		await expectEVMError(staking.replaceBond(bond, [bondAmount, anotherPoolId, 0]), 'POOL_ID_DIFFERENT')
+
+
+		// Now, replace the bond to add another 1090000000 token units
+		const receipt = await (await staking.replaceBond(bond, bondReplacement)).wait()
+		assert.ok(receipt.events.find(x => x.event === 'LogUnbonded'), 'has LogUnbonded')
+		const logBond = receipt.events.find(x => x.event === 'LogBond') 
+		assert.ok(logBond, 'has LogBond')
+		//console.log(logBond.args)
+
+		// Now after a slash, add another 100 to the bond's effective amount (calcWithdrawAmount), while still being less than the original bond.amount
+		await stakingWithSlasher.slash(poolId, (10**18)/2, { gasLimit })
+
+	})
+
+	it('replace bond - can rebond', async function() {
+		const poolId = '0x0202020202020202020202020202020202020202020202020202020202020225'
+		const bondAmount = 200000000
+		const bond = [bondAmount, poolId, 0]
+		await token.setBalanceTo(userAddr, bondAmount)
+		await staking.addBond(bond)
+		const receipt = await (await staking.requestUnbond(bond)).wait()
+		const unbondRequestedEv = receipt.events[0]
+		assert.equal(unbondRequestedEv.event, 'LogUnbondRequested')
+		//console.log(await staking.bonds(unbondRequestedEv.args.bondId))
 	})
 
 	it('fully slash a pool', async function() {
 		const poolId = '0x9992020202020202020202020202020202020202020202020202020299990203'
 		const bond = [3000000, poolId, 0]
 
-		await (await stakingWithSlasher.slash(poolId, (10 ** 18).toString(10), { gasLimit })).wait()
+		await (await stakingWithSlasher.slash(poolId, (10 ** 18).toString(10), { gasLimit }))).wait()
 
 		await token.setBalanceTo(userAddr, bond[0])
 		await expectEVMError(staking.addBond(bond), 'POOL_SLASHED')
