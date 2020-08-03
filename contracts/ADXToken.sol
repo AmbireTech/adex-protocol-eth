@@ -6,7 +6,7 @@ import "./libs/SafeERC20.sol";
 
 contract ADXSupplyController {
 	enum GovernanceLevel { None, Mint, All }
-	mapping (address => uint8) governance;
+	mapping (address => uint8) public governance;
 	constructor() public {
 		governance[msg.sender] = uint8(GovernanceLevel.All);
 	}

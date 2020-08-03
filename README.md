@@ -63,6 +63,13 @@ And the `Staking`:
 * Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 * Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 
+### v4.2
+
+The `ADXSupplyController`:
+
+* Mainnet: https://etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
+* Goerli: https://goerli.etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
+
 ### Deployment strategy
 
 The full deploy processis as follows
