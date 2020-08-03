@@ -15,6 +15,6 @@ listFiles() {
 egrep -h "^pragma solidity" $1 | head -n1
 
 listFiles $1 | awk '!x[$0]++' | while read line; do
-	cat $line | egrep -v "^(pragma solidity |import )" 
+	cat $line | egrep -v "^(pragma solidity |import |// SPDX)"
 done
 
