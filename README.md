@@ -65,10 +65,15 @@ And the `Staking`:
 
 ### v4.2
 
-The `ADXSupplyController`:
+The `ADXSupplyController` contract:
 
 * Mainnet: https://etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
 * Goerli: https://goerli.etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
+
+The `ADXToken` contract:
+
+* Mainnet: https://etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
+* Goerli: https://goerli.etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
 
 ### Deployment strategy
 
