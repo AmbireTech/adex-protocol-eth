@@ -67,8 +67,8 @@ And the `Staking`:
 
 The `ADXSupplyController` contract:
 
-* Mainnet: https://etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
-* Goerli: https://goerli.etherscan.io/address/0x04918f1071594af602f937f6a444b5f5787786ed
+* Mainnet: https://etherscan.io/address/0x360625ba7bce57f74eb5501fd2b75db8f85a85d8
+* Goerli: https://goerli.etherscan.io/address/0x360625ba7bce57f74eb5501fd2b75db8f85a85d8
 
 The `ADXToken` contract:
 
