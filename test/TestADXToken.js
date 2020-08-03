@@ -90,9 +90,6 @@ contract('ADXToken', function(accounts) {
 			adxToken.balanceOf(userAddr)
 		])
 
-		await setTime(web3, 1597010000)
-		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, 10000), 'MINT_TOO_EARLY')
-
 		// After Aug 10
 		await setTime(web3, 1597018600)
 		const largeAmnt = bigNumberify('60000000000000000000000000')
