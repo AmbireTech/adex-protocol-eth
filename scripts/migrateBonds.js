@@ -70,9 +70,9 @@ async function getMigratedBonds() {
 	//console.log(toUnbond)
 	//console.log(Object.values(toUnbond).reduce((a, b) => a.add(b)))
 
-	// @TODO consider 0 nonce
-	const nonce = Math.floor(Date.now() / 1000)
-	const migratedLogsSnippets = Object.entries(toBond).map(([owner, amount]) => `emit LogBond(${owner}, ${amount.toString(10)}, ${POOL_ID}, ${nonce.toString(10)}, 0);`)
+	const nonce = 0
+	const time = Math.floor(Date.now() / 1000)
+	const migratedLogsSnippets = Object.entries(toBond).map(([owner, amount]) => `emit LogBond(${owner}, ${amount.toString(10)}, ${POOL_ID}, ${nonce.toString(10)}, 0, ${time.toString(10)});`)
 	const migratedBondsSnippets = Object.entries(toBond).map(
 		([owner, amount]) => `bonds[${getBondId(NEW_ADDR_STAKING, { owner, amount, poolId: POOL_ID, nonce })}] = BondState({ active: true, slashedAtStart: 0, willUnlock: 0 });`
 	)
