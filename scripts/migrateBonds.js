@@ -8,7 +8,7 @@ const provider = getDefaultProvider('homestead')
 const POOL_ID = id('validator:0x2892f6C41E0718eeeDd49D98D648C789668cA67d') // '0x2ce0c96383fb229d9776f33846e983a956a7d95844fac57b180ed0071d93bb28'
 const NEW_TOKEN_MUL = bigNumberify('100000000000000')
 const ADDR_STAKING = '0x46Ad2D37CeaeE1e82B70B867e674b903a4b4Ca32'
-const NEW_ADDR_STAKING = getContractAddress({ from: '0x1304f1b9e8eb2c328b564e7fad2c8402a5954572', nonce: 18 })
+const NEW_ADDR_STAKING = getContractAddress({ from: '0x1304f1b9e8eb2c328b564e7fad2c8402a5954572', nonce: 19 })
 
 assert.equal(ADDR_STAKING, getContractAddress({ from: '0x1304f1b9e8eb2c328b564e7fad2c8402a5954572', nonce: 12 }))
 
