@@ -80,6 +80,10 @@ An instance of `IdentityFactory` used for staking:
 * Mainnet: https://etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
 * Goerli: https://goerli.etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
 
+The `Staking` contract:
+* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
+* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
+
 ### Deployment strategy
 
 The full deploy processis as follows
