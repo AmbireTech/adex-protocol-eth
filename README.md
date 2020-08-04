@@ -103,6 +103,7 @@ channelWithdraw: 137117
 execute: 89900
 execRoutines: 114440
 channelOpen, through execute: 115086
+deploying an identity proxy through the IdentityFactory: 127549
 ```
 
 ### ENS
