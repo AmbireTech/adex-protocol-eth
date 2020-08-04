@@ -1,5 +1,5 @@
 const ethers = require('ethers')
-
+const assert = require('assert')
 const { Contract, getDefaultProvider } = ethers
 const { keccak256, defaultAbiCoder, id, bigNumberify, hexlify, Interface } = ethers.utils
 
@@ -34,37 +34,46 @@ async function getMigratedBonds() {
 	//event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart);
 	//event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock);
 	//event LogUnbonded(address indexed owner, bytes32 indexed bondId);
-	const migratedLogsSnippets = []
-	const migratedBonds = {}
-	const bondMapping = {}
+	const toUnbond = {}
+	const toBond = {}
+	const bonds = {}
+
 	for (const log of logs) {
 		const topic = log.topics[0]
 		const evs = Staking.interface.events
 		if (topic === evs.LogBond.topic) {
 			const vals = Staking.interface.parseLog(log).values
-			// NOTE there's also slashedAtStart, but we do not need it cause slashing doesn't matter (whole pool gets slashed, ratios stay the same)
 			const { owner, amount, poolId, nonce, slashedAtStart } = vals
-			const newAmount = amount.mul(NEW_TOKEN_MUL)
-			migratedLogsSnippets.push(`emit LogBond(${owner}, ${newAmount.toString(10)}, ${poolId}, ${nonce.toString(10)}, ${slashedAtStart.toString(10)});`)
-			// @TODO new contract addr
-			const newId = getBondId({ owner, amount: newAmount, poolId, nonce })
-			bondMapping[getBondId({owner, amount, poolId, nonce })] = newId
-			migratedBonds[newId] = { active: true, slashedAtStart, willUnlock: bigNumberify(0) }
+			assert.ok(slashedAtStart.eq(0), 'this script only works for 0 slash pools')
+			if (poolId !== POOL_ID) continue
+			bonds[getBondId({owner, amount, poolId, nonce })] = { owner, amount }
 		} else if (topic === evs.LogUnbondRequested.topic) {
 			const { owner, bondId, willUnlock } = Staking.interface.parseLog(log).values
-			const newId = bondMapping[bondId]
-			migratedLogsSnippets.push(`emit LogUnbondRequested(${owner}, ${newId}, ${willUnlock.toString(10)});`)
-			migratedBonds[newId].willUnlock = willUnlock
+			bonds[bondId].willUnlock = willUnlock
 		} else if (topic === evs.LogUnbonded.topic) {
 			const { owner, bondId } = Staking.interface.parseLog(log).values
-			const newId = bondMapping[bondId]
-			migratedLogsSnippets.push(`emit LogUnbonded(${owner}, ${newId});`)
-			delete migratedBonds[newId]
+			delete bonds[bondId]
 		}
 	}
 
-	const migratedBondsSnippets = Object.entries(migratedBonds).map(
-		([newId, bond]) => `bonds[${newId}] = BondState({ active: true, slashedAtStart: ${bond.slashedAtStart.toString(10)}, willUnlock: ${bond.willUnlock.toString(10)} });`
+	Object.values(bonds).forEach(bond => {
+		if (bond.willUnlock) {
+			toUnbond[bond.owner] = (toUnbond[bond.owner] || bigNumberify(0)).add(bond.amount)
+		} else {
+			const addr = translateOwnerAddr(bond.owner)
+			const amount = bond.amount.mul(NEW_TOKEN_MUL)
+			toBond[addr] = (toBond[addr] || bigNumberify(0)).add(amount)
+		}
+	})
+
+	//console.log(toUnbond)
+	//console.log(Object.values(toUnbond).reduce((a, b) => a.add(b)))
+
+	const nonce = Math.floor(Date.now() / 1000)
+	const migratedLogsSnippets = Object.entries(toBond).map(([owner, amount]) => `emit LogBond(${owner}, ${amount.toString(10)}, ${POOL_ID}, ${nonce.toString(10)}, 0);`)
+	const migratedBondsSnippets = Object.entries(toBond).map(
+		// @TODO new contract addr
+		([owner, amount]) => `bonds[${getBondId({ owner, amount, poolId: POOL_ID, nonce })}] = BondState({ active: true, slashedAtStart: 0, willUnlock: 0 });`
 	)
 
 	return migratedLogsSnippets.concat(migratedBondsSnippets).join('\n')
