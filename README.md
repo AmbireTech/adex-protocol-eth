@@ -75,6 +75,11 @@ The `ADXToken` contract:
 * Mainnet: https://etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
 * Goerli: https://goerli.etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
 
+An instance of `IdentityFactory` used for staking:
+
+* Mainnet: https://etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
+* Goerli: https://goerli.etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
+
 ### Deployment strategy
 
 The full deploy processis as follows
