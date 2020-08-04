@@ -25,6 +25,10 @@ contract IdentityFactory {
 		address addr = deploySafe(code, salt);
 		Identity(addr).execute(txns, signatures);
 	}
+	function deployAndExecuteBySender(bytes memory code, uint256 salt, Identity.Transaction[] memory txns) public {
+		address addr = deploySafe(code, salt);
+		Identity(addr).executeBySender(txns);
+	}
 
 	// When the relayer needs to do routines, it'll either call executeRoutines on the Identity directly
 	// if it's already deployed, or call `deployAndRoutines` if the account is still counterfactual
