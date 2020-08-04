@@ -63,6 +63,18 @@ And the `Staking`:
 * Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 * Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x46ad2d37ceaee1e82b70b867e674b903a4b4ca32
 
+### v4.2
+
+The `ADXSupplyController` contract:
+
+* Mainnet: https://etherscan.io/address/0x360625ba7bce57f74eb5501fd2b75db8f85a85d8
+* Goerli: https://goerli.etherscan.io/address/0x360625ba7bce57f74eb5501fd2b75db8f85a85d8
+
+The `ADXToken` contract:
+
+* Mainnet: https://etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
+* Goerli: https://goerli.etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
+
 ### Deployment strategy
 
 The full deploy processis as follows
@@ -101,6 +113,20 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * ENS PublicResolve mainnet address: 0x226159d592E2b063810a10Ebf6dcbADA94Ed68b8
 * adex.eth node hash: 0x4e4e818e9467df5c5d1f8c399b11acc73ea24ad69e9c8e1ba6e5784a302c47d4
 * adex.eth subdomain registrar (adex.eth controller), compiled with solc v0.5.6: [0x7bc082552b1a195813ddb500600ce2b544d579cb](https://etherscan.io/address/0x7bc082552b1a195813ddb500600ce2b544d579cb)
+
+## Code style and design principles
+
+* Minimalistic use of smart contracts in general
+   * Avoid putting logic in SCs if it's outcome is controlled by a single entity anyway
+   * Do not add complexity and centralization to address various "what ifs" that should be addressed off-chain, e.g. "what if users send tokens to this contract by accident"
+* Detailed tests for every contract
+* No Solidity warnings allowed
+* No modifiers allowed
+* Limited use of inheritance
+* No reentrancy guards allowed, instead we use the Checks-Effects-Interactions pattern
+* All `require`s should have an error message
+* No `delegatecall` upgradability; upgradability is achieved via off-chain social consensus
+* No emergency stops or pausability: it dilutes the value of smart contracts
 
 ## Audits
 

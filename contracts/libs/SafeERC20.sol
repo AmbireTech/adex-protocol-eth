@@ -1,9 +1,12 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: agpl-3.0
+pragma solidity ^0.6.12;
 
+// NOTE: this interface lacks return values for transfer/transferFrom/approve on purpose,
+// as we use the SafeERC20 library to check the return value
 interface GeneralERC20 {
-	function transfer(address to, uint256 value) external;
-	function transferFrom(address from, address to, uint256 value) external;
-	function approve(address spender, uint256 value) external;
+	function transfer(address to, uint256 amount) external;
+	function transferFrom(address from, address to, uint256 amount) external;
+	function approve(address spender, uint256 amount) external;
 	function balanceOf(address spender) external view returns (uint);
 	function allowance(address owner, address spender) external view returns (uint);
 }
@@ -18,7 +21,7 @@ library SafeERC20 {
 
 		assembly {
 			// check number of bytes returned from last function call
-			switch returndatasize
+			switch returndatasize()
 
 			// no bytes returned: assume success
 			case 0x0 {

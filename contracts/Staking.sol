@@ -1,4 +1,5 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: agpl-3.0
+pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
@@ -38,25 +39,28 @@ contract Staking {
 	using SafeMath for uint;
 	using BondLibrary for BondLibrary.Bond;
 
+	// This fits in a storage slot so we can only use one when saving bond state
 	struct BondState {
 		bool active;
+		// Data type must be larger than MAX_SLASH (2**64 > 10**18)
 		uint64 slashedAtStart;
 		uint64 willUnlock;
 	}
 
 	// Events
-	event LogSlash(bytes32 indexed poolId, uint newSlashPts);
-	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart);
-	event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock);
-	event LogUnbonded(address indexed owner, bytes32 indexed bondId);
+	event LogSlash(bytes32 indexed poolId, uint newSlashPts, uint time);
+	event LogBond(address indexed owner, uint amount, bytes32 poolId, uint nonce, uint64 slashedAtStart, uint time);
+	event LogUnbondRequested(address indexed owner, bytes32 indexed bondId, uint64 willUnlock, uint time);
+	event LogUnbonded(address indexed owner, bytes32 indexed bondId, uint time);
 
 	// could be 2**64 too, since we use uint64
 	uint constant MAX_SLASH = 10 ** 18;
 	uint constant TIME_TO_UNBOND = 30 days;
+	// A non-0x00 address since some ERC20 tokens do not allow sending to 0x00; although we intend to only use this contract with ADX
 	address constant BURN_ADDR = address(0xaDbeEF0000000000000000000000000000000000);
 
-	address public tokenAddr;
-	address public slasherAddr;
+	address public immutable tokenAddr;
+	address public immutable slasherAddr;
 	// Addressed by poolId
 	mapping (bytes32 => uint) public slashPoints;
 	// Addressed by bondId
@@ -72,7 +76,7 @@ contract Staking {
 		uint newSlashPts = slashPoints[poolId].add(pts);
 		require(newSlashPts <= MAX_SLASH, 'PTS_TOO_HIGH');
 		slashPoints[poolId] = newSlashPts;
-		emit LogSlash(poolId, newSlashPts);
+		emit LogSlash(poolId, newSlashPts, now);
 	}
 
 	function addBond(BondLibrary.Bond memory bond) public {
@@ -85,7 +89,7 @@ contract Staking {
 			willUnlock: 0
 		});
 		SafeERC20.transferFrom(tokenAddr, msg.sender, address(this), bond.amount);
-		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart);
+		emit LogBond(msg.sender, bond.amount, bond.poolId, bond.nonce, bonds[id].slashedAtStart, now);
 	}
 
 	function requestUnbond(BondLibrary.Bond memory bond) public {
@@ -93,30 +97,45 @@ contract Staking {
 		BondState storage bondState = bonds[id];
 		require(bondState.active && bondState.willUnlock == 0, 'BOND_NOT_ACTIVE');
 		bondState.willUnlock = uint64(now + TIME_TO_UNBOND);
-		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock);
+		emit LogUnbondRequested(msg.sender, id, bondState.willUnlock, now);
+	}
+
+	function unbondInternal(BondLibrary.Bond memory bond, bytes32 id, BondState storage bondState) internal {
+		uint amount = calcWithdrawAmount(bond, bondState.slashedAtStart);
+		uint toBurn = bond.amount - amount;
+		delete bonds[id];
+		SafeERC20.transfer(tokenAddr, msg.sender, amount);
+		if (toBurn > 0) SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
+		emit LogUnbonded(msg.sender, id, now);
 	}
 
 	function unbond(BondLibrary.Bond memory bond) public {
 		bytes32 id = bond.hash(msg.sender);
 		BondState storage bondState = bonds[id];
 		require(bondState.willUnlock > 0 && now > bondState.willUnlock, 'BOND_NOT_UNLOCKED');
-		uint amount = calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
-		uint toBurn = bond.amount - amount;
-		delete bonds[id];
-		SafeERC20.transfer(tokenAddr, msg.sender, amount);
-		if (toBurn > 0) SafeERC20.transfer(tokenAddr, BURN_ADDR, toBurn);
-		emit LogUnbonded(msg.sender, id);
+		unbondInternal(bond, id, bondState);
+	}
+
+	function replaceBond(BondLibrary.Bond memory bond, BondLibrary.Bond memory newBond) public {
+		bytes32 id = bond.hash(msg.sender);
+		BondState storage bondState = bonds[id];
+		// We allow replacing the bond even if it's requested to be unbonded, so that you can re-bond
+		require(bondState.active, 'BOND_NOT_ACTIVE');
+		require(newBond.poolId == bond.poolId, 'POOL_ID_DIFFERENT');
+		require(newBond.amount >= calcWithdrawAmount(bond, bondState.slashedAtStart), 'NEW_BOND_SMALLER');
+		unbondInternal(bond, id, bondState);
+		addBond(newBond);
 	}
 
 	function getWithdrawAmount(address owner, BondLibrary.Bond memory bond) public view returns (uint) {
 		BondState storage bondState = bonds[bond.hash(owner)];
 		if (!bondState.active) return 0;
-		return calcWithdrawAmount(bond, uint(bondState.slashedAtStart));
+		return calcWithdrawAmount(bond, bondState.slashedAtStart);
 	}
 
-	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint slashedAtStart) internal view returns (uint) {
+	function calcWithdrawAmount(BondLibrary.Bond memory bond, uint64 slashedAtStart) internal view returns (uint) {
 		return bond.amount
 			.mul(MAX_SLASH.sub(slashPoints[bond.poolId]))
-			.div(MAX_SLASH.sub(slashedAtStart));
+			.div(MAX_SLASH.sub(uint(slashedAtStart)));
 	}
 }

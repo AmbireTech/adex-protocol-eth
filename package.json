@@ -1,6 +1,6 @@
 {
   "name": "adex-protocol-eth",
-  "version": "4.1.3",
+  "version": "4.2.0",
   "description": "AdEx protocol on Ethereum",
   "directories": {
     "test": "test"
@@ -11,10 +11,10 @@
     "ethereumjs-abi": "^0.6.5",
     "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.27",
-    "ganache-cli": "^6.4.2",
+    "ganache-cli": "^6.9.1",
     "js-sha3": "^0.8.0",
     "solc": "0.5.13",
-    "truffle": "^5.1.1"
+    "truffle": "^5.1.5"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
