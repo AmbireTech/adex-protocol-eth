@@ -24,6 +24,13 @@ function sampleChannel(accounts, tokenAddr, creator, amount, validUntil, nonce) 
 		spec
 	})
 }
+
+function handleJsonRPCErr(resolve, reject, err, res) {
+	if (err) reject(err)
+	else if (res.error) reject(res.error)
+	else resolve(res)
+}
+
 function moveTime(web3, time) {
 	return new Promise(function(resolve, reject) {
 		web3.currentProvider.send(
@@ -33,8 +40,24 @@ function moveTime(web3, time) {
 				params: [time],
 				id: 0
 			},
-			(err, res) => (err ? reject(err) : resolve(res))
+			handleJsonRPCErr.bind(null, resolve, reject)
 		)
 	})
 }
-module.exports = { expectEVMError, sampleChannel, moveTime }
+
+async function setTime(web3, time) {
+	// Doesn't work cause of a ganache bug: `e.getTime is not a function` cause it doesn't construct a date from the JSONRPC input
+	return new Promise(function(resolve, reject) {
+		web3.currentProvider.send(
+			{
+				jsonrpc: '2.0',
+				method: 'evm_setTime',
+				params: [new Date(time * 1000)],
+				id: 0
+			},
+			handleJsonRPCErr.bind(null, resolve, reject)
+		)
+	})
+}
+
+module.exports = { expectEVMError, sampleChannel, moveTime, setTime }

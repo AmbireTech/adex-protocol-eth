@@ -10,9 +10,11 @@ class BalanceTree {
 		this.mTree = new MerkleTree(entries.map(([addr, bal]) => getBalanceLeaf(addr, bal)))
 		Object.freeze(this)
 	}
+
 	getProof(addr) {
 		return this.mTree.proof(getBalanceLeaf(addr, this.getBalance(addr)))
 	}
+
 	getBalance(addr) {
 		return this.balances[getAddress(addr)] || new BN(0)
 	}

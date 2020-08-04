@@ -1,4 +1,5 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: agpl-3.0
+pragma solidity ^0.6.12;
 
 // Copy-paste from @ensdomains/ens/contracts/ENS.sol
 interface ENS {
@@ -58,8 +59,8 @@ interface Resolver {
 
 
 contract AdExENSManager {
-    ENS ens;
-    bytes32 rootNode;
+    ENS immutable ens;
+    bytes32 immutable rootNode;
 
     constructor(ENS ensAddr, bytes32 node) public {
         ens = ensAddr;

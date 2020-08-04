@@ -1,4 +1,5 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: agpl-3.0
+pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
@@ -195,10 +196,10 @@ contract Identity {
 		internal
 	{
 		assembly {
-			let result := call(gas, to, value, add(data, 0x20), mload(data), 0, 0)
+			let result := call(gas(), to, value, add(data, 0x20), mload(data), 0, 0)
 
 			switch result case 0 {
-				let size := returndatasize
+				let size := returndatasize()
 				let ptr := mload(0x40)
 				returndatacopy(ptr, 0, size)
 				revert(ptr, size)
