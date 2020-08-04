@@ -13,7 +13,7 @@
     "ethers": "^4.0.27",
     "ganache-cli": "^6.9.1",
     "js-sha3": "^0.8.0",
-    "solc": "0.5.13",
+    "solc": "0.6.12",
     "truffle": "^5.1.5"
   },
   "devDependencies": {
