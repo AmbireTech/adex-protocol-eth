@@ -9,7 +9,7 @@ This repository implements [OUTPACE](https://github.com/AdExNetwork/adex-protoco
 ### Please note
 
 * Every channel will eventually expire (after `validUntil`), allowing the non-withdrawn portion of the initial deposit to be received back by whoever opened the channel.
-* Channels can be created with any ERC20 token; if the underlying token of a channel is insecure or malicious, that also compromises the channel as well; this is out of scope of this contract, since this is a fundamental issue with any system that uses ERC20's; needless to say, the user needs to be aware of what token they're using/earning
+* Channels can be created with any ERC20 token; if the underlying token of a channel is insecure or malicious, that also compromises the channel as well; this is out of scope of this contract, since this is a fundamental issue with any system that uses ERC20s; needless to say, the user needs to be aware of what token they're using/earning
 * For more details on how OUTPACE channels work, please read the specs: [AdEx Protocol](https://github.com/AdExNetwork/adex-protocol) and [OUTPACE](https://github.com/AdExNetwork/adex-protocol/blob/master/OUTPACE.md).
 
 ## Testing
@@ -75,6 +75,15 @@ The `ADXToken` contract:
 * Mainnet: https://etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
 * Goerli: https://goerli.etherscan.io/address/0xade00c28244d5ce17d72e40330b1c318cd12b7c3
 
+An instance of `IdentityFactory` used for staking:
+
+* Mainnet: https://etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
+* Goerli: https://goerli.etherscan.io/address/0x9fe0d438e3c29c7cff949ad8e8da9403a531cc1a
+
+The `Staking` contract:
+* Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
+* Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
+
 ### Deployment strategy
 
 The full deploy processis as follows
@@ -103,6 +112,7 @@ channelWithdraw: 137117
 execute: 89900
 execRoutines: 114440
 channelOpen, through execute: 115086
+deploying an identity proxy through the IdentityFactory: 127549
 ```
 
 ### ENS
