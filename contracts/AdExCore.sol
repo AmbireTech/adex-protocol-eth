@@ -30,9 +30,9 @@ contract AdExCore {
 	event LogChannelWithdrawExpired(bytes32 indexed channelId, uint amount);
 	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
 
-	// All functions are public
+	// All functions are external
 	function channelOpen(ChannelLibrary.Channel memory channel)
-		public
+		external
 	{
 		bytes32 channelId = channel.hash();
 		require(states[channelId] == ChannelLibrary.State.Unknown, "INVALID_STATE");
@@ -47,7 +47,7 @@ contract AdExCore {
 	}
 
 	function channelWithdrawExpired(ChannelLibrary.Channel memory channel)
-		public
+		external
 	{
 		bytes32 channelId = channel.hash();
 		require(states[channelId] == ChannelLibrary.State.Active, "INVALID_STATE");
@@ -65,7 +65,7 @@ contract AdExCore {
 	}
 
 	function channelWithdraw(ChannelLibrary.Channel memory channel, bytes32 stateRoot, bytes32[3][] memory signatures, bytes32[] memory proof, uint amountInTree)
-		public
+		external
 	{
 		bytes32 channelId = channel.hash();
 		require(states[channelId] == ChannelLibrary.State.Active, "INVALID_STATE");
