@@ -64,6 +64,17 @@ contract AdExCore {
 		emit LogChannelWithdrawExpired(channelId, toWithdraw);
 	}
 
+	function channelRefundGas(ChannelLibrary.Channel memory channel, address[] memory users)
+		external
+	{
+		bytes32 channelId = channel.hash();
+		require(states[channelId] == ChannelLibrary.State.Expired, "INVALID_STATE");
+		delete withdrawn[channelId];
+		for (uint i=0; i<users.length; i++) {
+			delete withdrawnPerUser[channelId][users[i]];
+		}
+	}
+
 	function channelWithdraw(ChannelLibrary.Channel memory channel, bytes32 stateRoot, bytes32[3][] memory signatures, bytes32[] memory proof, uint amountInTree)
 		external
 	{
