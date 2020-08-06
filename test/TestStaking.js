@@ -165,13 +165,9 @@ contract('Staking', function(accounts) {
 		)
 
 		// unbond all bonds
-		await Promise.all(
-			remainingBonds.map(bond => staking.requestUnbond(bond, { gasLimit }))
-		)
+		await Promise.all(remainingBonds.map(bond => staking.requestUnbond(bond, { gasLimit })))
 		await moveTime(web3, DAY_SECONDS * 31)
-		await Promise.all(
-			remainingBonds.map(bond => staking.unbond(bond, { gasLimit }))
-		)
+		await Promise.all(remainingBonds.map(bond => staking.unbond(bond, { gasLimit })))
 
 		// check if we've properly slashed and withdrawn
 		const totalSlashed = bonds.map(bond => bond[0]).reduce(sum, 0) - bondsExpected.reduce(sum, 0)
@@ -199,15 +195,21 @@ contract('Staking', function(accounts) {
 		// We can't unbond this bond but we can replace it with a larger one
 		await expectEVMError(staking.unbond(bond), 'BOND_NOT_UNLOCKED')
 
-		// We can't replace unless it's the same size or bigger and it's 
-		await expectEVMError(staking.replaceBond(bondReplacement, [bondAmount * 2, poolId, 0]), 'BOND_NOT_ACTIVE')
+		// We can't replace unless it's the same size or bigger and it's
+		await expectEVMError(
+			staking.replaceBond(bondReplacement, [bondAmount * 2, poolId, 0]),
+			'BOND_NOT_ACTIVE'
+		)
 		await expectEVMError(staking.replaceBond(bond, [bondAmount / 2, poolId, 0]), 'NEW_BOND_SMALLER')
-		await expectEVMError(staking.replaceBond(bond, [bondAmount, anotherPoolId, 0]), 'POOL_ID_DIFFERENT')
+		await expectEVMError(
+			staking.replaceBond(bond, [bondAmount, anotherPoolId, 0]),
+			'POOL_ID_DIFFERENT'
+		)
 
 		// Now, replace the bond to add another 1090000000 token units
 		const receipt = await (await staking.replaceBond(bond, bondReplacement)).wait()
 		assert.ok(receipt.events.find(x => x.event === 'LogUnbonded'), 'has LogUnbonded')
-		const logBond = receipt.events.find(x => x.event === 'LogBond') 
+		const logBond = receipt.events.find(x => x.event === 'LogBond')
 		assert.ok(logBond, 'has LogBond')
 
 		// Now after a slash, add another 15000 to the bond's withdraw amount, while still being less than the original bond.amount
@@ -228,7 +230,11 @@ contract('Staking', function(accounts) {
 		await moveTime(web3, DAY_SECONDS * 31)
 		await staking.unbond(bondAfterSlash)
 
-		assert.deepEqual(await token.balanceOf(userAddr), bondAfterSlash[0], 'user balance has been returned')
+		assert.deepEqual(
+			await token.balanceOf(userAddr),
+			bondAfterSlash[0],
+			'user balance has been returned'
+		)
 	})
 
 	it('replace bond - can rebond', async function() {
@@ -240,11 +246,17 @@ contract('Staking', function(accounts) {
 		const receipt = await (await staking.requestUnbond(bond)).wait()
 		const unbondRequestedEv = receipt.events[0]
 		assert.equal(unbondRequestedEv.event, 'LogUnbondRequested')
-		assert.ok((await staking.bonds(unbondRequestedEv.args.bondId)).willUnlock.gt(0), 'has willUnlock set')
+		assert.ok(
+			(await staking.bonds(unbondRequestedEv.args.bondId)).willUnlock.gt(0),
+			'has willUnlock set'
+		)
 
 		// replace the bond with the same one - effectively rebonding
 		const receiptReplace = await (await staking.replaceBond(bond, bond)).wait()
-		assert.ok(receiptReplace.events.find(x => x.event === 'LogBond'), 'has LogBond emitted, which will cause this bond to be counted again')
+		assert.ok(
+			receiptReplace.events.find(x => x.event === 'LogBond'),
+			'has LogBond emitted, which will cause this bond to be counted again'
+		)
 
 		// after we rebond we preserve the same ID
 		const bondState = await staking.bonds(unbondRequestedEv.args.bondId)
