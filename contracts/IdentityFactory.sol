@@ -18,16 +18,13 @@ contract IdentityFactory {
 
 	// When the relayer needs to act upon an /execute call, it'll either call execute on the Identity directly
 	// if it's already deployed, or call `deployAndExecute` if the account is still counterfactual
+	// can't have deployAndExecuteBySender, because the sender will be the factory
 	function deployAndExecute(
 		bytes memory code, uint256 salt,
 		Identity.Transaction[] memory txns, bytes32[3][] memory signatures
 	) public {
 		address addr = deploySafe(code, salt);
 		Identity(addr).execute(txns, signatures);
-	}
-	function deployAndExecuteBySender(bytes memory code, uint256 salt, Identity.Transaction[] memory txns) public {
-		address addr = deploySafe(code, salt);
-		Identity(addr).executeBySender(txns);
 	}
 
 	// When the relayer needs to do routines, it'll either call executeRoutines on the Identity directly
