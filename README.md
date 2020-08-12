@@ -84,6 +84,10 @@ The `Staking` contract:
 * Mainnet (ADX token and the AdEx multisig as slasher): https://etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
 * Goerli (TST token and creator as a slasher): https://goerli.etherscan.io/address/0x4846c6837ec670bbd1f5b485471c8f64ecb9c534
 
+The `ADXFlashLoans` contract:
+* Mainnet: https://etherscan.io/address/0xae4c306ce6641e1276c57473f2c2953841f0856a
+* Goerli: https://goerli.etherscan.io/address/0xae4c306ce6641e1276c57473f2c2953841f0856a
+
 ### Deployment strategy
 
 The full deploy processis as follows
