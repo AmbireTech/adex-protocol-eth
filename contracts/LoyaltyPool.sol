@@ -14,7 +14,7 @@ interface ERC20 {
 }
 
 interface SupplyController {
-	function mint(ERC20 token, address owner, uint amount) external;
+	function mint(address token, address owner, uint amount) external;
 }
 
 contract LoyaltyPoolToken {
@@ -77,29 +77,53 @@ contract LoyaltyPoolToken {
 
 	// Constructor
 	ERC20 public ADXToken;
-	constructor(ERC20 token) public {
+	uint public incentivePerTokenPerSecond;
+	address public owner;
+	uint public lastMintTime;
+	constructor(ERC20 token, uint incentive) public {
 		ADXToken = token;
+		incentivePerTokenPerSecond = incentive;
+		owner = msg.sender;
+		lastMintTime = block.timestamp;
+	}
+
+	// Admin stuff
+	function setOwner(address newOwner) public {
+		require(msg.sender == owner, "only owner can call");
+		owner = newOwner;
+	}
+	function setIncentive(uint incentive) public {
+		require(msg.sender == owner, "only owner can call");
+		incentivePerTokenPerSecond = incentive;
 	}
 
 	// Pool stuff
-	function totalADX() external view returns (uint) {
-		return ADXToken.balanceOf(address(this));
+	function mintIncentive() internal {
+		if (incentivePerTokenPerSecond == 0) return;
+		// @TODO warning if the tokens were received between enters/leaves, this calculation is off
+		// @TODO no compounding, compounding will be triggered when people withdraw/deposit
+		uint toMint = block.timestamp.sub(lastMintTime).mul(ADXToken.balanceOf(address(this))).div(10e18);
+		SupplyController(ADXToken.supplyController()).mint(address(ADXToken), address(this), toMint);
+		lastMintTime = block.timestamp;
 	}
 
 	function enter(uint256 amount) public {
-		// @TODO var names
-		uint256 totalTokens = this.totalADX();
-		if (totalSupply == 0 || totalTokens == 0) {
+		mintIncentive();
+		// @TODO deposit limit
+		uint256 totalADX = ADXToken.balanceOf(address(this));
+		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(msg.sender, amount);
 		} else {
-			uint256 newShares = amount.mul(totalSupply).div(totalTokens);
+			uint256 newShares = amount.mul(totalSupply).div(totalADX);
 			innerMint(msg.sender, newShares);
 		}
 		ADXToken.transferFrom(msg.sender, address(this), amount);
 	}
 
 	function leave(uint256 shares) public {
-		uint256 adxAmount = shares.mul(this.totalADX()).div(totalSupply);
+		mintIncentive();
+		uint256 totalADX = ADXToken.balanceOf(address(this));
+		uint256 adxAmount = shares.mul(totalADX).div(totalSupply);
 		innerBurn(msg.sender, shares);
 		ADXToken.transfer(msg.sender, adxAmount);
 	}
