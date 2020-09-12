@@ -16,12 +16,12 @@
     "truffle": "^5.1.5"
   },
   "devDependencies": {
-    "ganache-cli": "^6.10.1",
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-config-prettier": "^4.1.0",
     "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-prettier": "^3.0.1",
+    "ganache-cli": "^6.10.2",
     "prettier": "^1.16.4"
   },
   "scripts": {
