@@ -23,7 +23,7 @@ contract LoyaltyPoolToken {
 	// ERC20 stuff
 	// Constants
 	string public constant name = "AdEx Loyalty";
-	string public constant symbol = "ADX-LOYALTY"; // @TODO?
+	string public constant symbol = "ADX-LOYALTY"; // @TODO changable?
 	uint8 public constant decimals = 18;
 
 	// Mutable variables
@@ -80,6 +80,7 @@ contract LoyaltyPoolToken {
 	uint public incentivePerTokenPerAnnum;
 	address public owner;
 	uint public lastMintTime;
+	// @TODO should this be fixed?
 	uint public depositCap;
 	constructor(ERC20 token, uint incentive, uint cap) public {
 		ADXToken = token;
@@ -90,6 +91,7 @@ contract LoyaltyPoolToken {
 	}
 
 	// Admin stuff
+	// @TODO consider using err message format from normal AdEx contracts
 	function setOwner(address newOwner) public {
 		require(msg.sender == owner, "only owner can call");
 		owner = newOwner;
@@ -101,14 +103,21 @@ contract LoyaltyPoolToken {
 
 	// Pool stuff
 	// @TODO public mint
+	function toMint() external view returns (uint) {
+		return block.timestamp.sub(lastMintTime)
+			.mul(ADXToken.balanceOf(address(this)))
+			.mul(incentivePerTokenPerAnnum)
+			.div(365 days);
+	}
+
 	function mintIncentive() internal {
 		if (incentivePerTokenPerAnnum == 0) return;
 		// @TODO warning if the tokens were received between enters/leaves, this calculation is off
-		// @TODO no compounding, compounding will be triggered when people withdraw/deposit
+		// @TODO compounding will be triggered when people withdraw/deposit
 		// @TODO minting will set two storage slots (totalSupply, balance) so maybe it makes sense to defer it
-		uint toMint = block.timestamp.sub(lastMintTime).mul(ADXToken.balanceOf(address(this))).mul(incentivePerTokenPerAnnum).div(365 days);
-		SupplyController(ADXToken.supplyController()).mint(address(ADXToken), address(this), toMint);
+		uint amountToMint = this.toMint();
 		lastMintTime = block.timestamp;
+		SupplyController(ADXToken.supplyController()).mint(address(ADXToken), address(this), amountToMint);
 	}
 
 	function enter(uint256 amount) public {
@@ -121,7 +130,6 @@ contract LoyaltyPoolToken {
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(msg.sender, amount);
 		} else {
-			// @TODO shouldn't this be totalADX + added ADX?
 			uint256 newShares = amount.mul(totalSupply).div(totalADX);
 			innerMint(msg.sender, newShares);
 		}
