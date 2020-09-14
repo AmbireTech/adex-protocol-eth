@@ -123,11 +123,15 @@ contract LoyaltyPoolToken {
 		ADXToken.transferFrom(msg.sender, address(this), amount);
 	}
 
-	// @TODO what if mintIncntive is failing
 	function leave(uint256 shares) public {
 		uint256 totalADX = ADXToken.balanceOf(address(this));
 		uint256 adxAmount = shares.mul(totalADX).div(totalSupply);
 		innerBurn(msg.sender, shares);
 		ADXToken.transfer(msg.sender, adxAmount);
+	}
+
+	function mintAndLeave(uint256 shares) public {
+		mintIncentive();
+		leave(shares);
 	}
 }
