@@ -80,9 +80,11 @@ contract LoyaltyPoolToken {
 	uint public incentivePerTokenPerAnnum;
 	address public owner;
 	uint public lastMintTime;
-	constructor(ERC20 token, uint incentive) public {
+	uint public depositCap;
+	constructor(ERC20 token, uint incentive, uint cap) public {
 		ADXToken = token;
 		incentivePerTokenPerAnnum = incentive;
+		depositCap = cap;
 		owner = msg.sender;
 		lastMintTime = block.timestamp;
 	}
@@ -112,11 +114,14 @@ contract LoyaltyPoolToken {
 	function enter(uint256 amount) public {
 		// @TODO explain why this is at the beginning and not the end
 		mintIncentive();
-		// @TODO deposit limit
+
 		uint256 totalADX = ADXToken.balanceOf(address(this));
+		require(totalADX < depositCap, "deposit cap reached");
+
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(msg.sender, amount);
 		} else {
+			// @TODO shouldn't this be totalADX + added ADX?
 			uint256 newShares = amount.mul(totalSupply).div(totalADX);
 			innerMint(msg.sender, newShares);
 		}
