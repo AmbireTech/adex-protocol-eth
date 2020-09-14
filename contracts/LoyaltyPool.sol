@@ -22,8 +22,8 @@ contract LoyaltyPoolToken {
 	// ERC20 stuff
 	// Constants
 	string public constant name = "AdEx Loyalty";
-	string public constant symbol = "ADX-LOYALTY"; // @TODO changable?
 	uint8 public constant decimals = 18;
+	string public symbol = "ADX-LOYALTY";
 
 	// Mutable variables
 	uint public totalSupply;
@@ -90,14 +90,17 @@ contract LoyaltyPoolToken {
 	}
 
 	// Admin stuff
-	// @TODO consider using err message format from normal AdEx contracts
 	function setOwner(address newOwner) public {
 		require(msg.sender == owner, 'NOT_OWNER');
 		owner = newOwner;
 	}
-	function setIncentive(uint incentive) public {
+	function setIncentive(uint newIncentive) public {
 		require(msg.sender == owner, 'NOT_OWNER');
-		incentivePerTokenPerAnnum = incentive;
+		incentivePerTokenPerAnnum = newIncentive;
+	}
+	function setSymbol(string calldata newSymbol) public {
+		require(msg.sender == owner, 'NOT_OWNER');
+		symbol = newSymbol;
 	}
 
 	// Pool stuff
