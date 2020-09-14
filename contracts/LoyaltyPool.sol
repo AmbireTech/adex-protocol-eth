@@ -77,12 +77,12 @@ contract LoyaltyPoolToken {
 
 	// Constructor
 	ERC20 public ADXToken;
-	uint public incentivePerTokenPerSecond;
+	uint public incentivePerTokenPerAnnum;
 	address public owner;
 	uint public lastMintTime;
 	constructor(ERC20 token, uint incentive) public {
 		ADXToken = token;
-		incentivePerTokenPerSecond = incentive;
+		incentivePerTokenPerAnnum = incentive;
 		owner = msg.sender;
 		lastMintTime = block.timestamp;
 	}
@@ -94,20 +94,23 @@ contract LoyaltyPoolToken {
 	}
 	function setIncentive(uint incentive) public {
 		require(msg.sender == owner, "only owner can call");
-		incentivePerTokenPerSecond = incentive;
+		incentivePerTokenPerAnnum = incentive;
 	}
 
 	// Pool stuff
+	// @TODO public mint
 	function mintIncentive() internal {
-		if (incentivePerTokenPerSecond == 0) return;
+		if (incentivePerTokenPerAnnum == 0) return;
 		// @TODO warning if the tokens were received between enters/leaves, this calculation is off
 		// @TODO no compounding, compounding will be triggered when people withdraw/deposit
-		uint toMint = block.timestamp.sub(lastMintTime).mul(ADXToken.balanceOf(address(this))).div(10e18);
+		// @TODO minting will set two storage slots (totalSupply, balance) so maybe it makes sense to defer it
+		uint toMint = block.timestamp.sub(lastMintTime).mul(ADXToken.balanceOf(address(this))).mul(incentivePerTokenPerAnnum).div(365 days);
 		SupplyController(ADXToken.supplyController()).mint(address(ADXToken), address(this), toMint);
 		lastMintTime = block.timestamp;
 	}
 
 	function enter(uint256 amount) public {
+		// @TODO explain why this is at the beginning and not the end
 		mintIncentive();
 		// @TODO deposit limit
 		uint256 totalADX = ADXToken.balanceOf(address(this));
@@ -120,8 +123,8 @@ contract LoyaltyPoolToken {
 		ADXToken.transferFrom(msg.sender, address(this), amount);
 	}
 
+	// @TODO what if mintIncntive is failing
 	function leave(uint256 shares) public {
-		mintIncentive();
 		uint256 totalADX = ADXToken.balanceOf(address(this));
 		uint256 adxAmount = shares.mul(totalADX).div(totalSupply);
 		innerBurn(msg.sender, shares);
