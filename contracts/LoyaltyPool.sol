@@ -3,18 +3,17 @@ pragma solidity ^0.6.12;
 
 import "./libs/SafeMath.sol";
 
-// @TODO: another name for that interface
-interface ERC20 {
+interface ISupplyController {
+	function mint(address token, address owner, uint amount) external;
+}
+
+interface IADXToken {
 	function transfer(address to, uint256 amount) external returns (bool);
 	function transferFrom(address from, address to, uint256 amount) external returns (bool);
 	function approve(address spender, uint256 amount) external returns (bool);
 	function balanceOf(address spender) external view returns (uint);
 	function allowance(address owner, address spender) external view returns (uint);
-	function supplyController() external view returns (address);
-}
-
-interface SupplyController {
-	function mint(address token, address owner, uint amount) external;
+	function supplyController() external view returns (ISupplyController);
 }
 
 contract LoyaltyPoolToken {
@@ -76,13 +75,13 @@ contract LoyaltyPoolToken {
 	}
 
 	// Constructor
-	ERC20 public ADXToken;
+	IADXToken public ADXToken;
 	uint public incentivePerTokenPerAnnum;
 	address public owner;
 	uint public lastMintTime;
 	// @TODO should this be fixed?
 	uint public maxTotalADX;
-	constructor(ERC20 token, uint incentive, uint cap) public {
+	constructor(IADXToken token, uint incentive, uint cap) public {
 		ADXToken = token;
 		incentivePerTokenPerAnnum = incentive;
 		maxTotalADX = cap;
@@ -116,7 +115,7 @@ contract LoyaltyPoolToken {
 		// @TODO minting will set two storage slots (totalSupply, balance) so maybe it makes sense to defer it
 		uint amountToMint = this.toMint();
 		lastMintTime = block.timestamp;
-		SupplyController(ADXToken.supplyController()).mint(address(ADXToken), address(this), amountToMint);
+		ADXToken.supplyController().mint(address(ADXToken), address(this), amountToMint);
 	}
 
 	function enter(uint256 amount) public {
