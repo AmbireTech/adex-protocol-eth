@@ -81,11 +81,11 @@ contract LoyaltyPoolToken {
 	address public owner;
 	uint public lastMintTime;
 	// @TODO should this be fixed?
-	uint public depositCap;
+	uint public maxTotalADX;
 	constructor(ERC20 token, uint incentive, uint cap) public {
 		ADXToken = token;
 		incentivePerTokenPerAnnum = incentive;
-		depositCap = cap;
+		maxTotalADX = cap;
 		owner = msg.sender;
 		lastMintTime = block.timestamp;
 	}
@@ -93,16 +93,15 @@ contract LoyaltyPoolToken {
 	// Admin stuff
 	// @TODO consider using err message format from normal AdEx contracts
 	function setOwner(address newOwner) public {
-		require(msg.sender == owner, "only owner can call");
+		require(msg.sender == owner, 'NOT_OWNER');
 		owner = newOwner;
 	}
 	function setIncentive(uint incentive) public {
-		require(msg.sender == owner, "only owner can call");
+		require(msg.sender == owner, 'NOT_OWNER');
 		incentivePerTokenPerAnnum = incentive;
 	}
 
 	// Pool stuff
-	// @TODO public mint
 	function toMint() external view returns (uint) {
 		return block.timestamp.sub(lastMintTime)
 			.mul(ADXToken.balanceOf(address(this)))
@@ -125,7 +124,7 @@ contract LoyaltyPoolToken {
 		mintIncentive();
 
 		uint256 totalADX = ADXToken.balanceOf(address(this));
-		require(totalADX < depositCap, "deposit cap reached");
+		require(totalADX < maxTotalADX, 'REACHED_MAX_TOTAL_ADX');
 
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(msg.sender, amount);
