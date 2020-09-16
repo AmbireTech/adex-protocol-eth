@@ -109,12 +109,15 @@ contract LoyaltyPoolToken {
 	// has been there the whole time since the last mint
 	// 2) Compounding is happening when mint is called, so essentially when entities enter/leave/trigger it manually
 	function toMint() external view returns (uint) {
-		return block.timestamp.sub(lastMintTime)
-			.mul(ADXToken.balanceOf(address(this)))
+		uint totalADX = ADXToken.balanceOf(address(this));
+		require(block.timestamp > lastMintTime, 'LASTMINTTIME_IS_FUTURE');
+		return (block.timestamp - lastMintTime)
+			.mul(totalADX)
 			.mul(incentivePerTokenPerAnnum)
-			.div(365 * 24 * 60 * 60 * 10e18);
+			.div(365 days * 10e18);
 	}
 	function shareValue() external view returns (uint) {
+		if (totalSupply == 0) return 0;
 		return ADXToken.balanceOf(address(this))
 			.add(this.toMint())
 			.mul(10e18)
@@ -124,6 +127,7 @@ contract LoyaltyPoolToken {
 	function mintIncentive() public {
 		if (incentivePerTokenPerAnnum == 0) return;
 		uint amountToMint = this.toMint();
+		if (amountToMint == 0) return;
 		lastMintTime = block.timestamp;
 		ADXToken.supplyController().mint(address(ADXToken), address(this), amountToMint);
 	}
@@ -134,7 +138,7 @@ contract LoyaltyPoolToken {
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		mintIncentive();
 
-		uint256 totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = ADXToken.balanceOf(address(this));
 		require(totalADX < maxTotalADX, 'REACHED_MAX_TOTAL_ADX');
 
 		if (totalSupply == 0 || totalADX == 0) {
