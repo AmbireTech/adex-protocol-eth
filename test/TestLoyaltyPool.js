@@ -1,7 +1,7 @@
 const { providers, Contract } = require('ethers')
-const { bigNumberify, expectEVMError } = require('ethers').utils
+const { bigNumberify } = require('ethers').utils
 
-const { moveTime } = require('./')
+const { moveTime, expectEVMError } = require('./')
 
 const MockToken = artifacts.require('./mocks/Token')
 const ADXToken = artifacts.require('ADXToken')
@@ -40,18 +40,20 @@ contract('LoyaltyPool', function(accounts) {
 		const maxADX = '150000000000000000000'
 		const loyaltyWeb3 = await LoyaltyPool.new(adxToken.address, 0, maxADX, { from: governance })
 		loyaltyPool = new Contract(loyaltyWeb3.address, LoyaltyPool._json.abi, signer)
-		loyaltyPoolOwner = new Contract(loyaltyWeb3.address, LoyaltyPool._json.abi, signerWithGovernance)
+		loyaltyPoolOwner = new Contract(
+			loyaltyWeb3.address,
+			LoyaltyPool._json.abi,
+			signerWithGovernance
+		)
 
 		await adxSupplyController.setGovernance(loyaltyPool.address, 1)
 	})
 
-	/*
 	it('permissioned methods', async function() {
 		await expectEVMError(loyaltyPool.setOwner(userAddr), 'NOT_OWNER')
 		await expectEVMError(loyaltyPool.setIncentive(100000), 'NOT_OWNER')
 		await expectEVMError(loyaltyPool.setSymbol('STONKS'), 'NOT_OWNER')
 	})
-	*/
 
 	it('enter and then leave', async function() {
 		const amountToMint = bigNumberify('1000000000000000')
