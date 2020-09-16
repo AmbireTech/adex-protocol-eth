@@ -92,14 +92,20 @@ contract('ADXToken', function(accounts) {
 		// After Aug 10
 		await setTime(web3, 1597018600)
 		const largeAmnt = bigNumberify('60000000000000000000000000')
-		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'EARLY_MINT_TOO_LARGE')
+		await expectEVMError(
+			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt),
+			'EARLY_MINT_TOO_LARGE'
+		)
 		// After Sep 10
 		await setTime(web3, 1599697000)
-		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)), 'MINT_TOO_LARGE')
+		await expectEVMError(
+			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)),
+			'MINT_TOO_LARGE'
+		)
 		const receipt = await (await adxSupplyController.mint(tokenAddr, userAddr, largeAmnt)).wait()
 		assert.equal(receipt.events.length, 1, 'has one transfer event')
-		//assert.equal(receipt.events[0].event, 'Transfer', 'event is a transfer')
-		//assert.deepEqual(receipt.events[0].amount, largeAmnt, 'Transfer amount is OK')
+		// assert.equal(receipt.events[0].event, 'Transfer', 'event is a transfer')
+		// assert.deepEqual(receipt.events[0].amount, largeAmnt, 'Transfer amount is OK')
 		assert.deepEqual(await adxToken.totalSupply(), initialSupply.add(largeAmnt), 'supply is OK')
 		assert.deepEqual(await adxToken.balanceOf(userAddr), initialBal.add(largeAmnt), 'balance is OK')
 
