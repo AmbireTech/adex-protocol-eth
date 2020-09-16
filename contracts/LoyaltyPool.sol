@@ -109,8 +109,8 @@ contract LoyaltyPoolToken {
 	// has been there the whole time since the last mint
 	// 2) Compounding is happening when mint is called, so essentially when entities enter/leave/trigger it manually
 	function toMint() external view returns (uint) {
+		if (block.timestamp <= lastMintTime) return 0;
 		uint totalADX = ADXToken.balanceOf(address(this));
-		require(block.timestamp > lastMintTime, 'LASTMINTTIME_IS_FUTURE');
 		return (block.timestamp - lastMintTime)
 			.mul(totalADX)
 			.mul(incentivePerTokenPerAnnum)
