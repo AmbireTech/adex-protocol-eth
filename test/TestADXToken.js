@@ -60,7 +60,7 @@ contract('ADXToken', function(accounts) {
 
 		assert.deepEqual(await adxToken.totalSupply(), expectedAmnt, 'total supply is reflected')
 
-		await (await adxToken.swap(5000)).wait()
+		await adxToken.swap(5000)
 		assert.deepEqual(
 			await adxToken.totalSupply(),
 			bigNumberify('1500000000000000000'),
