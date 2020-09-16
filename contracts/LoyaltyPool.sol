@@ -79,7 +79,6 @@ contract LoyaltyPoolToken {
 	uint public incentivePerTokenPerAnnum;
 	address public owner;
 	uint public lastMintTime;
-	// @TODO should this be fixed?
 	uint public maxTotalADX;
 	constructor(IADXToken token, uint incentive, uint cap) public {
 		ADXToken = token;
@@ -105,7 +104,7 @@ contract LoyaltyPoolToken {
 
 	// Pool stuff
 	// There are a few notable items in how minting works
-	// 1) if ADX is sent to the LoyaltyPool in-between mints, it will calculate the incentive as if this amount 
+	// 1) if ADX is sent to the LoyaltyPool in-between mints, it will calculate the incentive as if this amount
 	// has been there the whole time since the last mint
 	// 2) Compounding is happening when mint is called, so essentially when entities enter/leave/trigger it manually
 	function toMint() external view returns (uint) {
