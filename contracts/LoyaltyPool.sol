@@ -96,6 +96,7 @@ contract LoyaltyPoolToken {
 	function setIncentive(uint newIncentive) public {
 		require(msg.sender == owner, 'NOT_OWNER');
 		incentivePerTokenPerAnnum = newIncentive;
+		lastMintTime = block.timestamp;
 	}
 	function setSymbol(string calldata newSymbol) public {
 		require(msg.sender == owner, 'NOT_OWNER');
@@ -111,7 +112,7 @@ contract LoyaltyPoolToken {
 		return block.timestamp.sub(lastMintTime)
 			.mul(ADXToken.balanceOf(address(this)))
 			.mul(incentivePerTokenPerAnnum)
-			.div(365 days);
+			.div(365 * 24 * 60 * 60 * 10e18);
 	}
 	function shareValue() external view returns (uint) {
 		return ADXToken.balanceOf(address(this))
@@ -129,7 +130,7 @@ contract LoyaltyPoolToken {
 
 	function enter(uint256 amount) public {
 		// Please note that minting has to be in the beginning so that we take it into account
-		// when using ADXToken.balanceOf
+		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		mintIncentive();
 
