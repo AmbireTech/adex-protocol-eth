@@ -104,6 +104,10 @@ contract LoyaltyPoolToken {
 	}
 
 	// Pool stuff
+	// There are a few notable items in how minting works
+	// 1) if ADX is sent to the LoyaltyPool in-between mints, it will calculate the incentive as if this amount 
+	// has been there the whole time since the last mint
+	// 2) Compounding is happening when mint is called, so essentially when entities enter/leave/trigger it manually
 	function toMint() external view returns (uint) {
 		return block.timestamp.sub(lastMintTime)
 			.mul(ADXToken.balanceOf(address(this)))
@@ -113,16 +117,15 @@ contract LoyaltyPoolToken {
 
 	function mintIncentive() internal {
 		if (incentivePerTokenPerAnnum == 0) return;
-		// @TODO warning if the tokens were received between enters/leaves, this calculation is off
-		// @TODO compounding will be triggered when people withdraw/deposit
-		// @TODO minting will set two storage slots (totalSupply, balance) so maybe it makes sense to defer it
 		uint amountToMint = this.toMint();
 		lastMintTime = block.timestamp;
 		ADXToken.supplyController().mint(address(ADXToken), address(this), amountToMint);
 	}
 
 	function enter(uint256 amount) public {
-		// @TODO explain why this is at the beginning and not the end
+		// Please note that minting has to be in the beginning so that we take it into account
+		// when using ADXToken.balanceOf
+		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		mintIncentive();
 
 		uint256 totalADX = ADXToken.balanceOf(address(this));
