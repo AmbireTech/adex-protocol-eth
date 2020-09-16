@@ -114,7 +114,7 @@ contract LoyaltyPoolToken {
 			.div(365 days);
 	}
 
-	function mintIncentive() internal {
+	function mintIncentive() public {
 		if (incentivePerTokenPerAnnum == 0) return;
 		uint amountToMint = this.toMint();
 		lastMintTime = block.timestamp;
