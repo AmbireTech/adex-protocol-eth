@@ -1,5 +1,5 @@
 const { providers, Contract } = require('ethers')
-const { bigNumberify } = require('ethers').utils
+const { bigNumberify, parseUnits } = require('ethers').utils
 
 const { moveTime, expectEVMError } = require('./')
 
@@ -7,6 +7,9 @@ const MockToken = artifacts.require('./mocks/Token')
 const ADXToken = artifacts.require('ADXToken')
 const ADXSupplyController = artifacts.require('ADXSupplyController')
 const LoyaltyPool = artifacts.require('LoyaltyPoolToken')
+
+// const formatADX = v => formatUnits(v, 18)
+const parseADX = v => parseUnits(v, 18)
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
@@ -56,11 +59,13 @@ contract('LoyaltyPool', function(accounts) {
 	})
 
 	it('enter and then leave', async function() {
-		const amountToMint = bigNumberify('1000000000000000')
-		await prevToken.setBalanceTo(userAddr, amountToMint)
-		await adxToken.swap(amountToMint)
+		// 10 ADX
+		const legacyAmountToMint = bigNumberify('100000')
+		await prevToken.setBalanceTo(userAddr, legacyAmountToMint)
+		await adxToken.swap(legacyAmountToMint)
 
-		const amountToTest = bigNumberify('270000000000000')
+		// 3.5 ADX
+		const amountToTest = parseADX('3.5')
 
 		// enter the pool
 		await adxToken.approve(loyaltyPool.address, amountToTest)
@@ -74,17 +79,25 @@ contract('LoyaltyPool', function(accounts) {
 
 		// @TODO: Repeat the cycle with some additional ADX created first
 		// Enter and leave with incentive
-		const incentive = bigNumberify('5000')
+		// 0.3 ADX
+		const incentive = parseADX('0.3')
 
 		// @TODO try mint before enter
+		// We need to re-enter first
 		await adxToken.approve(loyaltyPool.address, amountToTest)
 		await loyaltyPool.enter(amountToTest)
+		const shares = await loyaltyPool.balanceOf(userAddr)
+		// console.log('share val', formatADX(await loyaltyPool.shareValue()))
+		// console.log('shares', formatADX(shares.toString(10)))
 		await loyaltyPoolOwner.setIncentive(incentive)
 		await moveTime(web3, 366 * 24 * 60 * 60)
-		// await loyaltyPool.mintAndLeave(amountToTest)
-		// const currentBal = await adxToken.balanceOf(userAddr)
-		// assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
-		// console.log(currentBal)
+		await adxToken.approve(loyaltyPool.address, amountToTest) // TEMP to move time
+		// console.log('new share', formatADX(await loyaltyPool.shareValue()))
+		// console.log('to mint', formatADX(await loyaltyPool.toMint()))
+		await loyaltyPool.mintAndLeave(shares)
+		const currentBal = await adxToken.balanceOf(userAddr)
+		// console.log('current bal', formatADX(currentBal))
+		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
 		// @TODO: dilluted stakes
 	})
 })
