@@ -38,6 +38,7 @@ contract LoyaltyPoolToken {
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
+		require(to != address(this), 'BAD_ADDRESS');
 		balances[msg.sender] = balances[msg.sender].sub(amount);
 		balances[to] = balances[to].add(amount);
 		emit Transfer(msg.sender, to, amount);
