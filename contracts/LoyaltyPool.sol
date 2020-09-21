@@ -169,6 +169,7 @@ contract LoyaltyPoolToken {
 interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
 }
+// @TODO: consider using uni getReserves
 interface ERC20Simple {
 	function balanceOf(address) external view returns (uint);
 }
@@ -189,7 +190,7 @@ contract LoyaltyPoolIssuanceController {
 	}
 	function latestPrice() public view returns (uint) {
 		return ETHUSDOracle.latestAnswer()
-			.mul(loyaltyPool.ADXToken().balanceOf(uniPair))
-			.div(WETH.balanceOf(uniPair));
+			.div(WETH.balanceOf(uniPair))
+			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));
 	}
 }
