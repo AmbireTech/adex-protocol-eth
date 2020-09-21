@@ -163,3 +163,33 @@ contract LoyaltyPoolToken {
 		leave(shares);
 	}
 }
+
+// @TODO rename owner to governance all across?
+// @TODO check if chainlink contract can be upgraded/deprecated
+interface IChainlinkSimple {
+	function latestAnswer() external view returns (uint);
+}
+interface ERC20Simple {
+	function balanceOf(address) external view returns (uint);
+}
+// @TODO: does this know the LoyaltyPoolToken addr in advance?
+contract LoyaltyPoolIssuanceController {
+	using SafeMath for uint;
+
+	IChainlinkSimple public ETHUSDOracle = IChainlinkSimple(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
+	ERC20Simple public WETH = ERC20Simple(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+
+	LoyaltyPoolToken public loyaltyPool;
+	address public uniPair;
+
+	// unip = 0xD3772A963790feDE65646cFdae08734A17cd0f47
+	constructor(LoyaltyPoolToken lpt, address unip) public {
+		loyaltyPool = lpt;
+		uniPair = unip;
+	}
+	function latestPrice() public view returns (uint) {
+		return ETHUSDOracle.latestAnswer()
+			.mul(loyaltyPool.ADXToken().balanceOf(uniPair))
+			.div(WETH.balanceOf(uniPair));
+	}
+}
