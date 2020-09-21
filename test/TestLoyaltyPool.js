@@ -100,4 +100,5 @@ contract('LoyaltyPool', function(accounts) {
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
 		// @TODO: dilluted stakes
 	})
+	// @TODO test max deposit
 })
