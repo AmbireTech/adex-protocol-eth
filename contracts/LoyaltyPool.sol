@@ -90,16 +90,16 @@ contract LoyaltyPoolToken {
 	}
 
 	// Governance functions
-	function setGovernance(address addr, bool hasGovt) public {
+	function setGovernance(address addr, bool hasGovt) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		governance[addr] = hasGovt;
 	}
-	function setIncentive(uint newIncentive) public {
+	function setIncentive(uint newIncentive) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
 		lastMintTime = block.timestamp;
 	}
-	function setSymbol(string calldata newSymbol) public {
+	function setSymbol(string calldata newSymbol) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		symbol = newSymbol;
 	}
