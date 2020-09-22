@@ -78,29 +78,29 @@ contract LoyaltyPoolToken {
 	// Constructor
 	IADXToken public ADXToken;
 	uint public incentivePerTokenPerAnnum;
-	address public owner;
 	uint public lastMintTime;
 	uint public maxTotalADX;
+	mapping (address => bool) public governance;
 	constructor(IADXToken token, uint incentive, uint cap) public {
 		ADXToken = token;
 		incentivePerTokenPerAnnum = incentive;
 		maxTotalADX = cap;
-		owner = msg.sender;
+		governance[msg.sender] = true;
 		lastMintTime = block.timestamp;
 	}
 
-	// Admin stuff
-	function setOwner(address newOwner) public {
-		require(msg.sender == owner, 'NOT_OWNER');
-		owner = newOwner;
+	// Governance functions
+	function setGovernance(address addr, bool hasGovt) public {
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
+		governance[addr] = hasGovt;
 	}
 	function setIncentive(uint newIncentive) public {
-		require(msg.sender == owner, 'NOT_OWNER');
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
 		lastMintTime = block.timestamp;
 	}
 	function setSymbol(string calldata newSymbol) public {
-		require(msg.sender == owner, 'NOT_OWNER');
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		symbol = newSymbol;
 	}
 
@@ -164,7 +164,6 @@ contract LoyaltyPoolToken {
 	}
 }
 
-// @TODO rename owner to governance all across?
 // @TODO check if chainlink contract can be upgraded/deprecated
 interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
@@ -173,7 +172,7 @@ interface IChainlinkSimple {
 interface ERC20Simple {
 	function balanceOf(address) external view returns (uint);
 }
-// @TODO: does this know the LoyaltyPoolToken addr in advance?
+
 contract LoyaltyPoolIssuanceController {
 	using SafeMath for uint;
 
@@ -183,12 +182,17 @@ contract LoyaltyPoolIssuanceController {
 	LoyaltyPoolToken public loyaltyPool;
 	address public uniPair;
 
+	// address public governance;
+
 	// unip = 0xD3772A963790feDE65646cFdae08734A17cd0f47
 	constructor(LoyaltyPoolToken lpt, address unip) public {
 		loyaltyPool = lpt;
 		uniPair = unip;
 	}
+
+	// @TODO explain why this is OK
 	function latestPrice() public view returns (uint) {
+		// NOTE: can also be implemented via uniswap getReserves
 		return ETHUSDOracle.latestAnswer()
 			.div(WETH.balanceOf(uniPair))
 			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));

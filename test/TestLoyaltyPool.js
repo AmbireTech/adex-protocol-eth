@@ -53,9 +53,9 @@ contract('LoyaltyPool', function(accounts) {
 	})
 
 	it('permissioned methods', async function() {
-		await expectEVMError(loyaltyPool.setOwner(userAddr), 'NOT_OWNER')
-		await expectEVMError(loyaltyPool.setIncentive(100000), 'NOT_OWNER')
-		await expectEVMError(loyaltyPool.setSymbol('STONKS'), 'NOT_OWNER')
+		await expectEVMError(loyaltyPool.setOwner(userAddr), 'NOT_GOVERNANCE')
+		await expectEVMError(loyaltyPool.setIncentive(100000), 'NOT_GOVERNANCE')
+		await expectEVMError(loyaltyPool.setSymbol('STONKS'), 'NOT_GOVERNANCE')
 	})
 
 	it('enter and then leave', async function() {
