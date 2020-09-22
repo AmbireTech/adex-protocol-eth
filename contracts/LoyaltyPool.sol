@@ -133,7 +133,7 @@ contract LoyaltyPoolToken {
 		ADXToken.supplyController().mint(address(ADXToken), address(this), amountToMint);
 	}
 
-	function enter(uint256 amount) public {
+	function enter(uint256 amount) external {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
@@ -158,7 +158,7 @@ contract LoyaltyPoolToken {
 		ADXToken.transfer(msg.sender, adxAmount);
 	}
 
-	function mintAndLeave(uint256 shares) public {
+	function mintAndLeave(uint256 shares) external {
 		mintIncentive();
 		leave(shares);
 	}
