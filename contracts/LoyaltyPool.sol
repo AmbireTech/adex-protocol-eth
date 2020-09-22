@@ -196,6 +196,26 @@ contract LoyaltyPoolIncentiveController {
 			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));
 	}
 
-	// function adjustIncentive() external {
-	// }
+	/*
+	function adjustIncentive() external {
+		uint price = this.latestPrice();
+		if (price < 0.05*10**8) {
+			this.loyaltyPool.setIncentive(0.10**10**18);
+		} else if (price < 0.10*10**18) {
+			this.loyaltyPool.setIncentive(0.15**10**18);
+		} else if (price < 0.20*10**18) {
+			this.loyaltyPool.setIncentive(0.25**10**18);
+		} else if (price < 0.30*10**18) {
+			this.loyaltyPool.setIncentive(0.30**10**18);
+		} else if (price < 0.50*10**18) {
+			this.loyaltyPool.setIncentive(0.35**10**18);
+		} else if (price < 1.00*10**18) {
+			this.loyaltyPool.setIncentive(0.40**10**18);
+		} else if (price < 2.00*10**18) {
+			this.loyaltyPool.setIncentive(0.45**10**18);
+		} else {
+			this.loyaltyPool.setIncentive(0.50**10**18);
+		}
+	}
+	*/
 }
