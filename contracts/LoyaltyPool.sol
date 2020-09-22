@@ -180,14 +180,12 @@ contract LoyaltyPoolIncentiveController {
 
 	IChainlinkSimple public ETHUSDOracle = IChainlinkSimple(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
 	ERC20Simple public WETH = ERC20Simple(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+	address public uniPair = 0xD3772A963790feDE65646cFdae08734A17cd0f47;
 
 	LoyaltyPoolToken public loyaltyPool;
-	address public uniPair;
 
-	// unip = 0xD3772A963790feDE65646cFdae08734A17cd0f47
-	constructor(LoyaltyPoolToken lpt, address unip) public {
+	constructor(LoyaltyPoolToken lpt) public {
 		loyaltyPool = lpt;
-		uniPair = unip;
 	}
 
 	// @TODO explain why this is OK
