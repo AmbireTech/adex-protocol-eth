@@ -173,7 +173,9 @@ interface ERC20Simple {
 	function balanceOf(address) external view returns (uint);
 }
 
-contract LoyaltyPoolIssuanceController {
+// NOTE: If this needs to be upgraded, we just deploy a new instance and remove the governance rights
+// of the old instance and set rights for the new instance
+contract LoyaltyPoolIncentiveController {
 	using SafeMath for uint;
 
 	IChainlinkSimple public ETHUSDOracle = IChainlinkSimple(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
@@ -182,8 +184,6 @@ contract LoyaltyPoolIssuanceController {
 	LoyaltyPoolToken public loyaltyPool;
 	address public uniPair;
 
-	// address public governance;
-
 	// unip = 0xD3772A963790feDE65646cFdae08734A17cd0f47
 	constructor(LoyaltyPoolToken lpt, address unip) public {
 		loyaltyPool = lpt;
@@ -191,10 +191,13 @@ contract LoyaltyPoolIssuanceController {
 	}
 
 	// @TODO explain why this is OK
-	function latestPrice() public view returns (uint) {
+	function latestPrice() external view returns (uint) {
 		// NOTE: can also be implemented via uniswap getReserves
 		return ETHUSDOracle.latestAnswer()
 			.div(WETH.balanceOf(uniPair))
 			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));
 	}
+
+	// function adjustIncentive() external {
+	// }
 }
