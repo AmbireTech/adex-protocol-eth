@@ -103,6 +103,11 @@ contract LoyaltyPoolToken {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		symbol = newSymbol;
 	}
+	function setMaxTotalADX(uint newMaxTotalADX) external {
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
+		maxTotalADX = newMaxTotalADX;
+	}
+
 
 	// Pool stuff
 	// There are a few notable items in how minting works
