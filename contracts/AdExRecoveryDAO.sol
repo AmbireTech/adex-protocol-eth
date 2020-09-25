@@ -8,8 +8,7 @@ import "./Identity.sol";
 library RecoveryRequestLibrary {
     struct RecoveryRequest {
         address identity;
-        address newUserAddress;
-        address proposer;   
+        address newWalletAddress;
         uint256 timestamp; 
     }
 
@@ -21,8 +20,7 @@ library RecoveryRequestLibrary {
         return keccak256(abi.encode(
             address(this),
             request.identity,
-            request.newUserAddress,
-            request.proposer,
+            request.newWalletAddress, 
             request.timestamp
         ));
     }
@@ -39,7 +37,7 @@ contract AdExRecoveryDAO {
     event LogRemoveProposer(address proposer, uint256 timestamp);
     event LogProposeRecovery(bytes32 recoveryId, address proposer, address identity, uint256 timestamp);
     event LogFinalizeRecovery(bytes32 recoveryId, address proposer, address identity, uint256 timestamp);
-    event LogCancelRecovery(address proposer, address identity, uint256 timestamp);
+    event LogCancelRecovery(address identity, uint256 timestamp);
     event LogChangeAdmin(address oldAmin, address newAdmin);
     event LogChangeRecoveryDelay(uint256 previousDelay, uint256 newDelay);
 
@@ -69,17 +67,15 @@ contract AdExRecoveryDAO {
 
     function proposeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
         require(proposers[msg.sender] == true, 'ONLY_WHITELISTED_PROPOSER');
-        require(request.proposer == msg.sender, 'INVALID_REQUEST');
         bytes32 recoveryId = request.hash();
         recovery[recoveryId] = now + recoveryDelay;
-        emit LogProposeRecovery(recoveryId, request.proposer, request.identity, now);
+        emit LogProposeRecovery(recoveryId, msg.sender, request.identity, now);
     }
 
     function finalizeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
         bytes32 recoveryId = request.hash();
         require(proposers[msg.sender] == true, 'ONLY_WHITELISTED_PROPOSERS');
-        require(request.proposer == msg.sender, 'INVALID_REQUEST');
-        require(recovery[recoveryId] >= now, 'ACTIVE_DELAY');
+        require(now >= recovery[recoveryId], 'ACTIVE_DELAY');
         
         Identity.Transaction[] memory recoverTransaction = new Identity.Transaction[](1);
         recoverTransaction[0] = Identity.Transaction(
@@ -91,14 +87,14 @@ contract AdExRecoveryDAO {
             0,
             abi.encodeWithSelector(
                 Identity.setAddrPrivilege.selector,
-                request.newUserAddress,
+                request.newWalletAddress,
                 uint8(Identity.PrivilegeLevel.Transactions)
             )
         );
 
         Identity(request.identity).executeBySender(recoverTransaction);
         delete recovery[recoveryId];
-        emit LogFinalizeRecovery(recoveryId, request.proposer, request.identity, now);
+        emit LogFinalizeRecovery(recoveryId, msg.sender, request.identity, now);
     }
 
     function cancelRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
@@ -106,7 +102,7 @@ contract AdExRecoveryDAO {
         bytes32 recoveryHash = request.hash();
         require(recovery[recoveryHash] != 0, 'CAN_NOT_CANCEL');
         delete recovery[recoveryHash];
-        emit LogCancelRecovery(request.proposer, msg.sender, now);
+        emit LogCancelRecovery(msg.sender, now);
     }
 
     function changeAdmin(address newAdmin) external {
