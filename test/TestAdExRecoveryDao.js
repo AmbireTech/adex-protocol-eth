@@ -1,13 +1,7 @@
 const { providers, Contract } = require('ethers')
 const { Interface } = require('ethers').utils
 
-const {
-	expectEVMError /* , setTime */,
-	currentTimestamp,
-	moveTime,
-	takeSnapshot,
-	revertToSnapshot
-} = require('./')
+const { expectEVMError /* , setTime */, moveTime, takeSnapshot, revertToSnapshot } = require('./')
 const { Transaction } = require('../js')
 
 const AdExRecoveryDAO = artifacts.require('AdExRecoveryDAO')
@@ -34,13 +28,10 @@ contract('AdExRecoveryDAO', function(accounts) {
 	// identity account that will be used for all identity interactions
 	let userIdentityAccount
 	let id
+
 	let snapshotId
 
-	const sampleRecoveryRequestProposal = () => [
-		userIdentityAccount.address,
-		newUserWallet,
-		currentTimestamp()
-	]
+	const sampleRecoveryRequestProposal = () => [userIdentityAccount.address, newUserWallet]
 
 	before(async function() {
 		const adxRecoveryDAOWeb3 = await AdExRecoveryDAO.new(admin, 3, 3)
@@ -125,7 +116,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 		)
 	})
 
-	it('proposers can cancel recovery', async function() {
+	it('admin can cancel recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 
 		const recoveryProposal = sampleRecoveryRequestProposal()
@@ -166,7 +157,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 			data: recoveryDAOInterface.functions.cancelRecovery.encode([recoveryProposal])
 		})
 
-		// cancel recovery via identity
+		// cancel recovery request via user identity
 		await (await id.executeBySender([cancelRecoveryIdentityTx.toSolidityTuple()])).wait()
 		// confirm if recovery is cancelled
 		assert(await adxRecoveryDAO.recovery(recoveryTxEv.args.recoveryId), 0, 'should cancel recovery')
