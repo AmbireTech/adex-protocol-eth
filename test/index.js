@@ -60,4 +60,19 @@ async function setTime(web3, time) {
 	})
 }
 
-module.exports = { expectEVMError, sampleChannel, moveTime, setTime }
+function toUnixTimestamp(timestamp) {
+	return Math.floor(timestamp / 1000)
+}
+
+function currentTimestamp() {
+	return toUnixTimestamp(Date.now())
+}
+
+module.exports = {
+	expectEVMError,
+	sampleChannel,
+	moveTime,
+	setTime,
+	toUnixTimestamp,
+	currentTimestamp
+}
