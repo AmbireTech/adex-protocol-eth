@@ -25,6 +25,7 @@ library RecoveryRequestLibrary {
 }
 
 contract AdExRecoveryDAO {
+    using SafeMath for uint256;
     using RecoveryRequestLibrary for RecoveryRequestLibrary.RecoveryRequest;
 
     address public adminAddr;
@@ -79,7 +80,7 @@ contract AdExRecoveryDAO {
     function proposeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
         require(proposers[msg.sender] == true, 'ONLY_WHITELISTED_PROPOSER');
         bytes32 recoveryId = request.hash();
-        recovery[recoveryId] = now + recoveryDelay;
+        recovery[recoveryId] = recoveryDelay.add(now);
         emit LogProposeRecovery(recoveryId, msg.sender, request.identity, now);
     }
     
