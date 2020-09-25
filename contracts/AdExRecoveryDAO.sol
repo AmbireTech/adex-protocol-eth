@@ -117,20 +117,24 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Added Proposers or the identity being recovered can cancel a recovery request
-     * @dev Any proposer or identity can cancel a propose recovery request
+     * @notice Admin any proposer or the identity being recovered can cancel a recovery request
      * @param request The details of the recovery request
      */
     function cancelRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
-        require(request.identity == msg.sender || msg.sender == adminAddr, 'ONLY_ACCOUNT_OR_ADMIN_CAN_CANCEL');
+        require(
+            request.identity == msg.sender ||
+            msg.sender == adminAddr || 
+            proposers[msg.sender] == true, 
+            'ONLY_IDENTITY_PROPOSER_OR_ADMIN_CAN_CANCEL'
+        );
         bytes32 recoveryHash = request.hash();
-        require(recovery[recoveryHash] != 0, 'CAN_NOT_CANCEL');
+        require(recovery[recoveryHash] != 0, 'RECOVERY_REQUEST_DOES_NOT_EXIST');
         delete recovery[recoveryHash];
         emit LogCancelRecovery(msg.sender, now);
     }
     
     /**
-     * @notice Admin can replace themselve
+     * @notice Only Admin can replace themself
      * @dev Only the current admin is allowed to change the admin
      * @param newAdmin The address of the new admin
      */
@@ -142,8 +146,7 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Admin can change recovery delay period
-     * @dev Only the admin is allowed to change recovery delay period
+     * @notice Only the Admin can change recovery delay period
      * @param newDelay The new delay in seconds
      */
     function changeRecoveryDelay(uint256 newDelay) external {
