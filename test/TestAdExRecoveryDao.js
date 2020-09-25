@@ -1,7 +1,13 @@
 const { providers, Contract } = require('ethers')
 const { Interface } = require('ethers').utils
 
-const { expectEVMError /* , setTime */, currentTimestamp, setTime, moveTime } = require('./')
+const {
+	expectEVMError /* , setTime */,
+	currentTimestamp,
+	moveTime,
+	takeSnapshot,
+	revertToSnapshot
+} = require('./')
 const { Transaction } = require('../js')
 
 const AdExRecoveryDAO = artifacts.require('AdExRecoveryDAO')
@@ -28,6 +34,13 @@ contract('AdExRecoveryDAO', function(accounts) {
 	// identity account that will be used for all identity interactions
 	let userIdentityAccount
 	let id
+	let snapshotId
+
+	const sampleRecoveryRequestProposal = () => [
+		userIdentityAccount.address,
+		newUserWallet,
+		currentTimestamp()
+	]
 
 	before(async function() {
 		const adxRecoveryDAOWeb3 = await AdExRecoveryDAO.new(admin, 3, 3)
@@ -41,6 +54,12 @@ contract('AdExRecoveryDAO', function(accounts) {
 		// to enable it recover the account
 		userIdentityAccount = await Identity.new([adxRecoveryDAOWeb3.address, identityWallet], [2, 2])
 		id = new Contract(userIdentityAccount.address, Identity._json.abi, identityWalletSigner)
+		snapshotId = await takeSnapshot(web3)
+	})
+
+	// eslint-disable-next-line no-undef
+	afterEach(async function() {
+		await revertToSnapshot(web3, snapshotId)
 	})
 
 	it('only admin can add proposer', async function() {
@@ -49,7 +68,6 @@ contract('AdExRecoveryDAO', function(accounts) {
 			'ONLY_ADMIN_CAN_ADD_PROPOSER'
 		)
 		await (await adxRecoveryDAO.addProposer(anotherUser1)).wait()
-
 		assert.deepEqual(await adxRecoveryDAO.proposers(anotherUser1), true, 'should add proposer')
 	})
 
@@ -90,12 +108,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 	it('only proposers can propose recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 
-		const recoveryProposal = [
-			userIdentityAccount.address,
-			newUserWallet,
-			anotherProposerAccount,
-			currentTimestamp()
-		]
+		const recoveryProposal = sampleRecoveryRequestProposal()
 
 		await expectEVMError(
 			adxRecoveryDAO.connect(anotherSigner).proposeRecovery(recoveryProposal),
@@ -115,13 +128,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 	it('proposers can cancel recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 
-		const recoveryProposal = [
-			userIdentityAccount.address,
-			newUserWallet,
-			anotherProposerAccount,
-			currentTimestamp()
-		]
-
+		const recoveryProposal = sampleRecoveryRequestProposal()
 		// propose recovery
 		await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
@@ -140,12 +147,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 	it('user identity can cancel recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
-		const recoveryProposal = [
-			userIdentityAccount.address,
-			newUserWallet,
-			anotherProposerAccount,
-			currentTimestamp()
-		]
+		const recoveryProposal = sampleRecoveryRequestProposal()
 		// propose recovery
 		const recoveryTx = await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
@@ -166,27 +168,22 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 		// cancel recovery via identity
 		await (await id.executeBySender([cancelRecoveryIdentityTx.toSolidityTuple()])).wait()
-		// confirm if recovery is cancel
+		// confirm if recovery is cancelled
 		assert(await adxRecoveryDAO.recovery(recoveryTxEv.args.recoveryId), 0, 'should cancel recovery')
 	})
 
 	it('only proposer can finalize recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
-		const recoveryProposal = [
-			userIdentityAccount.address,
-			newUserWallet,
-			anotherProposerAccount,
-			currentTimestamp()
-		]
+		const recoveryProposal = sampleRecoveryRequestProposal()
 		// propose recovery
-		const recoveryTx = await (await adxRecoveryDAO
+		await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
 			.proposeRecovery(recoveryProposal)).wait()
 
-		// await expectEVMError(
-		// 	adxRecoveryDAO.connect(anotherProposerAccountSigner).finalizeRecovery(recoveryProposal),
-		// 	'ACTIVE_DELAY'
-        // )
+		await expectEVMError(
+			adxRecoveryDAO.connect(anotherProposerAccountSigner).finalizeRecovery(recoveryProposal),
+			'ACTIVE_DELAY'
+		)
 
 		await expectEVMError(
 			adxRecoveryDAO.connect(anotherSigner).finalizeRecovery(recoveryProposal),
@@ -194,7 +191,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 		)
 
 		// ensure that we can finalize recovery
-		await moveTime(web3, 2000)
+		await moveTime(web3, 20000)
 
 		// check privilege level of new address
 		const finalizeRecoveryTx = await (await adxRecoveryDAO
@@ -206,7 +203,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 			'should finalize recovery'
 		)
 
-		// check new user wallet
+		// confirm new user wallet has the correct privilege level
 		assert(id.privileges(newUserWallet), 2, 'new user wallet should have tx level')
 	})
 
