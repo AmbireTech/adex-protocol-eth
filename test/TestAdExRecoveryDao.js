@@ -116,7 +116,7 @@ contract('AdExRecoveryDAO', function(accounts) {
 		)
 	})
 
-	it('admin can cancel recovery', async function() {
+	it('only admin, identity being recovered or proposer can cancel recovery request', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 
 		const recoveryProposal = sampleRecoveryRequestProposal()
@@ -127,11 +127,53 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 		await expectEVMError(
 			adxRecoveryDAO.connect(anotherSigner).cancelRecovery(recoveryProposal),
-			'ONLY_ACCOUNT_OR_ADMIN_CAN_CANCEL'
+			'ONLY_IDENTITY_PROPOSER_OR_ADMIN_CAN_CANCEL'
 		)
+	})
+
+	it('can not cancel non existing recovery request', async function() {
+		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
+
+		const recoveryProposal = sampleRecoveryRequestProposal()
+		// propose recovery
+		await (await adxRecoveryDAO
+			.connect(anotherProposerAccountSigner)
+			.proposeRecovery(recoveryProposal)).wait()
+
+		await expectEVMError(
+			adxRecoveryDAO.cancelRecovery([userIdentityAccount.address, admin]),
+			'RECOVERY_REQUEST_DOES_NOT_EXIST'
+		)
+	})
+
+	it('admin can cancel recovery', async function() {
+		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
+
+		const recoveryProposal = sampleRecoveryRequestProposal()
+		// propose recovery
+		await (await adxRecoveryDAO
+			.connect(anotherProposerAccountSigner)
+			.proposeRecovery(recoveryProposal)).wait()
 
 		// cancel recovery
 		const cancelTx = await (await adxRecoveryDAO.cancelRecovery(recoveryProposal)).wait()
+
+		assert.ok(cancelTx.events.find(x => x.event === 'LogCancelRecovery'), 'should cancel recovery')
+	})
+
+	it('any proposers can cancel recovery', async function() {
+		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
+
+		const recoveryProposal = sampleRecoveryRequestProposal()
+		// propose recovery
+		await (await adxRecoveryDAO
+			.connect(anotherProposerAccountSigner)
+			.proposeRecovery(recoveryProposal)).wait()
+
+		// cancel recovery
+		const cancelTx = await (await adxRecoveryDAO
+			.connect(anotherProposerAccountSigner)
+			.cancelRecovery(recoveryProposal)).wait()
 
 		assert.ok(cancelTx.events.find(x => x.event === 'LogCancelRecovery'), 'should cancel recovery')
 	})
