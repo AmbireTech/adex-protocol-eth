@@ -53,8 +53,7 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Admin can add a proposer
-     * @dev Only the admin is allowed to add a proposer
+     * @notice Only the admin is allowed to add a proposer
      * @param proposer The address of the proposer
      */
     function addProposer(address proposer) external {
@@ -64,8 +63,7 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Admin can remove a proposer
-     * @dev Only the admin is allowed to remove a proposer
+     * @notice Only the admin is allowed to remove a proposer
      * @param proposer The address of the proposer
      */
     function removeProposer(address proposer) external {
@@ -75,8 +73,7 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Added Proposers can add propose a recovery
-     * @dev Only proposers are allowed to a propose recovery request
+     * @notice Only proposers are allowed to a propose recovery request
      * @param request The details of the recovery request
      */
     function proposeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
@@ -87,8 +84,7 @@ contract AdExRecoveryDAO {
     }
     
     /**
-     * @notice Added Proposers can add finalize a recovery request
-     * @dev Any proposer can finalize a propose recovery request after the delay period
+     * @notice Any proposer can finalize a propose recovery request after the delay period
      * @param request The details of the recovery request
      */
     function finalizeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
@@ -117,7 +113,7 @@ contract AdExRecoveryDAO {
     }
 
     /**
-     * @notice Admin any proposer or the identity being recovered can cancel a recovery request
+     * @notice Admin, any proposer or the identity being recovered can cancel a recovery request
      * @param request The details of the recovery request
      */
     function cancelRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
@@ -135,7 +131,6 @@ contract AdExRecoveryDAO {
     
     /**
      * @notice Only Admin can replace themself
-     * @dev Only the current admin is allowed to change the admin
      * @param newAdmin The address of the new admin
      */
     function changeAdmin(address newAdmin) external {
