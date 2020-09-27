@@ -70,13 +70,13 @@ contract LoyaltyPoolToken {
 	}
 
 	// EIP 2612
-	function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
+	function permit(address owner, address spender, uint amount, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
 		require(deadline >= block.timestamp, 'DEADLINE_EXPIRED');
 		bytes32 digest = keccak256(
 		abi.encodePacked(
 			'\x19\x01',
 			DOMAIN_SEPARATOR,
-			keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, nonces[owner]++, deadline))
+			keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, amount, nonces[owner]++, deadline))
 		)
 		);
 		address recoveredAddress = ecrecover(digest, v, r, s);
@@ -113,7 +113,7 @@ contract LoyaltyPoolToken {
 		// EIP 2612
 		uint chainId;
 		assembly {
-			chainId := chainid
+			chainId := chainid()
 		}
 		DOMAIN_SEPARATOR = keccak256(
 			abi.encode(
@@ -135,6 +135,7 @@ contract LoyaltyPoolToken {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
 		lastMintTime = block.timestamp;
+		// @TODO: AUDIT: should this trigger a mint? otherwise it could be used to reduce incurred mint
 	}
 	function setSymbol(string calldata newSymbol) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
@@ -206,12 +207,10 @@ contract LoyaltyPoolToken {
 	}
 }
 
-// @TODO check if chainlink contract can be upgraded/deprecated
 interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
 }
-// @TODO: consider using uni getReserves
-interface ERC20Simple {
+interface ERC20Balance {
 	function balanceOf(address) external view returns (uint);
 }
 
@@ -221,7 +220,7 @@ contract LoyaltyPoolIncentiveController {
 	using SafeMath for uint;
 
 	IChainlinkSimple public ETHUSDOracle = IChainlinkSimple(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
-	ERC20Simple public WETH = ERC20Simple(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+	ERC20Balance public WETH = ERC20Balance(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 	address public uniPair = 0xD3772A963790feDE65646cFdae08734A17cd0f47;
 
 	LoyaltyPoolToken public loyaltyPool;
