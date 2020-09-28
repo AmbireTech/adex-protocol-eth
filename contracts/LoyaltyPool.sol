@@ -229,7 +229,10 @@ contract LoyaltyPoolIncentiveController {
 		loyaltyPool = lpt;
 	}
 
-	// @TODO explain why this is OK
+	// This is using the Chainlink ETHUSD oracle together with
+	// the ADX-ETH uniswap pool to determine the current ADX price
+	// While it's suboptimal to take the current quote from Uniswap, there's no immediate incentive to manipulate this,
+	// considering it can be re-ran after the market has been arbitrated
 	function latestPrice() external view returns (uint) {
 		// NOTE: can also be implemented via uniswap getReserves
 		return ETHUSDOracle.latestAnswer()
