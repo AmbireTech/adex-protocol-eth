@@ -69,6 +69,7 @@ contract AdExCore {
 	{
 		bytes32 channelId = channel.hash();
 		require(states[channelId] == ChannelLibrary.State.Expired, "INVALID_STATE");
+		require(msg.sender == channel.creator, "INVALID_CREATOR");
 		delete withdrawn[channelId];
 		for (uint i=0; i<users.length; i++) {
 			delete withdrawnPerUser[channelId][users[i]];
