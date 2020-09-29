@@ -210,38 +210,22 @@ contract LoyaltyPoolToken {
 interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
 }
-interface ERC20Balance {
-	function balanceOf(address) external view returns (uint);
-}
 
 // NOTE: If this needs to be upgraded, we just deploy a new instance and remove the governance rights
 // of the old instance and set rights for the new instance
 contract LoyaltyPoolIncentiveController {
 	using SafeMath for uint;
 
-	IChainlinkSimple public ETHUSDOracle = IChainlinkSimple(0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419);
-	ERC20Balance public WETH = ERC20Balance(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-	address public uniPair = 0xD3772A963790feDE65646cFdae08734A17cd0f47;
+	IChainlinkSimple public ADXUSDOracle = IChainlinkSimple(0xA3eAeC3AB66048E6F3Cf23D81881a3fcd9A3D2ED);
 
 	LoyaltyPoolToken public loyaltyPool;
-
 	constructor(LoyaltyPoolToken lpt) public {
 		loyaltyPool = lpt;
 	}
 
-	// This is using the Chainlink ETHUSD oracle together with
-	// the ADX-ETH uniswap pool to determine the current ADX price
-	// While it's suboptimal to take the current quote from Uniswap, there's no immediate incentive to manipulate this,
-	// considering it can be re-ran after the market has been arbitrated
-	// Also, this contract will be upgraded (deployed again and given permission to setIncentive) once the ADXUSD feed becomes available
-	function latestPrice() external view returns (uint) {
-		return ETHUSDOracle.latestAnswer()
-			.div(WETH.balanceOf(uniPair))
-			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));
-	}
-
 	function adjustIncentive() external {
-		uint price = this.latestPrice();
+		uint price = ADXUSDOracle.latestAnswer();
+		require (price > 0, 'INVALID_ANSWER');
 		if (price < 0.05*10**8) {
 			loyaltyPool.setIncentive(uint(0.10*10**18));
 		} else if (price < 0.10*10**18) {
