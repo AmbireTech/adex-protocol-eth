@@ -233,8 +233,8 @@ contract LoyaltyPoolIncentiveController {
 	// the ADX-ETH uniswap pool to determine the current ADX price
 	// While it's suboptimal to take the current quote from Uniswap, there's no immediate incentive to manipulate this,
 	// considering it can be re-ran after the market has been arbitrated
+	// Also, this contract will be upgraded (deployed again and given permission to setIncentive) once the ADXUSD feed becomes available
 	function latestPrice() external view returns (uint) {
-		// NOTE: can also be implemented via uniswap getReserves
 		return ETHUSDOracle.latestAnswer()
 			.div(WETH.balanceOf(uniPair))
 			.mul(loyaltyPool.ADXToken().balanceOf(uniPair));
