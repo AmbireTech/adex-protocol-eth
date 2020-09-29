@@ -225,7 +225,7 @@ contract LoyaltyPoolIncentiveController {
 
 	function adjustIncentive() external {
 		uint price = ADXUSDOracle.latestAnswer();
-		require (price > 0, 'INVALID_ANSWER');
+		require(price > 0, 'INVALID_ANSWER');
 		if (price < 0.05*10**8) {
 			loyaltyPool.setIncentive(uint(0.10*10**18));
 		} else if (price < 0.10*10**18) {
