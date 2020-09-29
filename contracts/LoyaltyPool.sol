@@ -224,6 +224,11 @@ contract LoyaltyPoolIncentiveController {
 	}
 
 	function adjustIncentive() external {
+		// Mint the current incurred incentive before changing the rate,
+		// otherwise new rate would be applied for the entire period since the last mint
+		loyaltyPool.mintIncentive();
+
+		// Reset the rate based on the price from the Chainlink oracle
 		uint price = ADXUSDOracle.latestAnswer();
 		require(price > 0, 'INVALID_ANSWER');
 		if (price < 0.05*10**8) {
