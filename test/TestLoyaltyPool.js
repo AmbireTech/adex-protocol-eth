@@ -6,7 +6,7 @@ const { moveTime, expectEVMError } = require('./')
 const MockToken = artifacts.require('./mocks/Token')
 const ADXToken = artifacts.require('ADXToken')
 const ADXSupplyController = artifacts.require('ADXSupplyController')
-const LoyaltyPool = artifacts.require('LoyaltyPoolToken')
+const LoyaltyPool = artifacts.require('ADXLoyaltyPoolToken')
 
 // const formatADX = v => formatUnits(v, 18)
 const parseADX = v => parseUnits(v, 18)
