@@ -16,7 +16,7 @@ interface IADXToken {
 	function supplyController() external view returns (ISupplyController);
 }
 
-contract LoyaltyPoolToken {
+contract ADXLoyaltyPoolToken {
 	using SafeMath for uint;
 
 	// ERC20 stuff
@@ -131,11 +131,11 @@ contract LoyaltyPoolToken {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		governance[addr] = hasGovt;
 	}
+	// @TODO explain why setIncentive does not trigger a mint
 	function setIncentive(uint newIncentive) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
 		lastMintTime = block.timestamp;
-		// @TODO: AUDIT: should this trigger a mint? otherwise it could be used to reduce incurred mint
 	}
 	function setSymbol(string calldata newSymbol) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
@@ -213,13 +213,13 @@ interface IChainlinkSimple {
 
 // NOTE: If this needs to be upgraded, we just deploy a new instance and remove the governance rights
 // of the old instance and set rights for the new instance
-contract LoyaltyPoolIncentiveController {
+contract ADXLoyaltyPoolIncentiveController {
 	using SafeMath for uint;
 
 	IChainlinkSimple public ADXUSDOracle = IChainlinkSimple(0xA3eAeC3AB66048E6F3Cf23D81881a3fcd9A3D2ED);
 
-	LoyaltyPoolToken public loyaltyPool;
-	constructor(LoyaltyPoolToken lpt) public {
+	ADXLoyaltyPoolToken public loyaltyPool;
+	constructor(ADXLoyaltyPoolToken lpt) public {
 		loyaltyPool = lpt;
 	}
 
