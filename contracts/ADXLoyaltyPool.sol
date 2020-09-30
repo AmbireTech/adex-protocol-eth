@@ -25,16 +25,16 @@ contract ADXLoyaltyPoolToken {
 	uint8 public constant decimals = 18;
 	string public symbol = "ADX-LOYALTY";
 
+	// Mutable variables
+	uint public totalSupply;
+	mapping(address => uint) balances;
+	mapping(address => mapping(address => uint)) allowed;
+
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
 	// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 	bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 	mapping(address => uint) public nonces;
-
-	// Mutable variables
-	uint public totalSupply;
-	mapping(address => uint) balances;
-	mapping(address => mapping(address => uint)) allowed;
 
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
