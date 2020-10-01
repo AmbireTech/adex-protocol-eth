@@ -72,13 +72,11 @@ contract ADXLoyaltyPoolToken {
 	// EIP 2612
 	function permit(address owner, address spender, uint amount, uint deadline, uint8 v, bytes32 r, bytes32 s) external {
 		require(deadline >= block.timestamp, 'DEADLINE_EXPIRED');
-		bytes32 digest = keccak256(
-		abi.encodePacked(
+		bytes32 digest = keccak256(abi.encodePacked(
 			'\x19\x01',
 			DOMAIN_SEPARATOR,
 			keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, amount, nonces[owner]++, deadline))
-		)
-		);
+		));
 		address recoveredAddress = ecrecover(digest, v, r, s);
 		require(recoveredAddress != address(0) && recoveredAddress == owner, 'INVALID_SIGNATURE');
 		allowed[owner][spender] = amount;
@@ -160,6 +158,7 @@ contract ADXLoyaltyPoolToken {
 			.mul(incentivePerTokenPerAnnum)
 			.div(365 days * 10e17);
 	}
+
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
 		return ADXToken.balanceOf(address(this))
