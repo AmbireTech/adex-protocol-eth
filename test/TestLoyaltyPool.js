@@ -77,12 +77,10 @@ contract('LoyaltyPool', function(accounts) {
 		const postLeave = await adxToken.balanceOf(userAddr)
 		assert.deepEqual(postLeave.sub(preLeave), amountToTest, 'received the original amount')
 
-		// @TODO: Repeat the cycle with some additional ADX created first
 		// Enter and leave with incentive
 		// 0.3 ADX
 		const incentive = parseADX('0.3')
 
-		// @TODO try mint before enter
 		// We need to re-enter first
 		await adxToken.approve(loyaltyPool.address, amountToTest)
 		await loyaltyPool.enter(amountToTest)
@@ -98,7 +96,8 @@ contract('LoyaltyPool', function(accounts) {
 		const currentBal = await adxToken.balanceOf(userAddr)
 		// console.log('current bal', formatADX(currentBal))
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
-		// @TODO: dilluted stakes
+		// @TODO: test if dilluted stakes work OK
 	})
 	// @TODO test max deposit
+	// @TODO test sending ADX directly to it
 })
