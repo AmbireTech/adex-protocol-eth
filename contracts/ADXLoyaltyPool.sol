@@ -214,8 +214,6 @@ interface IChainlinkSimple {
 // NOTE: If this needs to be upgraded, we just deploy a new instance and remove the governance rights
 // of the old instance and set rights for the new instance
 contract ADXLoyaltyPoolIncentiveController {
-	using SafeMath for uint;
-
 	IChainlinkSimple public ADXUSDOracle = IChainlinkSimple(0xA3eAeC3AB66048E6F3Cf23D81881a3fcd9A3D2ED);
 
 	ADXLoyaltyPoolToken public loyaltyPool;
