@@ -206,7 +206,8 @@ contract ADXLoyaltyPoolToken {
 		leaveInner(shares);
 	}
 
-	function leaveEmergency(uint256 shares) external {
+	// Guarantees ADX can be taken out even if minting is failing
+	function emergencyLeave(uint256 shares) external {
 		leaveInner(shares);
 	}
 }
