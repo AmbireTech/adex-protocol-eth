@@ -89,15 +89,14 @@ contract('LoyaltyPool', function(accounts) {
 		// console.log('shares', formatADX(shares.toString(10)))
 		await loyaltyPoolOwner.setIncentive(incentive)
 		await moveTime(web3, 366 * 24 * 60 * 60)
-		await adxToken.approve(loyaltyPool.address, amountToTest) // TEMP to move time
+		// We need to issue some tx in order to move time
+		await adxToken.approve(loyaltyPool.address, amountToTest)
 		// console.log('new share', formatADX(await loyaltyPool.shareValue()))
 		// console.log('to mint', formatADX(await loyaltyPool.toMint()))
 		await loyaltyPool.mintAndLeave(shares)
 		const currentBal = await adxToken.balanceOf(userAddr)
 		// console.log('current bal', formatADX(currentBal))
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
-		// @TODO: test if dilluted stakes work OK
 	})
 	// @TODO test max deposit
-	// @TODO test sending ADX directly to it
 })
