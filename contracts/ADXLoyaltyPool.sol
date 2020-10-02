@@ -194,16 +194,20 @@ contract ADXLoyaltyPoolToken {
 		ADXToken.transferFrom(msg.sender, address(this), amount);
 	}
 
-	function leave(uint256 shares) public {
+	function leaveInner(uint256 shares) internal {
 		uint256 totalADX = ADXToken.balanceOf(address(this));
 		uint256 adxAmount = shares.mul(totalADX).div(totalSupply);
 		innerBurn(msg.sender, shares);
 		ADXToken.transfer(msg.sender, adxAmount);
 	}
 
-	function mintAndLeave(uint256 shares) external {
+	function leave(uint256 shares) external {
 		mintIncentive();
-		leave(shares);
+		leaveInner(shares);
+	}
+
+	function leaveEmergency(uint256 shares) external {
+		leaveInner(shares);
 	}
 }
 
