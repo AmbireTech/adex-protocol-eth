@@ -98,5 +98,11 @@ contract('LoyaltyPool', function(accounts) {
 		// console.log('current bal', formatADX(currentBal))
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
 	})
-	// @TODO test max deposit
+
+	it('max deposit', async function() {
+		const amnt = parseADX('1.0')
+		await loyaltyPoolOwner.setMaxTotalADX(amnt)
+		await expectEVMError(loyaltyPool.enter(amnt.add(1)), 'REACHED_MAX_TOTAL_ADX')
+		// await expectEVMError(loyaltyPool.enter(amnt), '')
+	})
 })

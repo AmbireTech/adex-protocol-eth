@@ -182,7 +182,7 @@ contract ADXLoyaltyPoolToken {
 		mintIncentive();
 
 		uint totalADX = ADXToken.balanceOf(address(this));
-		require(totalADX.add(amount) < maxTotalADX, 'REACHED_MAX_TOTAL_ADX');
+		require(totalADX.add(amount) <= maxTotalADX, 'REACHED_MAX_TOTAL_ADX');
 
 		// @TODO the totalADX == 0 check here miht be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
