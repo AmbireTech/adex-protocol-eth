@@ -129,7 +129,10 @@ contract ADXLoyaltyPoolToken {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		governance[addr] = hasGovt;
 	}
-	// @TODO explain why setIncentive does not trigger a mint
+	// This doesn't trigger a mint because otherwise we risk of being unable to setIncentive to 0
+	// if minting is impossible
+	// It's the better tradeoff to make - and the issue of front-running mintIncnetive with setIncentive(0) can
+	// be solved by timelocking the governance
 	function setIncentive(uint newIncentive) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
@@ -184,7 +187,7 @@ contract ADXLoyaltyPoolToken {
 		uint totalADX = ADXToken.balanceOf(address(this));
 		require(totalADX.add(amount) <= maxTotalADX, 'REACHED_MAX_TOTAL_ADX');
 
-		// @TODO the totalADX == 0 check here miht be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
+		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(msg.sender, amount);
 		} else {
@@ -229,6 +232,9 @@ contract ADXLoyaltyPoolIncentiveController {
 		// Mint the current incurred incentive before changing the rate,
 		// otherwise new rate would be applied for the entire period since the last mint
 		loyaltyPool.mintIncentive();
+
+		// @TODO if after a certain point of issuance, set to 0
+		// or if it's after some time
 
 		// Reset the rate based on the price from the Chainlink oracle
 		uint price = ADXUSDOracle.latestAnswer();
