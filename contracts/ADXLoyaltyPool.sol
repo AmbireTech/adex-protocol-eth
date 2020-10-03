@@ -204,14 +204,14 @@ contract ADXLoyaltyPoolToken {
 			uint256 newShares = amount.mul(totalSupply).div(totalADX);
 			innerMint(msg.sender, newShares);
 		}
-		ADXToken.transferFrom(msg.sender, address(this), amount);
+		require(ADXToken.transferFrom(msg.sender, address(this), amount));
 	}
 
 	function leaveInner(uint256 shares) internal {
 		uint256 totalADX = ADXToken.balanceOf(address(this));
 		uint256 adxAmount = shares.mul(totalADX).div(totalSupply);
 		innerBurn(msg.sender, shares);
-		ADXToken.transfer(msg.sender, adxAmount);
+		require(ADXToken.transfer(msg.sender, adxAmount));
 	}
 
 	function leave(uint256 shares) external {
