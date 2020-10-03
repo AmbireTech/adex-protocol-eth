@@ -36,6 +36,7 @@ contract ADXLoyaltyPoolToken {
 	bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 	mapping(address => uint) public nonces;
 
+	// ERC20 events
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
 
@@ -96,7 +97,11 @@ contract ADXLoyaltyPoolToken {
 		emit Transfer(owner, address(0), amount);
 	}
 
-	// Constructor
+
+	// Pool functionality
+	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
+	event LogSetIncentive(uint incentive, uint time);
+
 	IADXToken public ADXToken;
 	uint public incentivePerTokenPerAnnum;
 	uint public lastMintTime;
@@ -122,12 +127,16 @@ contract ADXLoyaltyPoolToken {
 				address(this)
 			)
 		);
+
+		emit LogSetGovernance(msg.sender, true, block.timestamp);
+		emit LogSetIncentive(incentive, block.timestamp);
 	}
 
 	// Governance functions
 	function setGovernance(address addr, bool hasGovt) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		governance[addr] = hasGovt;
+		emit LogSetGovernance(addr, hasGovt, block.timestamp);
 	}
 	// This doesn't trigger a mint because otherwise we risk of being unable to setIncentive to 0
 	// if minting is impossible
@@ -137,6 +146,7 @@ contract ADXLoyaltyPoolToken {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		incentivePerTokenPerAnnum = newIncentive;
 		lastMintTime = block.timestamp;
+		emit LogSetIncentive(newIncentive, block.timestamp);
 	}
 	function setSymbol(string calldata newSymbol) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
