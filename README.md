@@ -89,8 +89,8 @@ The `ADXFlashLoans` contract:
 * Goerli: https://goerli.etherscan.io/address/0xae4c306ce6641e1276c57473f2c2953841f0856a
 
 The `ADXLoyaltyPoolToken` contract:
-* Mainnet: https://etherscan.io/address/0x49ee1555672e1b7928fc581810b4e79dd85263e1
-* Goerli: https://goerli.etherscan.io/address/0x49ee1555672e1b7928fc581810b4e79dd85263e1
+* Mainnet: https://etherscan.io/address/0xd9a4cb9dc9296e111c66dfacab8be034ee2e1c2c
+* Goerli: https://goerli.etherscan.io/address/0xd9a4cb9dc9296e111c66dfacab8be034ee2e1c2c
 
 ### Deployment strategy
 
