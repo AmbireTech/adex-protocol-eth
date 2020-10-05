@@ -1,12 +1,14 @@
 const { Channel } = require('../js')
 
-async function expectEVMError(promise, errString) {
+const NULL_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+async function expectEVMError(promise, errString, prefix = '') {
 	try {
 		await promise
 		assert.isOk(false, `should have failed with ${errString}`)
 	} catch (e) {
 		const expectedString = errString
-			? `VM Exception while processing transaction: revert ${errString}`
+			? `${prefix}VM Exception while processing transaction: revert ${errString}`
 			: 'VM Exception while processing transaction: revert'
 		assert.equal(e.message, expectedString, 'error message is incorrect')
 	}
@@ -115,5 +117,6 @@ module.exports = {
 	toUnixTimestamp,
 	currentTimestamp,
 	takeSnapshot,
-	revertToSnapshot
+	revertToSnapshot,
+	NULL_ADDRESS
 }
