@@ -40,12 +40,13 @@ contract AdExRecoveryDAO {
     event LogRemoveProposer(address proposer, uint256 timestamp);
     event LogProposeRecovery(bytes32 recoveryId, address proposer, address identity, uint256 timestamp);
     event LogFinalizeRecovery(bytes32 recoveryId, address proposer, address identity, uint256 timestamp);
-    event LogCancelRecovery(address identity, uint256 timestamp);
+    event LogCancelRecovery(bytes32 recoveryId, address identity, uint256 timestamp);
     event LogChangeAdmin(address oldAmin, address newAdmin);
     event LogChangeRecoveryDelay(uint256 previousDelay, uint256 newDelay);
 
     constructor(address admin, uint256 minDelay, uint256 delay) public {
-        require(delay > 0, 'INVALID,_DELAY');
+        require(delay > 0, 'INVALID_DELAY');
+        require(minDelay > 0, 'INVALID_MIN_DELAY');
         require(admin != address(0), 'INVALID_ADMIN');
 
         adminAddr = admin; 
@@ -91,6 +92,7 @@ contract AdExRecoveryDAO {
     function finalizeRecovery(RecoveryRequestLibrary.RecoveryRequest memory request) external {
         bytes32 recoveryId = request.hash();
         require(proposers[msg.sender] == true, 'ONLY_WHITELISTED_PROPOSERS');
+        require(recovery[recoveryId] > 0 , 'RECOVERY_REQUEST_DOES_NOT_EXIST');
         require(now >= recovery[recoveryId], 'ACTIVE_DELAY');
         
         Identity.Transaction[] memory recoverTransaction = new Identity.Transaction[](1);
@@ -124,10 +126,10 @@ contract AdExRecoveryDAO {
             proposers[msg.sender] == true, 
             'ONLY_IDENTITY_PROPOSER_OR_ADMIN_CAN_CANCEL'
         );
-        bytes32 recoveryHash = request.hash();
-        require(recovery[recoveryHash] != 0, 'RECOVERY_REQUEST_DOES_NOT_EXIST');
-        delete recovery[recoveryHash];
-        emit LogCancelRecovery(msg.sender, now);
+        bytes32 recoveryId = request.hash();
+        require(recovery[recoveryId] > 0, 'RECOVERY_REQUEST_DOES_NOT_EXIST');
+        delete recovery[recoveryId];
+        emit LogCancelRecovery(recoveryId, msg.sender, now);
     }
     
     /**

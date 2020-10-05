@@ -1,7 +1,13 @@
 const { providers, Contract } = require('ethers')
 const { Interface } = require('ethers').utils
 
-const { expectEVMError /* , setTime */, moveTime, takeSnapshot, revertToSnapshot } = require('./')
+const {
+	expectEVMError /* , setTime */,
+	moveTime,
+	takeSnapshot,
+	revertToSnapshot,
+	NULL_ADDRESS
+} = require('./')
 const { Transaction } = require('../js')
 
 const AdExRecoveryDAO = artifacts.require('AdExRecoveryDAO')
@@ -34,7 +40,9 @@ contract('AdExRecoveryDAO', function(accounts) {
 	const sampleRecoveryRequestProposal = () => [userIdentityAccount.address, newUserWallet]
 
 	before(async function() {
-		const adxRecoveryDAOWeb3 = await AdExRecoveryDAO.new(admin, 3, 3)
+		const minDelay = 3
+		const delay = 3
+		const adxRecoveryDAOWeb3 = await AdExRecoveryDAO.new(admin, minDelay, delay)
 		adxRecoveryDAO = new Contract(
 			adxRecoveryDAOWeb3.address,
 			AdExRecoveryDAO._json.abi,
@@ -45,12 +53,33 @@ contract('AdExRecoveryDAO', function(accounts) {
 		// to enable it recover the account
 		userIdentityAccount = await Identity.new([adxRecoveryDAOWeb3.address, identityWallet], [2, 2])
 		id = new Contract(userIdentityAccount.address, Identity._json.abi, identityWalletSigner)
+	})
+
+	beforeEach(async function() {
 		snapshotId = await takeSnapshot(web3)
 	})
 
 	// eslint-disable-next-line no-undef
 	afterEach(async function() {
 		await revertToSnapshot(web3, snapshotId)
+	})
+
+	it('reject invalid constructor params', async function() {
+		await expectEVMError(
+			AdExRecoveryDAO.new(admin, 0, 3),
+			'INVALID_MIN_DELAY -- Reason given: INVALID_MIN_DELAY.',
+			'Returned error: '
+		)
+		await expectEVMError(
+			AdExRecoveryDAO.new(admin, 3, 0),
+			'INVALID_DELAY -- Reason given: INVALID_DELAY.',
+			'Returned error: '
+		)
+		await expectEVMError(
+			AdExRecoveryDAO.new(NULL_ADDRESS, 3, 3),
+			'INVALID_ADMIN -- Reason given: INVALID_ADMIN.',
+			'Returned error: '
+		)
 	})
 
 	it('only admin can add proposer', async function() {
@@ -67,7 +96,6 @@ contract('AdExRecoveryDAO', function(accounts) {
 			adxRecoveryDAO.connect(anotherSigner).changeRecoveryDelay(10),
 			'ONLY_ADMIN_CAN_CALL'
 		)
-
 		await (await adxRecoveryDAO.changeRecoveryDelay(10)).wait()
 		assert.deepEqual(
 			(await adxRecoveryDAO.recoveryDelay()).toNumber(),
@@ -78,10 +106,9 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 	it('admin can not set recovery delay below minimum', async function() {
 		await expectEVMError(adxRecoveryDAO.changeRecoveryDelay(1), 'NEW_DELAY_BELOW_MINIMUM')
-
 		assert.deepEqual(
 			(await adxRecoveryDAO.recoveryDelay()).toNumber(),
-			10,
+			3,
 			'should not change the recoveryDelay'
 		)
 	})
@@ -94,6 +121,20 @@ contract('AdExRecoveryDAO', function(accounts) {
 		await (await adxRecoveryDAO.addProposer(anotherUser1)).wait()
 		await (await adxRecoveryDAO.removeProposer(anotherUser1)).wait()
 		assert.deepEqual(await adxRecoveryDAO.proposers(anotherUser1), false, 'should remove proposer')
+	})
+
+	it('only admin can change admin', async function() {
+		await expectEVMError(
+			adxRecoveryDAO.connect(anotherSigner).changeAdmin(anotherProposerAccount),
+			'ONLY_ADMIN_CAN_CALL'
+		)
+		await expectEVMError(adxRecoveryDAO.changeAdmin(admin), 'INVALID_NEW_ADMIN')
+		await adxRecoveryDAO.changeAdmin(anotherProposerAccount)
+		assert.deepEqual(
+			await adxRecoveryDAO.adminAddr(),
+			anotherProposerAccount,
+			'should change admin'
+		)
 	})
 
 	it('only proposers can propose recovery', async function() {
@@ -134,12 +175,6 @@ contract('AdExRecoveryDAO', function(accounts) {
 	it('can not cancel non existing recovery request', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 
-		const recoveryProposal = sampleRecoveryRequestProposal()
-		// propose recovery
-		await (await adxRecoveryDAO
-			.connect(anotherProposerAccountSigner)
-			.proposeRecovery(recoveryProposal)).wait()
-
 		await expectEVMError(
 			adxRecoveryDAO.cancelRecovery([userIdentityAccount.address, admin]),
 			'RECOVERY_REQUEST_DOES_NOT_EXIST'
@@ -148,16 +183,13 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 	it('admin can cancel recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
-
 		const recoveryProposal = sampleRecoveryRequestProposal()
 		// propose recovery
 		await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
 			.proposeRecovery(recoveryProposal)).wait()
-
 		// cancel recovery
 		const cancelTx = await (await adxRecoveryDAO.cancelRecovery(recoveryProposal)).wait()
-
 		assert.ok(cancelTx.events.find(x => x.event === 'LogCancelRecovery'), 'should cancel recovery')
 	})
 
@@ -174,8 +206,13 @@ contract('AdExRecoveryDAO', function(accounts) {
 		const cancelTx = await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
 			.cancelRecovery(recoveryProposal)).wait()
-
-		assert.ok(cancelTx.events.find(x => x.event === 'LogCancelRecovery'), 'should cancel recovery')
+		const ev = cancelTx.events.find(x => x.event === 'LogCancelRecovery')
+		assert.ok(ev, 'should cancel recovery')
+		assert.deepEqual(
+			(await adxRecoveryDAO.recovery(ev.args.recoveryId)).toString(),
+			'0',
+			'should cancel recovery'
+		)
 	})
 
 	it('user identity can cancel recovery', async function() {
@@ -205,6 +242,17 @@ contract('AdExRecoveryDAO', function(accounts) {
 		assert(await adxRecoveryDAO.recovery(recoveryTxEv.args.recoveryId), 0, 'should cancel recovery')
 	})
 
+	it('can not finalize non existing recovery request', async function() {
+		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
+
+		await expectEVMError(
+			adxRecoveryDAO
+				.connect(anotherProposerAccountSigner)
+				.finalizeRecovery([userIdentityAccount.address, admin]),
+			'RECOVERY_REQUEST_DOES_NOT_EXIST'
+		)
+	})
+
 	it('only proposer can finalize recovery', async function() {
 		await (await adxRecoveryDAO.addProposer(anotherProposerAccount)).wait()
 		const recoveryProposal = sampleRecoveryRequestProposal()
@@ -226,7 +274,6 @@ contract('AdExRecoveryDAO', function(accounts) {
 		// ensure that we can finalize recovery
 		await moveTime(web3, 20000)
 
-		// check privilege level of new address
 		const finalizeRecoveryTx = await (await adxRecoveryDAO
 			.connect(anotherProposerAccountSigner)
 			.finalizeRecovery(recoveryProposal)).wait()
@@ -238,19 +285,5 @@ contract('AdExRecoveryDAO', function(accounts) {
 
 		// confirm new user wallet has the correct privilege level
 		assert(id.privileges(newUserWallet), 2, 'new user wallet should have tx level')
-	})
-
-	it('only admin can change admin', async function() {
-		await expectEVMError(
-			adxRecoveryDAO.connect(anotherSigner).changeAdmin(anotherProposerAccount),
-			'ONLY_ADMIN_CAN_CALL'
-		)
-		await expectEVMError(adxRecoveryDAO.changeAdmin(admin), 'INVALID_NEW_ADMIN')
-		await adxRecoveryDAO.changeAdmin(anotherProposerAccount)
-		assert.deepEqual(
-			await adxRecoveryDAO.adminAddr(),
-			anotherProposerAccount,
-			'should change admin'
-		)
 	})
 })
