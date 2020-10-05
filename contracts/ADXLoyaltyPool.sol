@@ -243,8 +243,10 @@ contract ADXLoyaltyPoolIncentiveController {
 		// otherwise new rate would be applied for the entire period since the last mint
 		loyaltyPool.mintIncentive();
 
-		// @TODO if after a certain point of issuance, set to 0
-		// or if it's after some time
+		// At some point we might enable bonus periods:
+		// if (block.timestamp < ...) { ... }
+		// Or overinflation protection
+		// if (loyaltyPool.ADXToken().totalSupply() > ...) { ... }
 
 		// Reset the rate based on the price from the Chainlink oracle
 		uint price = ADXUSDOracle.latestAnswer();
