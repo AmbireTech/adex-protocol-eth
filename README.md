@@ -88,6 +88,15 @@ The `ADXFlashLoans` contract:
 * Mainnet: https://etherscan.io/address/0xae4c306ce6641e1276c57473f2c2953841f0856a
 * Goerli: https://goerli.etherscan.io/address/0xae4c306ce6641e1276c57473f2c2953841f0856a
 
+The `ADXLoyaltyPoolToken` contract:
+* Mainnet: https://etherscan.io/address/0xd9a4cb9dc9296e111c66dfacab8be034ee2e1c2c
+* Goerli: https://goerli.etherscan.io/address/0xd9a4cb9dc9296e111c66dfacab8be034ee2e1c2c
+
+The `ADXLoyaltyPoolIncentiveController` contract:
+* Mainnet: https://etherscan.io/address/0x57ecd1f90b1298f374737f0d7dd6aabb11b41c0f
+* Goerli: https://goerli.etherscan.io/address/0x57ecd1f90b1298f374737f0d7dd6aabb11b41c0f
+
+
 ### Deployment strategy
 
 The full deploy processis as follows
@@ -148,6 +157,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * [Sigma Prime](https://github.com/sigp/public-audits/blob/master/adex/review.pdf): 4 issues discovered with "Informational" severity, all resolved
 * [G0 Group, Staking contract](https://github.com/g0-group/Audits/blob/master/G0Group-AdExStaking.pdf): all issues discovered were resolved
 * [Forkway, ADXToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/Forkway_ADXToken_audit.pdf): all issues discovered were informational and resolved
+* [Forkway, ADXLoyaltyPoolToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/forkway-loyalty-pool.md): all issues discovered were resolved
 
 ## Credits
 
