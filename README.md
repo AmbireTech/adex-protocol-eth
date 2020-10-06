@@ -99,7 +99,7 @@ The `ADXLoyaltyPoolIncentiveController` contract:
 
 ### Deployment strategy
 
-The full deploy processis as follows
+The full deploy process is as follows
 
 * Deploy AdExCore
 * Deploy an IdentityFactory
