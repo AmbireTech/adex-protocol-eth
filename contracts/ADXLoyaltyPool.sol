@@ -232,7 +232,7 @@ interface IChainlinkSimple {
 // NOTE: If this needs to be upgraded, we just deploy a new instance and remove the governance rights
 // of the old instance and set rights for the new instance
 contract ADXLoyaltyPoolIncentiveController {
-	IChainlinkSimple public constant ADXUSDOracle = IChainlinkSimple(0xA3eAeC3AB66048E6F3Cf23D81881a3fcd9A3D2ED);
+	IChainlinkSimple public constant ADXUSDOracle = IChainlinkSimple(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 	ADXLoyaltyPoolToken public immutable loyaltyPool;
 	constructor(ADXLoyaltyPoolToken lpt) public {
 		loyaltyPool = lpt;
