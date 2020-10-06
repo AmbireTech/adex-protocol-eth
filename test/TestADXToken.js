@@ -1,7 +1,7 @@
 const { providers, Contract } = require('ethers')
 const { bigNumberify } = require('ethers').utils
 
-const { expectEVMError /* , setTime */ } = require('./')
+const { expectEVMError, setTime } = require('./')
 
 const MockToken = artifacts.require('./mocks/Token')
 const ADXToken = artifacts.require('ADXToken')
@@ -60,7 +60,7 @@ contract('ADXToken', function(accounts) {
 
 		assert.deepEqual(await adxToken.totalSupply(), expectedAmnt, 'total supply is reflected')
 
-		await (await adxToken.swap(5000)).wait()
+		await adxToken.swap(5000)
 		assert.deepEqual(
 			await adxToken.totalSupply(),
 			bigNumberify('1500000000000000000'),
@@ -82,7 +82,6 @@ contract('ADXToken', function(accounts) {
 		assert.ok(receipt.gasUsed.toNumber() < 56000, 'gas usage is OK')
 	})
 
-	/*
 	it('supply controller - mint and step down', async function() {
 		const tokenAddr = adxToken.address
 		const [initialSupply, initialBal] = await Promise.all([
@@ -93,14 +92,20 @@ contract('ADXToken', function(accounts) {
 		// After Aug 10
 		await setTime(web3, 1597018600)
 		const largeAmnt = bigNumberify('60000000000000000000000000')
-		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'EARLY_MINT_TOO_LARGE')
+		await expectEVMError(
+			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt),
+			'EARLY_MINT_TOO_LARGE'
+		)
 		// After Sep 10
 		await setTime(web3, 1599697000)
-		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)), 'MINT_TOO_LARGE')
+		await expectEVMError(
+			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)),
+			'MINT_TOO_LARGE'
+		)
 		const receipt = await (await adxSupplyController.mint(tokenAddr, userAddr, largeAmnt)).wait()
 		assert.equal(receipt.events.length, 1, 'has one transfer event')
-		//assert.equal(receipt.events[0].event, 'Transfer', 'event is a transfer')
-		//assert.deepEqual(receipt.events[0].amount, largeAmnt, 'Transfer amount is OK')
+		// assert.equal(receipt.events[0].event, 'Transfer', 'event is a transfer')
+		// assert.deepEqual(receipt.events[0].amount, largeAmnt, 'Transfer amount is OK')
 		assert.deepEqual(await adxToken.totalSupply(), initialSupply.add(largeAmnt), 'supply is OK')
 		assert.deepEqual(await adxToken.balanceOf(userAddr), initialBal.add(largeAmnt), 'balance is OK')
 
@@ -108,5 +113,4 @@ contract('ADXToken', function(accounts) {
 		await adxSupplyController.setGovernance(governance, 0)
 		await expectEVMError(adxSupplyController.mint(tokenAddr, userAddr, largeAmnt), 'NOT_GOVERNANCE')
 	})
-	*/
 })
