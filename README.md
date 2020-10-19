@@ -93,8 +93,8 @@ The `ADXLoyaltyPoolToken` contract:
 * Goerli: https://goerli.etherscan.io/address/0xd9a4cb9dc9296e111c66dfacab8be034ee2e1c2c
 
 The `ADXLoyaltyPoolIncentiveController` contract:
-* Mainnet: https://etherscan.io/address/0xb38d2e4600cf1d46dd6b1cdafd4584c2c2ea195b
-* Goerli: https://goerli.etherscan.io/address/0xb38d2e4600cf1d46dd6b1cdafd4584c2c2ea195b
+* Mainnet: https://etherscan.io/address/0xa52588d04c5b21854f42cbcd9502aa6092e6a779
+* Goerli: https://goerli.etherscan.io/address/0xa52588d04c5b21854f42cbcd9502aa6092e6a779
 
 
 ### Deployment strategy
