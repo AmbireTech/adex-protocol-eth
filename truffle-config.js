@@ -51,7 +51,7 @@ module.exports = {
 			port: 8545,
 			network_id: '*', // Match any network id
 			gas: 6000000,
-			gasPrice: 10000000000
+			gasPrice: 1
 		},
 		// development: {
 		//  host: "127.0.0.1",     // Localhost (default: none)
