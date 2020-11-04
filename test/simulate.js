@@ -121,94 +121,94 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		await token.setBalanceTo(id.address, 10000)
 	})
 
-	it('routines: open a channel, execute: channelWithdraw', async function() {
-		const minimumChannelEarners = 10
-		const maximumChannelEarners = 20
-		const rounds = 10
+	// it('routines: open a channel, execute: channelWithdraw', async function() {
+	// 	const minimumChannelEarners = 10
+	// 	const maximumChannelEarners = 20
+	// 	const rounds = 10
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
-			const tokenAmnt = 500
+	// 	for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
+	// 		const tokenAmnt = 500
 
-			const fee = 20
-			const blockTime = (await web3.eth.getBlock('latest')).timestamp
-			const auth = new RoutineAuthorization({
-				relayer: relayerAddr,
-				outpace: coreAddr,
-				validUntil: blockTime + 14 * DAY_SECONDS,
-				feeTokenAddr: token.address,
-				weeklyFeeAmount: fee
-			})
+	// 		const fee = 20
+	// 		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+	// 		const auth = new RoutineAuthorization({
+	// 			relayer: relayerAddr,
+	// 			outpace: coreAddr,
+	// 			validUntil: blockTime + 14 * DAY_SECONDS,
+	// 			feeTokenAddr: token.address,
+	// 			weeklyFeeAmount: fee
+	// 		})
 
-			// Open a channel via the identity
-			const channel = sampleChannel(
-				validators,
-				token.address,
-				id.address,
-				tokenAmnt,
-				blockTime + 40 * DAY_SECONDS,
-				channelNonce
-			)
-			const txns = [
-				await zeroFeeTx(
-					id.address,
-					idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()]),
-					0,
-					id,
-					token
-				),
-				await zeroFeeTx(
-					id.address,
-					idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true]),
-					1,
-					id,
-					token
-				)
-			]
-			const sigs = await Promise.all(
-				txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
-			)
+	// 		// Open a channel via the identity
+	// 		const channel = sampleChannel(
+	// 			validators,
+	// 			token.address,
+	// 			id.address,
+	// 			tokenAmnt,
+	// 			blockTime + 40 * DAY_SECONDS,
+	// 			channelNonce
+	// 		)
+	// 		const txns = [
+	// 			await zeroFeeTx(
+	// 				id.address,
+	// 				idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()]),
+	// 				0,
+	// 				id,
+	// 				token
+	// 			),
+	// 			await zeroFeeTx(
+	// 				id.address,
+	// 				idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true]),
+	// 				1,
+	// 				id,
+	// 				token
+	// 			)
+	// 		]
+	// 		const sigs = await Promise.all(
+	// 			txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
+	// 		)
 
-			await (await id.execute(txns.map(x => x.toSolidityTuple()), sigs, { gasLimit })).wait()
+	// 		await (await id.execute(txns.map(x => x.toSolidityTuple()), sigs, { gasLimit })).wait()
 
-			const numberOfEarners = Math.floor(
-				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
-			)
-			const amtPerAddress = Math.floor(tokenAmnt / (numberOfEarners * rounds))
+	// 		const numberOfEarners = Math.floor(
+	// 			getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
+	// 		)
+	// 		const amtPerAddress = Math.floor(tokenAmnt / (numberOfEarners * rounds))
 
-			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
-			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
-				channel,
-				id.address,
-				earnerAddresses,
-				amtPerAddress,
-				coreAddr
-			)
+	// 		const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
+	// 		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
+	// 			channel,
+	// 			id.address,
+	// 			earnerAddresses,
+	// 			amtPerAddress,
+	// 			coreAddr
+	// 		)
 
-			const channelWithdrawTx = new Transaction({
-				identityContract: id.address,
-				nonce: (await id.nonce()).toNumber(),
-				feeTokenAddr: token.address,
-				feeAmount: fee,
-				to: coreAddr,
-				data: coreInterface.functions.channelWithdraw.encode([
-					channel.toSolidityTuple(),
-					stateRoot,
-					[vsig1, vsig2],
-					proof,
-					amtPerAddress
-				])
-			})
+	// 		const channelWithdrawTx = new Transaction({
+	// 			identityContract: id.address,
+	// 			nonce: (await id.nonce()).toNumber(),
+	// 			feeTokenAddr: token.address,
+	// 			feeAmount: fee,
+	// 			to: coreAddr,
+	// 			data: coreInterface.functions.channelWithdraw.encode([
+	// 				channel.toSolidityTuple(),
+	// 				stateRoot,
+	// 				[vsig1, vsig2],
+	// 				proof,
+	// 				amtPerAddress
+	// 			])
+	// 		})
 
-			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
-			const withdrawRoutineReceipt = await (await id.execute(
-				[channelWithdrawTx.toSolidityTuple()],
-				[withdrawSigs],
-				{ gasLimit }
-			)).wait()
+	// 		const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
+	// 		const withdrawRoutineReceipt = await (await id.execute(
+	// 			[channelWithdrawTx.toSolidityTuple()],
+	// 			[withdrawSigs],
+	// 			{ gasLimit }
+	// 		)).wait()
 
-			logIdentityExecuteGasInfo(earnerAddresses.length, withdrawRoutineReceipt.gasUsed, proof)
-		}
-	})
+	// 		logIdentityExecuteGasInfo(earnerAddresses.length, withdrawRoutineReceipt.gasUsed, proof)
+	// 	}
+	// })
 
 	it('v2 routines: open a channel, execute: channelWithdraw', async function() {
 		const minimumChannelEarners = 10
@@ -291,7 +291,6 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
 		)
 		await (await id.execute(txns.map(x => x.toSolidityTuple()), sigs, { gasLimit })).wait()
-		console.log('set routine auth')
 
 		const channelBulkWithdrawTx = new Transaction({
 			identityContract: id.address,
@@ -300,7 +299,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			feeAmount: fee,
 			to: coreV2Addr,
 			data: coreV2Interface.functions.channelWithdrawBulk.encode([
-				[channels, stateRoots, signatures, proofs, amountInTrees, amountWithdrawnPerChannel]
+				[channels, stateRoots, signatures, proofs, amountInTrees],
+				amountWithdrawnPerChannel
 			])
 		})
 

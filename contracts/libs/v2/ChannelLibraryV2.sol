@@ -48,6 +48,24 @@ library ChannelLibraryV2 {
 		));
 	}
 
+
+	function hashMemory(Channel memory channel)
+		internal
+		view
+		returns (bytes32)
+	{
+		// In this version of solidity, we can no longer keccak256() directly
+		return keccak256(abi.encode(
+			address(this),
+			channel.creator,
+			channel.tokenAddr,
+			channel.tokenAmount,
+			channel.validUntil,
+			channel.validators,
+			channel.spec
+		));
+	}
+
 	function isValid(Channel calldata channel, uint currentTime)
 		internal
 		pure
