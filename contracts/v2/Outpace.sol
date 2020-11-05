@@ -72,30 +72,26 @@ contract Outpace {
 
     function channelWithdrawBulk(
         BulkWithdraw calldata bulkWithdraw, 
-        WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory amountWithdrawnPerChannel
+        WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory userAmountWithdrawnPerChannel
     )
         external
     {
         // validate withdrawn hash
-        require(amountWithdrawnPerChannel.computeMerkleRoot(msg.sender) == withdrawnPerUser[msg.sender], 'INVALID_WITHDRAW_DATA');
+        require(userAmountWithdrawnPerChannel.computeMerkleRoot(msg.sender) == withdrawnPerUser[msg.sender], 'INVALID_WITHDRAW_DATA');
 
+        // allocates memory
         WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory updateAmountWithdrawnPerChannel = new WithdrawnPerChannelLibrary.WithdrawnPerChannel[](
-            bulkWithdraw.channels.length + amountWithdrawnPerChannel.length
+            bulkWithdraw.channels.length + userAmountWithdrawnPerChannel.length
         );
 
-        // copy to extended memory array
-        for(uint k = 0; k < amountWithdrawnPerChannel.length; k++) {
-            // during copy remove expired channels
-            // since we don't allow withdrawal from expired channels
-            // in this function
-            if (amountWithdrawnPerChannel[k].channel.validUntil > now) {
-                updateAmountWithdrawnPerChannel[k] = amountWithdrawnPerChannel[k];
-            }
+        // copy userAmountWithdrawnPerChannel
+        for(uint k = 0; k < userAmountWithdrawnPerChannel.length; k++) {
+            updateAmountWithdrawnPerChannel[k] = userAmountWithdrawnPerChannel[k];
         }
         
         uint newWithdrawLeafIndex = 0;
         uint256 currentTotalAmountToWithdraw = 0;
-        uint withdrawnLen = amountWithdrawnPerChannel.length;
+        uint withdrawnLen = userAmountWithdrawnPerChannel.length;
 
         for(uint i = 0; i < bulkWithdraw.channels.length; i++) {
             ChannelLibraryV2.Channel calldata channel  = bulkWithdraw.channels[i];
@@ -127,13 +123,14 @@ contract Outpace {
                 updateAmountWithdrawnPerChannel[withdrawnLen + newWithdrawLeafIndex] = newItem;
                 newWithdrawLeafIndex += 1;
             } else {
-                updateAmountWithdrawnPerChannel[i].amountWithdrawnPerChannel = amountInTree;
+                updateAmountWithdrawnPerChannel[uint(index)].amountWithdrawnPerChannel = amountInTree;
             }
+            //@TODO ensure it's not negative?
             remaining[channelId] = remaining[channelId].sub(amountToWithdraw);
             currentTotalAmountToWithdraw = currentTotalAmountToWithdraw.add(amountToWithdraw);
         }
 
-        // write to storage
+        // updateAmountWithdrawnPerChannel = updateAmountWithdrawnPerChannel.removeExpiredChannels();
         bytes32 updateBalancesRootHash = updateAmountWithdrawnPerChannel.computeMerkleRoot(msg.sender);
         withdrawnPerUser[msg.sender] = updateBalancesRootHash;
 
@@ -147,10 +144,12 @@ contract Outpace {
         uint amountInTree,
         bytes32[3][] calldata signature,
         bytes32[] calldata proofs
-    ) internal view {
+    ) 
+        internal
+        view
+    {
         bytes32 channelId = ChannelLibraryV2.hash(channel);
         require(states[channelId] == ChannelLibraryV2.State.Active, "INVALID_STATE");
-        require(now <= channel.validUntil, "EXPIRED");
     
         bytes32 hashToSign = keccak256(abi.encode(channelId, stateRoot));
         require(ChannelLibraryV2.isSignedBySupermajority(channel, hashToSign, signature), "NOT_SIGNED_BY_VALIDATORS");

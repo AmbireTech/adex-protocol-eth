@@ -95,4 +95,18 @@ const RoutineOps = {
 	}
 }
 
-module.exports = { Transaction, RoutineAuthorization, RoutineOps }
+function WithdrawnPerChannel(channels, amountsWithdrawn) {
+	if (channels.length !== amountsWithdrawn.length) throw new Error('invalid withdrawn')
+
+	this.channels = channels
+	this.amountsWithdrawnPerChannel = amountsWithdrawn
+}
+
+WithdrawnPerChannel.prototype.toSolidityTuple = function() {
+	return this.channels.map((item, i) => [
+		item.toSolidityTuple(),
+		this.amountsWithdrawnPerChannel[i]
+	])
+}
+
+module.exports = { Transaction, RoutineAuthorization, RoutineOps, WithdrawnPerChannel }
