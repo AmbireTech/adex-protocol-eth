@@ -346,8 +346,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const userAmountWithdrawnPerChannel = new WithdrawnPerChannel(
 			channels,
-			amountInTrees
-		).toSolidityTuple()
+			amountInTrees,
+			coreV2Addr
+		).toSolidityTuple(coreV2Addr)
 
 		// increase the channel withdraw amount
 		amountInTrees[0] *= 2
@@ -402,7 +403,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const newChannelAmountWithdrawnPerChannel = new WithdrawnPerChannel(
 			channels,
 			amountInTrees
-		).toSolidityTuple()
+		).toSolidityTuple(coreV2Addr)
 		const amountInTree = 10
 		const [
 			newChannelStateRoot,

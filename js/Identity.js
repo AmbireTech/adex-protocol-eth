@@ -102,11 +102,18 @@ function WithdrawnPerChannel(channels, amountsWithdrawn) {
 	this.amountsWithdrawnPerChannel = amountsWithdrawn
 }
 
-WithdrawnPerChannel.prototype.toSolidityTuple = function() {
+WithdrawnPerChannel.prototype.toSolidityTuple = function(coreV2Addr) {
 	return this.channels.map((item, i) => [
-		item.toSolidityTuple(),
+		item.hashHex(coreV2Addr),
 		this.amountsWithdrawnPerChannel[i]
 	])
 }
 
+WithdrawnPerChannel.prototype.computeMerkleRoot = function() {
+
+}
+
+
 module.exports = { Transaction, RoutineAuthorization, RoutineOps, WithdrawnPerChannel }
+
+// jwtzlz
