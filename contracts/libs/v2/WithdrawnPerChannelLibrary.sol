@@ -6,7 +6,7 @@ library WithdrawnPerChannelLibrary {
     using ChannelLibraryV2 for ChannelLibraryV2.Channel;
 
     struct WithdrawnPerChannel {
-        ChannelLibraryV2.Channel channel;
+        bytes32 channelId;
         uint256 amountWithdrawnPerChannel;
     }
 
@@ -20,7 +20,7 @@ library WithdrawnPerChannelLibrary {
     {
         bytes32 channelId = ChannelLibraryV2.hash(channel);
         for(uint i = 0; i < withdrawals.length; i++) {
-            if(withdrawals[i].channel.hashMemory() == channelId) {
+            if(withdrawals[i].channelId == channelId) {
                 return (int(i), withdrawals[i].amountWithdrawnPerChannel);
             }
         }
@@ -28,27 +28,12 @@ library WithdrawnPerChannelLibrary {
     }
 
 
-    function removeExpiredChannels(WithdrawnPerChannel[] memory withdrawals)
-        internal
-        view
-        returns(WithdrawnPerChannel[] memory)
-    {
-        WithdrawnPerChannel[] memory nonExpiredWithdrawals = new WithdrawnPerChannel[](withdrawals.length);
-        for(uint i = 0; i < withdrawals.length; i++) {
-            if(withdrawals[i].channel.validUntil > now) {
-                nonExpiredWithdrawals[i] = withdrawals[i];
-            }
-        }
-        return nonExpiredWithdrawals;
-    }
-
-
-    function computeMerkleRoot(WithdrawnPerChannel[] memory withdrawals, address sender)
+    function computeMerkleRoot(WithdrawnPerChannel[] memory withdrawals, address sender, uint256 nCurr)
         internal
         pure
         returns (bytes32)
     {
-        uint256 nCurr = withdrawals.length;
+        // uint256 nCurr = withdrawals.length;
 
         if (nCurr == 0) {
             return bytes32(0);

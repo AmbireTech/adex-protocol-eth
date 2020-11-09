@@ -64,6 +64,8 @@ contract Outpace {
 
 		// NOTE: we will not update withdrawn, since a WithdrawExpired does not count towards normal withdrawals
 		states[channelId] = ChannelLibraryV2.State.Expired;
+
+        delete remaining[channelId];
 		
 		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
 
@@ -77,7 +79,13 @@ contract Outpace {
         external
     {
         // validate withdrawn hash
-        require(userAmountWithdrawnPerChannel.computeMerkleRoot(msg.sender) == withdrawnPerUser[msg.sender], 'INVALID_WITHDRAW_DATA');
+        require(
+            userAmountWithdrawnPerChannel
+                .computeMerkleRoot(msg.sender, userAmountWithdrawnPerChannel.length) 
+            == 
+            withdrawnPerUser[msg.sender], 
+            'INVALID_WITHDRAW_DATA'
+        );
 
         // allocates memory
         WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory updateAmountWithdrawnPerChannel = new WithdrawnPerChannelLibrary.WithdrawnPerChannel[](
@@ -96,7 +104,6 @@ contract Outpace {
         for(uint i = 0; i < bulkWithdraw.channels.length; i++) {
             ChannelLibraryV2.Channel calldata channel  = bulkWithdraw.channels[i];
             uint amountInTree = bulkWithdraw.amountInTrees[i];
-            bytes32 channelId = ChannelLibraryV2.hash(channel);
             
             validateChannelWithSignatureAndBalance(
                 channel,
@@ -105,33 +112,39 @@ contract Outpace {
                 bulkWithdraw.signatures[i],
                 bulkWithdraw.proofs[i]
             );
+
+            bytes32 channelId = ChannelLibraryV2.hash(channel);
             
             (int index, uint amountWithdrawn) = updateAmountWithdrawnPerChannel.find(channel);
             uint256 amountToWithdraw = amountInTree.sub(amountWithdrawn);
 
             if (index == -1) {
-                // why? https://github.com/ethereum/solidity/issues/8360
-                ChannelLibraryV2.Channel memory castChannelToMemory = ChannelLibraryV2.Channel(
-                    channel.creator,
-                    channel.tokenAddr,
-                    channel.tokenAmount,
-                    channel.validUntil,
-                    channel.validators,
-                    channel.spec
-                );
-                WithdrawnPerChannelLibrary.WithdrawnPerChannel memory newItem = WithdrawnPerChannelLibrary.WithdrawnPerChannel(castChannelToMemory, amountInTree);
+                WithdrawnPerChannelLibrary.WithdrawnPerChannel memory newItem = WithdrawnPerChannelLibrary.WithdrawnPerChannel(channelId, amountInTree);
                 updateAmountWithdrawnPerChannel[withdrawnLen + newWithdrawLeafIndex] = newItem;
                 newWithdrawLeafIndex += 1;
             } else {
                 updateAmountWithdrawnPerChannel[uint(index)].amountWithdrawnPerChannel = amountInTree;
             }
-            //@TODO ensure it's not negative?
+
+            // @TODO ensure it's not negative?
             remaining[channelId] = remaining[channelId].sub(amountToWithdraw);
             currentTotalAmountToWithdraw = currentTotalAmountToWithdraw.add(amountToWithdraw);
         }
 
-        // updateAmountWithdrawnPerChannel = updateAmountWithdrawnPerChannel.removeExpiredChannels();
-        bytes32 updateBalancesRootHash = updateAmountWithdrawnPerChannel.computeMerkleRoot(msg.sender);
+        WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory nonExpiredWithdrawnPerChannel = new WithdrawnPerChannelLibrary.WithdrawnPerChannel[](
+            updateAmountWithdrawnPerChannel.length
+        );
+
+        uint nonExpiredLength = 0; // this is required because we allocate more memory than we use
+        for(uint i = 0; i < updateAmountWithdrawnPerChannel.length; i++) {
+            if(states[updateAmountWithdrawnPerChannel[i].channelId] == ChannelLibraryV2.State.Active) {
+                nonExpiredWithdrawnPerChannel[nonExpiredLength] = updateAmountWithdrawnPerChannel[i];
+                nonExpiredLength += 1;
+            }
+        }
+
+
+        bytes32 updateBalancesRootHash = nonExpiredWithdrawnPerChannel.computeMerkleRoot(msg.sender, nonExpiredLength);
         withdrawnPerUser[msg.sender] = updateBalancesRootHash;
 
 		SafeERC20.transfer(bulkWithdraw.channels[0].tokenAddr, msg.sender, currentTotalAmountToWithdraw);
