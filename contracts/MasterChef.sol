@@ -608,10 +608,8 @@ contract MasterChef is Ownable {
             .mul(adxPerBlock)
             .mul(pool.allocPoint)
             .div(totalAllocPoint);
-        // @TODO
-        //adx.mint(devaddr, adxReward.div(devFundDivRate));
-        //adx.mint(address(this), adxReward);
-        pool.accADXPerShare = pool.accADXPerShare.add(
+        // XXX The original masterchef mints here; our version expects to be pre-funded with ADX
+	pool.accADXPerShare = pool.accADXPerShare.add(
             adxReward.mul(1e12).div(lpSupply)
         );
         pool.lastRewardBlock = block.number;
@@ -671,6 +669,7 @@ contract MasterChef is Ownable {
     function safeADXTransfer(address _to, uint256 _amount) internal {
         uint256 adxBal = adx.balanceOf(address(this));
         if (_amount > adxBal) {
+            require((_amount - adxBal) < 1000000000000000000, "safeADXTransfer: rounding error too big, contract may be underfunded?");
             adx.transfer(_to, adxBal);
         } else {
             adx.transfer(_to, _amount);
