@@ -372,7 +372,6 @@ contract Ownable {
 
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
 
-// @TODO address _withUpdate
 
 // MasterChef is now repurposed to distribute existing ADX.
 //
@@ -469,6 +468,13 @@ contract MasterChef is Ownable {
         );
     }
 
+    // XXX general note on _withUpdate and why it's optional
+    // Some have pointed out pending (unwithdrawn) rewards can be modified on the fly if `set`/`setADXPerBlock` is called
+    // without `_withUpdate` set to true
+    // There's a reason to keep this as an optional flag, which is to ensure it can be called in case `massUpdatePools`
+    // is failing for whatever reason (eg runs out of gas)
+    // In any case, those methods will be placed behind a timelock to ensure this cannot happen
+
     // Update the given pool's ADX allocation point. Can only be called by the owner.
     function set(
         uint256 _pid,
@@ -506,7 +512,7 @@ contract MasterChef is Ownable {
             user.amount.mul(accADXPerShare).div(1e12).sub(user.rewardDebt);
     }
 
-    // Update reward vairables for all pools. Be careful of gas spending!
+    // Update reward variables for all pools. Be careful of gas spending!
     function massUpdatePools() public {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
