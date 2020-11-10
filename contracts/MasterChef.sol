@@ -416,9 +416,9 @@ contract MasterChef is Ownable {
     }
 
     // The ADX TOKEN!
-    IERC20 public adx;
+    IERC20 public ADX;
     // ADX tokens created per block.
-    uint256 public adxPerBlock;
+    uint256 public ADXPerBlock;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -440,12 +440,12 @@ contract MasterChef is Ownable {
     );
 
     constructor(
-        IERC20 _adx,
-        uint256 _adxPerBlock,
+        IERC20 _ADX,
+        uint256 _ADXPerBlock,
         uint256 _startBlock
     ) public {
-        adx = _adx;
-        adxPerBlock = _adxPerBlock;
+        ADX = _ADX;
+        ADXPerBlock = _ADXPerBlock;
         startBlock = _startBlock;
     }
 
@@ -503,11 +503,11 @@ contract MasterChef is Ownable {
         uint256 accADXPerShare = pool.accADXPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 adxReward = adxPerBlock
+            uint256 ADXReward = ADXPerBlock
                 .mul(pool.allocPoint)
                 .div(totalAllocPoint);
             accADXPerShare = accADXPerShare.add(
-                adxReward.mul(1e12).div(lpSupply)
+                ADXReward.mul(1e12).div(lpSupply)
             );
         }
         return
@@ -533,12 +533,12 @@ contract MasterChef is Ownable {
             pool.lastRewardBlock = block.number;
             return;
         }
-        uint256 adxReward = adxPerBlock
+        uint256 ADXReward = ADXPerBlock
             .mul(pool.allocPoint)
             .div(totalAllocPoint);
         // XXX The original masterchef mints here; our version expects to be pre-funded with ADX
 	pool.accADXPerShare = pool.accADXPerShare.add(
-            adxReward.mul(1e12).div(lpSupply)
+            ADXReward.mul(1e12).div(lpSupply)
         );
         pool.lastRewardBlock = block.number;
     }
@@ -593,14 +593,14 @@ contract MasterChef is Ownable {
         user.rewardDebt = 0;
     }
 
-    // Safe adx transfer function, just in case if rounding error causes pool to not have enough ADXs.
+    // Safe ADX transfer function, just in case if rounding error causes pool to not have enough ADXs.
     function safeADXTransfer(address _to, uint256 _amount) internal {
-        uint256 adxBal = adx.balanceOf(address(this));
-        if (_amount > adxBal) {
-            require((_amount - adxBal) < 1000000000000000000, "safeADXTransfer: rounding error too big, contract may be underfunded?");
-            adx.transfer(_to, adxBal);
+        uint256 ADXBal = ADX.balanceOf(address(this));
+        if (_amount > ADXBal) {
+            require((_amount - ADXBal) < 10e17, "safeADXTransfer: rounding error too big, contract may be underfunded?");
+            ADX.transfer(_to, ADXBal);
         } else {
-            adx.transfer(_to, _amount);
+            ADX.transfer(_to, _amount);
         }
     }
 }
