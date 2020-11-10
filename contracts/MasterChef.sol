@@ -406,11 +406,6 @@ contract Ownable is Context {
 
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
 
-
-
-
-
-// @TODO no bonus blocks - but keep start
 // @TODO audit ownable
 // @TODO address _withUpdate
 
@@ -449,12 +444,8 @@ contract MasterChef is Ownable {
 
     // The ADX TOKEN!
     IERC20 public adx;
-    // Block number when bonus ADX period ends.
-    uint256 public bonusEndBlock;
     // ADX tokens created per block.
     uint256 public adxPerBlock;
-    // Bonus muliplier for early adx makers.
-    uint256 public constant BONUS_MULTIPLIER = 10;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -478,12 +469,10 @@ contract MasterChef is Ownable {
     constructor(
         IERC20 _adx,
         uint256 _adxPerBlock,
-        uint256 _startBlock,
-        uint256 _bonusEndBlock
+        uint256 _startBlock
     ) public {
         adx = _adx;
         adxPerBlock = _adxPerBlock;
-        bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
     }
 
@@ -530,24 +519,6 @@ contract MasterChef is Ownable {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    // Return reward multiplier over the given _from to _to block.
-    function getMultiplier(uint256 _from, uint256 _to)
-        public
-        view
-        returns (uint256)
-    {
-        if (_to <= bonusEndBlock) {
-            return _to.sub(_from).mul(BONUS_MULTIPLIER);
-        } else if (_from >= bonusEndBlock) {
-            return _to.sub(_from);
-        } else {
-            return
-                bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
-                    _to.sub(bonusEndBlock)
-                );
-        }
-    }
-
     // View function to see pending ADXs on frontend.
     function pendingADX(uint256 _pid, address _user)
         external
@@ -559,12 +530,7 @@ contract MasterChef is Ownable {
         uint256 accADXPerShare = pool.accADXPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 multiplier = getMultiplier(
-                pool.lastRewardBlock,
-                block.number
-            );
-            uint256 adxReward = multiplier
-                .mul(adxPerBlock)
+            uint256 adxReward = adxPerBlock
                 .mul(pool.allocPoint)
                 .div(totalAllocPoint);
             accADXPerShare = accADXPerShare.add(
@@ -594,9 +560,7 @@ contract MasterChef is Ownable {
             pool.lastRewardBlock = block.number;
             return;
         }
-        uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 adxReward = multiplier
-            .mul(adxPerBlock)
+        uint256 adxReward = adxPerBlock
             .mul(pool.allocPoint)
             .div(totalAllocPoint);
         // XXX The original masterchef mints here; our version expects to be pre-funded with ADX
