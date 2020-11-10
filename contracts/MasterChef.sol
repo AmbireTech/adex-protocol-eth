@@ -1,12 +1,5 @@
-/**
- *Submitted for verification at Etherscan.io on 2020-09-09
-*/
-
 // SPDX-License-Identifier: MIT
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
-
-
-
 pragma solidity ^0.6.0;
 
 /**
@@ -379,7 +372,6 @@ contract Ownable {
 
 // File: @openzeppelin/contracts/token/ERC20/ERC20.sol
 
-// @TODO audit ownable
 // @TODO address _withUpdate
 
 // MasterChef is now repurposed to distribute existing ADX.
@@ -417,7 +409,7 @@ contract MasterChef is Ownable {
 
     // The ADX TOKEN!
     IERC20 public ADX;
-    // ADX tokens created per block.
+    // ADX tokens distributed per block.
     uint256 public ADXPerBlock;
 
     // Info of each pool.
@@ -602,5 +594,13 @@ contract MasterChef is Ownable {
         } else {
             ADX.transfer(_to, _amount);
         }
+    }
+
+    // AdEx-specific masterchef extensions
+    function setADXPerBlock(uint256 _ADXPerBlock, bool _withUpdate) public onlyOwner {
+        if (_withUpdate) {
+            massUpdatePools();
+        }
+        ADXPerBlock = _ADXPerBlock;
     }
 }
