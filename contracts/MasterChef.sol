@@ -410,12 +410,9 @@ contract Ownable is Context {
 
 
 
-// @TODO drop the two .mint lines
 // @TODO no bonus blocks - but keep start
-// @TODO drop devfund
-// @TODO drop dev
-// @TODO https://medium.com/@DraculaProtocol/sushiswap-smart-contract-bug-and-quality-of-audits-in-community-f50ee0545bc6
 // @TODO audit ownable
+// @TODO address _withUpdate
 
 // MasterChef is now repurposed to distribute existing ADX.
 //
@@ -452,10 +449,6 @@ contract MasterChef is Ownable {
 
     // The ADX TOKEN!
     IERC20 public adx;
-    // Dev fund (2%, initially)
-    uint256 public devFundDivRate = 50;
-    // Dev address.
-    address public devaddr;
     // Block number when bonus ADX period ends.
     uint256 public bonusEndBlock;
     // ADX tokens created per block.
@@ -484,13 +477,11 @@ contract MasterChef is Ownable {
 
     constructor(
         IERC20 _adx,
-        address _devaddr,
         uint256 _adxPerBlock,
         uint256 _startBlock,
         uint256 _bonusEndBlock
     ) public {
         adx = _adx;
-        devaddr = _devaddr;
         adxPerBlock = _adxPerBlock;
         bonusEndBlock = _bonusEndBlock;
         startBlock = _startBlock;
@@ -674,11 +665,5 @@ contract MasterChef is Ownable {
         } else {
             adx.transfer(_to, _amount);
         }
-    }
-
-    // Update dev address by the previous dev.
-    function dev(address _devaddr) public {
-        require(msg.sender == devaddr, "dev: wut?");
-        devaddr = _devaddr;
     }
 }
