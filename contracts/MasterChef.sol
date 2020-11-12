@@ -481,6 +481,7 @@ contract MasterChef is Ownable {
         uint256 _allocPoint,
         bool _withUpdate
     ) public onlyOwner {
+	// XXX you can allocate for a nonexistant pool
         if (_withUpdate) {
             massUpdatePools();
         }
@@ -501,7 +502,8 @@ contract MasterChef is Ownable {
         uint256 accADXPerShare = pool.accADXPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
-            uint256 ADXReward = ADXPerBlock
+            uint256 ADXReward = block.number.sub(pool.lastRewardBlock)
+                .mul(ADXPerBlock)
                 .mul(pool.allocPoint)
                 .div(totalAllocPoint);
             accADXPerShare = accADXPerShare.add(
@@ -531,7 +533,8 @@ contract MasterChef is Ownable {
             pool.lastRewardBlock = block.number;
             return;
         }
-        uint256 ADXReward = ADXPerBlock
+        uint256 ADXReward = block.number.sub(pool.lastRewardBlock)
+            .mul(ADXPerBlock)
             .mul(pool.allocPoint)
             .div(totalAllocPoint);
         // XXX The original masterchef mints here; our version expects to be pre-funded with ADX
