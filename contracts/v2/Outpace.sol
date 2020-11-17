@@ -35,6 +35,8 @@ contract Outpace {
 	event LogChannelWithdrawExpired(bytes32 indexed channelId, uint amount);
 	event LogChannelWithdraw(bytes32 indexed balanceRoot, uint amount);
 
+    event Test(uint256 indexed size);
+
 	// All functions are external
 	function channelOpen(ChannelLibraryV2.Channel calldata channel)
 		external
@@ -58,7 +60,6 @@ contract Outpace {
 		bytes32 channelId = ChannelLibraryV2.hash(channel);
 		require(states[channelId] == ChannelLibraryV2.State.Active, "INVALID_STATE");
 		require(now > channel.validUntil, "NOT_EXPIRED");
-		require(msg.sender == channel.creator, "INVALID_CREATOR");
 		
 		uint toWithdraw = remaining[channelId];
 
@@ -67,7 +68,7 @@ contract Outpace {
 
         delete remaining[channelId];
 		
-		SafeERC20.transfer(channel.tokenAddr, msg.sender, toWithdraw);
+		SafeERC20.transfer(channel.tokenAddr, channel.creator, toWithdraw);
 
 		emit LogChannelWithdrawExpired(channelId, toWithdraw);
 	}
@@ -81,9 +82,7 @@ contract Outpace {
         // validate withdrawn hash
         require(
             userAmountWithdrawnPerChannel
-                .computeMerkleRoot(msg.sender, userAmountWithdrawnPerChannel.length) 
-            == 
-            withdrawnPerUser[msg.sender], 
+                .computeMerkleRoot(msg.sender, userAmountWithdrawnPerChannel.length) ==  withdrawnPerUser[msg.sender], 
             'INVALID_WITHDRAW_DATA'
         );
 
@@ -114,8 +113,8 @@ contract Outpace {
             );
 
             bytes32 channelId = ChannelLibraryV2.hash(channel);
-            
             (int index, uint amountWithdrawn) = updateAmountWithdrawnPerChannel.find(channel);
+
             uint256 amountToWithdraw = amountInTree.sub(amountWithdrawn);
 
             if (index == -1) {
@@ -125,9 +124,10 @@ contract Outpace {
             } else {
                 updateAmountWithdrawnPerChannel[uint(index)].amountWithdrawnPerChannel = amountInTree;
             }
-
-            // @TODO ensure it's not negative?
+            
+            require(amountToWithdraw <= remaining[channelId], 'WITHDRAWING_MORE_THAN_CHANNEL');
             remaining[channelId] = remaining[channelId].sub(amountToWithdraw);
+            
             currentTotalAmountToWithdraw = currentTotalAmountToWithdraw.add(amountToWithdraw);
         }
 
@@ -135,14 +135,15 @@ contract Outpace {
             updateAmountWithdrawnPerChannel.length
         );
 
-        uint nonExpiredLength = 0; // this is required because we allocate more memory than we use
+        // this is required because we allocate more memory than we use
+        // and solidity automatically assigns zero values to empty slots
+        uint nonExpiredLength = 0;
         for(uint i = 0; i < updateAmountWithdrawnPerChannel.length; i++) {
             if(states[updateAmountWithdrawnPerChannel[i].channelId] == ChannelLibraryV2.State.Active) {
                 nonExpiredWithdrawnPerChannel[nonExpiredLength] = updateAmountWithdrawnPerChannel[i];
                 nonExpiredLength += 1;
             }
         }
-
 
         bytes32 updateBalancesRootHash = nonExpiredWithdrawnPerChannel.computeMerkleRoot(msg.sender, nonExpiredLength);
         withdrawnPerUser[msg.sender] = updateBalancesRootHash;

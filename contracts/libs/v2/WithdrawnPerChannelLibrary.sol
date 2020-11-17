@@ -33,8 +33,6 @@ library WithdrawnPerChannelLibrary {
         pure
         returns (bytes32)
     {
-        // uint256 nCurr = withdrawals.length;
-
         if (nCurr == 0) {
             return bytes32(0);
         }
@@ -77,7 +75,7 @@ library WithdrawnPerChannelLibrary {
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(sender, balance));
+        return keccak256(abi.encode(sender, balance));
     }
 
     function hashLeafPair(bytes32 left, bytes32 right)
@@ -85,6 +83,6 @@ library WithdrawnPerChannelLibrary {
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(left, right));
+        return keccak256(abi.encode(left, right));
     }
 }
