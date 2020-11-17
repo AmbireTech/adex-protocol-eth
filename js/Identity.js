@@ -109,10 +109,56 @@ WithdrawnPerChannel.prototype.toSolidityTuple = function(coreV2Addr) {
 	])
 }
 
-WithdrawnPerChannel.prototype.computeMerkleRoot = function() {
+WithdrawnPerChannel.prototype.computeMerkleRoot = function(sender) {
+	let amountLength = this.amountsWithdrawnPerChannel.length
+	if (amountLength === 0) {
+		return Buffer.from(0)
+	}
 
+	if (amountLength === 1) {
+		return hashNode(sender, this.amountsWithdrawnPerChannel[0])
+	}
+
+	const merkleTree = []
+
+	while (amountLength > 1) {
+		let nNext = amountLength / 2
+		for (let i = 0; i < nNext; i += 1) {
+			const curr = i * 2
+			merkleTree.push(
+				hashLeafPair(
+					hashNode(sender, this.amountsWithdrawnPerChannel[curr]),
+					hashNode(sender, this.amountsWithdrawnPerChannel[curr + 1])
+				)
+			)
+		}
+
+		if (amountLength % 2 === 1) {
+			nNext += 1
+			merkleTree[nNext - 1] = merkleTree[amountLength - 1]
+		}
+		amountLength = nNext
+	}
+
+	return merkleTree[0]
 }
 
+WithdrawnPerChannel.prototype.computeMerkleRootHex = function(sender) {
+	return `0x${this.computeMerkleRoot(sender).toString('hex')}`
+}
+
+function hashNode(address, balance) {
+	const buf = abi.rawEncode(
+		['address', 'uint256'],
+		[ensure.Address(address), ensure.Uint256(balance)]
+	)
+	return Buffer.from(keccak256.arrayBuffer(buf))
+}
+
+function hashLeafPair(left, right) {
+	const buf = abi.rawEncode(['bytes32', 'bytes32'], [ensure.Bytes32(left), ensure.Bytes32(right)])
+	return Buffer.from(keccak256.arrayBuffer(buf))
+}
 
 module.exports = { Transaction, RoutineAuthorization, RoutineOps, WithdrawnPerChannel }
 
