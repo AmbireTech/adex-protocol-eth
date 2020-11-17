@@ -35,8 +35,6 @@ contract Outpace {
 	event LogChannelWithdrawExpired(bytes32 indexed channelId, uint amount);
 	event LogChannelWithdraw(bytes32 indexed balanceRoot, uint amount);
 
-    event Test(uint256 indexed size);
-
 	// All functions are external
 	function channelOpen(ChannelLibraryV2.Channel calldata channel)
 		external
@@ -116,7 +114,8 @@ contract Outpace {
             (int index, uint amountWithdrawn) = updateAmountWithdrawnPerChannel.find(channel);
 
             uint256 amountToWithdraw = amountInTree.sub(amountWithdrawn);
-
+            
+            // item not found
             if (index == -1) {
                 WithdrawnPerChannelLibrary.WithdrawnPerChannel memory newItem = WithdrawnPerChannelLibrary.WithdrawnPerChannel(channelId, amountInTree);
                 updateAmountWithdrawnPerChannel[withdrawnLen + newWithdrawLeafIndex] = newItem;
@@ -127,7 +126,7 @@ contract Outpace {
             
             require(amountToWithdraw <= remaining[channelId], 'WITHDRAWING_MORE_THAN_CHANNEL');
             remaining[channelId] = remaining[channelId].sub(amountToWithdraw);
-            
+
             currentTotalAmountToWithdraw = currentTotalAmountToWithdraw.add(amountToWithdraw);
         }
 
