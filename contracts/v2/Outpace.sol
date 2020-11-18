@@ -6,13 +6,11 @@ import "../libs/SafeMath.sol";
 import "../libs/SafeERC20.sol";
 import "../libs/MerkleProof.sol";
 import "../libs/v2/ChannelLibraryV2.sol";
-import "../libs/MerkleTree.sol";
 import "../libs/v2/WithdrawnPerChannelLibrary.sol";
 
 contract Outpace {
 	using SafeMath for uint;
 	using ChannelLibraryV2 for ChannelLibraryV2.Channel;
-    using MerkleTree for uint[];
     using WithdrawnPerChannelLibrary for WithdrawnPerChannelLibrary.WithdrawnPerChannel[];
 
     struct BulkWithdraw {
