@@ -128,11 +128,12 @@ contract Outpace {
             currentTotalAmountToWithdraw = currentTotalAmountToWithdraw.add(amountToWithdraw);
         }
 
+        // filter expired items
         WithdrawnPerChannelLibrary.WithdrawnPerChannel[] memory nonExpiredWithdrawnPerChannel = new WithdrawnPerChannelLibrary.WithdrawnPerChannel[](
             updateAmountWithdrawnPerChannel.length
         );
 
-        // this is required because we allocate more memory than we use
+        // this is required because we could allocate more memory than we use
         // and solidity automatically assigns zero values to empty slots
         uint nonExpiredLength = 0;
         for(uint i = 0; i < updateAmountWithdrawnPerChannel.length; i++) {
