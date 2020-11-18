@@ -93,7 +93,7 @@ contract Outpace {
         }
         
         uint newWithdrawLeafIndex = 0;
-        uint256 currentTotalAmountToWithdraw = 0;
+        uint currentTotalAmountToWithdraw = 0;
         uint withdrawnLen = userAmountWithdrawnPerChannel.length;
 
         for(uint i = 0; i < bulkWithdraw.channels.length; i++) {
