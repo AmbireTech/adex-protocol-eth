@@ -27,7 +27,8 @@
   "scripts": {
     "test": "truffle test",
     "lint": "eslint .  -c .eslintrc.js --fix",
-    "preversion": "./build.sh"
+    "preversion": "./build.sh",
+    "simulate": "truffle test ./test/TestEarningOracle.js"
   },
   "repository": {
     "type": "git",
