@@ -11,7 +11,7 @@ contract EarningOracle is IEarningOracle {
     IAdExCore public core;
 
     mapping (address => uint) internal totalEarnings;
-    mapping (bytes32 => bool) public tallied;
+    mapping (address => mapping(bytes32 => bool)) public tallied;
 
     constructor (IAdExCore _core) public {
         core = _core;
@@ -21,18 +21,11 @@ contract EarningOracle is IEarningOracle {
         for(uint i = 0; i < channelIds.length; i++) {
             bytes32 channelId = channelIds[i];
             address earner = earners[i];
-            bytes32 tallyId = keccak256(
-                abi.encode(
-			        address(this), 
-                    channelId, 
-                    earner
-                )
-            );
             
-            require(tallied[tallyId] == false, 'ALREADY_TALLIED');
+            require(tallied[earner][channelId] == false, 'ALREADY_TALLIED');
             require(core.states(channelId) == ChannelLibrary.State.Expired, 'CHANNEL_NOT_EXPIRED');
 
-            tallied[tallyId] = true;
+            tallied[earner][channelId] = true;
             totalEarnings[earner] += core.withdrawnPerUser(channelId, earner);
         }
     }
