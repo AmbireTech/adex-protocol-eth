@@ -169,14 +169,14 @@ contract ADXLoyaltyPoolToken {
 		return (block.timestamp - lastMintTime)
 			.mul(totalADX)
 			.mul(incentivePerTokenPerAnnum)
-			.div(365 days * 10e17);
+			.div(365 days * 1e18);
 	}
 
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
 		return ADXToken.balanceOf(address(this))
 			.add(this.toMint())
-			.mul(10e17)
+			.mul(1e18)
 			.div(totalSupply);
 	}
 
