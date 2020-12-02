@@ -119,6 +119,7 @@ contract ADXLoyaltyArb is Ownable {
 	}
 
 	function loyaltyTradesHigher(uint amountToSell) external {
+		require(ADX.balanceOf(address(this)) == 0, 'must not have adx');
 		uint initial = ADXL.balanceOf(address(this));
 		// sell adx-loyalty on uniswap
 		tradeOnUni(address(ADXL), address(ADX), amountToSell);
@@ -129,6 +130,7 @@ contract ADXLoyaltyArb is Ownable {
 	}
 
 	function loyaltyTradesLower(uint amountToBurn) external {
+		require(ADX.balanceOf(address(this)) == 0, 'must not have adx');
 		uint initial = ADXL.balanceOf(address(this));
 		// burn adx-loyalty to receive adx
 		ILoyaltyPool(address(ADXL)).leave(amountToBurn);
