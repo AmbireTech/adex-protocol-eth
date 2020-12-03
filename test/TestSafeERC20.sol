@@ -4,11 +4,11 @@ pragma solidity ^0.6.12;
 import "truffle/Assert.sol";
 import "truffle/DeployedAddresses.sol";
 import "../contracts/libs/SafeERC20.sol";
-import "./mocks/Token.sol";
-import "./mocks/BadToken.sol";
-import "./mocks/WorstToken.sol";
+import "../contracts/mocks/Token.sol";
+import "../contracts/mocks/BadToken.sol";
+import "../contracts/mocks/WorstToken.sol";
 // hack to force Truffle to compile this
-import "./mocks/Libs.sol";
+import "../contracts/mocks/Libs.sol";
 
 contract TestSafeERC20 {
 	Token public token;

@@ -27,7 +27,7 @@
   },
   "scripts": {
     "test": "truffle test",
-    "simulate": "truffle test ./test/simulate.js",
+    "simulate": "npx truffle test ./test/simulate.js",
     "lint": "eslint .  -c .eslintrc.js --fix",
     "preversion": "./build.sh"
   },
