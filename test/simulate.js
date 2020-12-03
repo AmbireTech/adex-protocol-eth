@@ -17,7 +17,7 @@ const { solcModule } = require('../js/solc')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 // generate random address
-function getRandomAddreses(size) {
+function getRandomAddresses(size) {
 	const addresses = []
 	for (let i = 0; i < size; i += 1) {
 		const wallet = Wallet.createRandom()
@@ -40,7 +40,7 @@ function logIdentityExecuteGasInfo(numberOfEarners, gasUsed, proof) {
 	console.log('---------------------------------------------------------------------------------')
 }
 
-const gasLimit = 1000000
+const gasLimit = 5000000
 const DAY_SECONDS = 24 * 60 * 60
 
 contract('Simulate Bulk Withdrawal', function(accounts) {
@@ -63,7 +63,6 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	const validators = accounts.slice(0, 2)
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
-	const validUntil = 4000000000
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -82,10 +81,11 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		// We use this default RoutineAuthorization
 		// for various tests
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
 		defaultAuth = new RoutineAuthorization({
 			relayer: relayerAddr,
 			outpace: coreAddr,
-			validUntil,
+			validUntil: blockTime + 14 * DAY_SECONDS,
 			feeTokenAddr: token.address,
 			weeklyFeeAmount: 0
 		})
@@ -102,26 +102,20 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
-		await token.setBalanceTo(id.address, 10000)
+		await token.setBalanceTo(id.address, 1000000000)
 	})
 
 	it('routines: open a channel, execute: channelWithdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
-		const rounds = 10
+		const rounds = 20
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
+		let totalGasUsed = 0
+		for (let channelNonce = 10; channelNonce < rounds; channelNonce += 1) {
 			const tokenAmnt = 500
 
 			const fee = 20
 			const blockTime = (await web3.eth.getBlock('latest')).timestamp
-			const auth = new RoutineAuthorization({
-				relayer: relayerAddr,
-				outpace: coreAddr,
-				validUntil: blockTime + 14 * DAY_SECONDS,
-				feeTokenAddr: token.address,
-				weeklyFeeAmount: fee
-			})
 
 			// Open a channel via the identity
 			const channel = sampleChannel(
@@ -132,34 +126,25 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				blockTime + 40 * DAY_SECONDS,
 				channelNonce
 			)
-			const txns = [
-				await zeroFeeTx(
-					id.address,
-					idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()]),
-					0,
-					id,
-					token
-				),
-				await zeroFeeTx(
-					id.address,
-					idInterface.functions.setRoutineAuth.encode([auth.hashHex(), true]),
-					1,
-					id,
-					token
-				)
-			]
-			const sigs = await Promise.all(
-				txns.map(async tx => splitSig(await ethSign(tx.hashHex(), userAcc)))
+			const openChannelTxn = await zeroFeeTx(
+				id.address,
+				idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()]),
+				0,
+				id,
+				token
 			)
+			const openChannelSig = splitSig(await ethSign(openChannelTxn.hashHex(), userAcc))
 
-			await (await id.execute(txns.map(x => x.toSolidityTuple()), sigs, { gasLimit })).wait()
+			await (await id.execute([openChannelTxn.toSolidityTuple()], [openChannelSig], {
+				gasLimit
+			})).wait()
 
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)
 			const amtPerAddress = Math.floor(tokenAmnt / (numberOfEarners * rounds))
 
-			const earnerAddresses = [...getRandomAddreses(numberOfEarners), id.address]
+			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
 			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
 				channel,
 				id.address,
@@ -184,13 +169,102 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			})
 
 			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
-			const withdrawRoutineReceipt = await (await id.execute(
+			const { gasUsed } = await (await id.execute(
 				[channelWithdrawTx.toSolidityTuple()],
 				[withdrawSigs],
 				{ gasLimit }
 			)).wait()
 
-			logIdentityExecuteGasInfo(earnerAddresses.length, withdrawRoutineReceipt.gasUsed, proof)
+			totalGasUsed += gasUsed.toNumber()
+			logIdentityExecuteGasInfo(earnerAddresses.length, gasUsed, proof)
 		}
+
+		console.log('\n------- Single Channel Bulk Withdrawal  - Identity.execute() --------')
+		console.log(`Total gas used: ${totalGasUsed}`)
+		console.log('---------------------------------------------------------------------\n')
+	})
+
+	it('routines: open a channel, execute bulk: channelWithdraw', async function() {
+		const minimumChannelEarners = 10
+		const maximumChannelEarners = 20
+		const rounds = 10
+
+		const transactions = []
+		const signatures = []
+
+		const tokenAmnt = 500
+		const fee = 20
+
+		const currentNonce = (await id.nonce()).toNumber()
+		let nonceOffset = 0
+
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
+			const blockTime = (await web3.eth.getBlock('latest')).timestamp
+			const channel = sampleChannel(
+				validators,
+				token.address,
+				id.address,
+				tokenAmnt,
+				blockTime + 40 * DAY_SECONDS,
+				channelNonce
+			)
+
+			const openChannelTxn = await zeroFeeTx(
+				id.address,
+				idInterface.functions.channelOpen.encode([coreAddr, channel.toSolidityTuple()]),
+				nonceOffset,
+				id,
+				token
+			)
+			const openChannelSig = splitSig(await ethSign(openChannelTxn.hashHex(), userAcc))
+
+			transactions.push(openChannelTxn.toSolidityTuple())
+			signatures.push(openChannelSig)
+
+			nonceOffset += 1
+
+			const numberOfEarners = Math.floor(
+				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
+			)
+			const amtPerAddress = Math.floor(tokenAmnt / (numberOfEarners * rounds))
+
+			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
+			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
+				channel,
+				id.address,
+				earnerAddresses,
+				amtPerAddress,
+				coreAddr
+			)
+
+			const channelWithdrawTx = new Transaction({
+				identityContract: id.address,
+				nonce: currentNonce + nonceOffset,
+				feeTokenAddr: token.address,
+				feeAmount: fee,
+				to: coreAddr,
+				data: coreInterface.functions.channelWithdraw.encode([
+					channel.toSolidityTuple(),
+					stateRoot,
+					[vsig1, vsig2],
+					proof,
+					amtPerAddress
+				])
+			})
+			nonceOffset += 1
+
+			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
+
+			transactions.push(channelWithdrawTx.toSolidityTuple())
+			signatures.push(withdrawSigs)
+		}
+
+		const withdrawRoutineReceipt = await (await id.execute(transactions, signatures, {
+			gasLimit
+		})).wait()
+
+		console.log('\n------- Bulk Withdrawal - Identity.execute() --------')
+		console.log(`Total gas used: ${withdrawRoutineReceipt.gasUsed.toNumber()}`)
+		console.log('-------------------------------------------------------\n')
 	})
 })
