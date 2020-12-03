@@ -12,6 +12,7 @@
     "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.47",
     "js-sha3": "^0.8.0",
+    "mongodb": "^3.6.3",
     "solc": "0.5.13",
     "truffle": "^5.1.5"
   },
