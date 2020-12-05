@@ -51,6 +51,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	let identityFactory
 	// A dummy token
 	let token
+	let core
 	// An instance of the AdExCore (OUTPACE) contract
 	let coreAddr
 	// an Identity contract that will be used as a base for all proxies
@@ -70,6 +71,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const coreWeb3 = await AdExCore.deployed()
 		coreAddr = coreWeb3.address
+		core = new Contract(coreWeb3.address, AdExCore._json.abi, signer)
 
 		// This IdentityFactory is used to test counterfactual deployment
 		const idFactoryWeb3 = await IdentityFactory.new({ from: relayerAddr })
@@ -103,6 +105,53 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
 		await token.setBalanceTo(id.address, 1000000000)
+	})
+
+	it('routines: open a channel, execute w/o identity: channelWithdraw', async function() {
+		const minimumChannelEarners = 10
+		const maximumChannelEarners = 20
+		const tokenAmnt = 500
+
+		const blockTime = (await web3.eth.getBlock('latest')).timestamp
+
+		// Open a channel via the identity
+		const channel = sampleChannel(
+			validators,
+			token.address,
+			userAcc,
+			tokenAmnt,
+			blockTime + 40 * DAY_SECONDS,
+			121
+		)
+		await token.setBalanceTo(userAcc, tokenAmnt)
+
+		const userSigner = web3Provider.getSigner(userAcc)
+		await (await core.connect(userSigner).channelOpen(channel.toSolidityTuple())).wait()
+
+		const numberOfEarners = Math.floor(
+			getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
+		)
+		const amtPerAddress = Math.floor(tokenAmnt / numberOfEarners)
+		const earnerAddresses = [...getRandomAddresses(numberOfEarners), relayerAddr]
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
+			channel,
+			relayerAddr,
+			earnerAddresses,
+			amtPerAddress,
+			coreAddr
+		)
+
+		const receipt = await (await core.channelWithdraw(
+			channel.toSolidityTuple(),
+			stateRoot,
+			[vsig1, vsig2],
+			proof,
+			amtPerAddress
+		)).wait()
+
+		console.log('\n------- Single Withdrawal w/o identity - channelWithdraw() --------')
+		console.log(`Gas used: ${receipt.gasUsed.toNumber()}`)
+		console.log('-------------------------------------------------------\n')
 	})
 
 	it('routines: open a channel, execute: channelWithdraw', async function() {
