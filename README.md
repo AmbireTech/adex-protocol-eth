@@ -126,7 +126,11 @@ execute: 89900
 execRoutines: 114440
 channelOpen, through execute: 115086
 deploying an identity proxy through the IdentityFactory: 127549
+addBond  73404
+requestUnbond  34807
+unbond  41770
 ```
+
 
 ### ENS
 
