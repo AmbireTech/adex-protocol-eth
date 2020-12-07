@@ -106,7 +106,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		await token.setBalanceTo(id.address, 1000000000)
 
-		// set nonce
+		// init nonce
 		const tx = await zeroFeeTx(
 			id.address,
 			idInterface.functions.setAddrPrivilege.encode([
