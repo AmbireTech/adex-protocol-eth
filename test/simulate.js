@@ -105,6 +105,20 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
 		await token.setBalanceTo(id.address, 1000000000)
+
+		// set nonce
+		const tx = await zeroFeeTx(
+			id.address,
+			idInterface.functions.setAddrPrivilege.encode([
+				'0x0000000000000000000000000000000000000000',
+				1
+			]),
+			0,
+			id,
+			token
+		)
+		const sigs = splitSig(await ethSign(tx.hashHex(), userAcc))
+		await (await id.execute([tx.toSolidityTuple()], [sigs], { gasLimit })).wait()
 	})
 
 	it('routines: open a channel, execute w/o identity: channelWithdraw', async function() {
