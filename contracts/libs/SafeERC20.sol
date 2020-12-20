@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
 // NOTE: this interface lacks return values for transfer/transferFrom/approve on purpose,
 // as we use the SafeERC20 library to check the return value

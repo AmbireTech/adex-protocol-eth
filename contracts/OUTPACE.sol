@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
+import "./libs/SafeERC20.sol";
+import "./libs/MerkleProof.sol";
+
 contract OUTPACE {
 	// type, state, event, function
 
@@ -53,7 +56,8 @@ contract OUTPACE {
 		require(states[channelId] == ChannelState.Normal, 'channel is closed or challenged');
 		remaining[channelId] = remaining[channelId] + amount;
 		deposits[channelId][depositId] = amount;
-		// @TODO transfer
+
+		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), amount);
 		emit LogChannelDeposit(channelId, amount);
 	}
 
@@ -75,6 +79,7 @@ contract OUTPACE {
 		// Do not allow to change `to` if the caller is not the earner
 		// @TODO test for this
 		if (earner != msg.sender) to = earner;
+		SafeERC20.transfer(tokenAddr, to, toWithdraw);
 	}
 
 	function challenge(Channel calldata channel) external {
