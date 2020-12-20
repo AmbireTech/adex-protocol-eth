@@ -82,8 +82,11 @@ contract OUTPACE {
 			bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
 			require(MerkleProof.isContained(balanceLeaf, withdrawal.proof, withdrawal.stateRoot), 'balance leaf not found');
 
-			toWithdraw += withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
+			uint toWithdrawChannel = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
+			toWithdraw += toWithdrawChannel;
 			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
+
+			remaining[channelId] -= toWithdrawChannel;
 		}
 		// Do not allow to change `to` if the caller is not the earner
 		// @TODO test for this
