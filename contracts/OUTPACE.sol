@@ -63,7 +63,14 @@ contract OUTPACE {
 		address tokenAddr = withdrawals[0].channel.tokenAddr;
 		for (uint i = 0; i < withdrawals.length; i++) {
 			Withdrawal memory withdrawal = withdrawals[i];
+			// require channel is not closed
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
+			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
+			require(states[channelId] != ChannelState.Closed, 'channel is not closed');
+			// @TODO check sigs
+			// @TODO check mproof
+			toWithdraw += withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
+			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
 		}
 		// Do not allow to change `to` if the caller is not the earner
 		// @TODO test for this
