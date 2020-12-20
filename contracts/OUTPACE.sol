@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 contract OUTPACE {
+	// type, state, event, function
+
 	// @TODO challene expiry date 
 	enum ChannelState { Normal, Challenged, Closed }
 	struct Channel {
@@ -42,9 +44,15 @@ contract OUTPACE {
 	function challenge(Channel calldata channel) external {
 	}
 
-	function resume(Channel calldata channel, BalanceLeaf[] calldata tree, bytes32[3] calldata sigLeader, bytes32[3] calldata sigFollower) external {
+	// @NOTE: what if balance trees get too big - we have to calculate
+	function resume(Channel calldata channel, BalanceLeaf[] calldata tree, bytes32[3][3] calldata sigs) external {
 		// @NOTE: can we have type aliases for bytes32[3]
 		// @NOTE: we don't have the sum of all deposits so we'll have to compute it frm withdrawnPerUser + remaining
+		// what if we don't aggr the total deposits, and we miss certain earners - should be OK, we only care to prove if we've distributed all remaining
+		// that way proofs can be smaller as well! because we can omit every leaf for which withdrawnPerUser is equal to it
+		// but the gas implications in this case are interesting...
+		// Nah - we can't skip leaves because that way sigs won't work
+		// >> in conclusion we'll just have to keep an aggregate of total deposits per channel - that way we solve everything <<
 	}
 
 	function close(Channel calldata channel) external {
