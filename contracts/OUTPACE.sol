@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
+import "./libs/SignatureValidator.sol";
 
 contract OUTPACE {
 	// type, state, event, function
@@ -18,6 +19,7 @@ contract OUTPACE {
 	struct Withdrawal {
 		Channel channel;
 		uint balanceTreeAmount;
+		bytes32 stateRoot;
 		bytes32[3] sigLeader;
 		bytes32[3] sigFollower;
 		bytes32[] proof;
@@ -71,8 +73,15 @@ contract OUTPACE {
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
 			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
 			require(states[channelId] != ChannelState.Closed, 'channel is not closed');
-			// @TODO check sigs
-			// @TODO check mproof
+
+			bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
+			require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
+			require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
+
+			// check the merkle proof
+			bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
+			require(MerkleProof.isContained(balanceLeaf, withdrawal.proof, withdrawal.stateRoot), 'balance leaf not found');
+
 			toWithdraw += withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
 			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
 		}
