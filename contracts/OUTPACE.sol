@@ -51,6 +51,16 @@ contract OUTPACE {
 	}
 
 	function withdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
+		require(withdrawals.length > 0, 'no withdrawals');
+		uint toWithdraw;
+		address tokenAddr = withdrawals[0].channel.tokenAddr;
+		for (uint i = 0; i < withdrawals.length; i++) {
+			Withdrawal memory withdrawal = withdrawals[i];
+			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
+		}
+		// Do not allow to change `to` if the caller is not the earner
+		// @TODO test for this
+		if (earner != msg.sender) to = earner;
 	}
 
 	function challenge(Channel calldata channel) external {
