@@ -39,6 +39,13 @@ contract OUTPACE {
 	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
 
 
+	// @TODO
+	// event design, particularly for withdrawal
+	// safeerc20
+	// withdraw: verification
+	// protocol params - make it an optional dependency
+
+
 	function open(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
@@ -64,6 +71,10 @@ contract OUTPACE {
 	}
 
 	function challenge(Channel calldata channel) external {
+		require(msg.sender == channel.leader || msg.sender == channel.follower, 'only validators can challenge');
+		bytes32 channelId = keccak256(abi.encode(channel));
+		states[channelId] = ChannelState.Challenged;
+		// @TODO set the time during which the challenge was made
 	}
 
 	// @NOTE: what if balance trees get too big - we have to calculate
@@ -78,6 +89,8 @@ contract OUTPACE {
 	}
 
 	function close(Channel calldata channel) external {
+		// @TODO check if enough time has passed
+		// @TODO liquidator
 	}
 
 
