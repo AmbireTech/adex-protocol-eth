@@ -34,8 +34,20 @@ contract OUTPACE {
 	// deposits per channel (channelId => (depositId => uint))
 	mapping (bytes32 => mapping (bytes32 => uint)) public deposits;
 
+	// events
+	// @TODO should we emit the full channel?
+	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
+
 
 	function open(Channel calldata channel, bytes32 depositId, uint amount) external {
+		bytes32 channelId = keccak256(abi.encode(channel));
+		require(amount > 0, 'zero deposit');
+		require(deposits[channelId][depositId] == 0, 'deposit already exists');
+		require(states[channelId] == ChannelState.Normal, 'channel is closed or challenged');
+		remaining[channelId] = remaining[channelId] + amount;
+		deposits[channelId][depositId] = amount;
+		// @TODO transfer
+		emit LogChannelDeposit(channelId, amount);
 	}
 
 	function withdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
