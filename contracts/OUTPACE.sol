@@ -68,7 +68,7 @@ contract OUTPACE {
 		uint toWithdraw;
 		address tokenAddr = withdrawals[0].channel.tokenAddr;
 		for (uint i = 0; i < withdrawals.length; i++) {
-			Withdrawal memory withdrawal = withdrawals[i];
+			Withdrawal calldata withdrawal = withdrawals[i];
 			// require channel is not closed
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
 			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
@@ -84,8 +84,9 @@ contract OUTPACE {
 
 			uint toWithdrawChannel = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
 			toWithdraw += toWithdrawChannel;
-			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
 
+			// Update storage
+			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
 			remaining[channelId] -= toWithdrawChannel;
 		}
 		// Do not allow to change `to` if the caller is not the earner
@@ -114,6 +115,6 @@ contract OUTPACE {
 
 	function close(Channel calldata channel) external {
 		// @TODO check if enough time has passed
-		// @TODO liquidator
+		// @TODO liquidator, send remaining funds to it
 	}
 }
