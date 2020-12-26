@@ -6,6 +6,9 @@ import "./libs/MerkleProof.sol";
 import "./libs/SignatureValidator.sol";
 
 contract OUTPACE {
+	// @TODO make this a changeable protocol parameter
+	uint public constant CHALLENGE_TIME = 5 days;
+
 	// type, state, event, function
 
 	struct Channel {
@@ -27,9 +30,10 @@ contract OUTPACE {
 		uint amount;
 	}
 
- 	// channelId => challengeBlockTime
+ 	// channelId => challengeExpirationTime
 	// has two santinel values: 0 means no challenge, uint(-1) means failed challenge (channel is closed)
 	mapping (bytes32 => uint) public challenges;
+	uint private constant CLOSED = 2**256 - 1;
 	
 	// remaining per channel (channelId => uint)
 	mapping (bytes32 => uint) public remaining;
@@ -71,7 +75,7 @@ contract OUTPACE {
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
 			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
 			// require that the is not closed
-			require(states[channelId] != ChannelState.Closed, 'channel is not closed');
+			require(challenges[channelId] != CLOSED, 'channel is closed');
 
 			bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
 			require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
@@ -97,20 +101,34 @@ contract OUTPACE {
 	function challenge(Channel calldata channel) external {
 		require(msg.sender == channel.leader || msg.sender == channel.follower, 'only validators can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
-		states[channelId] = ChannelState.Challenged;
+		require(challenges[channelId] == 0, 'channel is closed or challenged');
+		challenges[channelId] = block.timestamp + CHALLENGE_TIME;
 	}
 
 	function resume(Channel calldata channel, bytes32[3][2] calldata sigs) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
-		require(states[channelId] = ChannelState.Challenged);
-		bytes32 hashToSign = keccak256(abi.encodePacked(channelId, challengeTime));
+		uint challengeExpires = challenges[channelId];
+		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is not challenged');
+		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
+		bytes32 hashToSign = keccak256(abi.encodePacked("resume", channelId, challengeExpires));
 		require(SignatureValidator.isValidSignature(hashToSign, channel.leader, sigs[0]), 'leader sig');
 		require(SignatureValidator.isValidSignature(hashToSign, channel.follower, sigs[1]), 'follower sig');
-		states[channelId] = ChannelState.Normal;
+		challenges[channelId] = 0;
 	}
 
 	function close(Channel calldata channel) external {
-		// @TODO check if enough time has passed
-		// @TODO liquidator, send remaining funds to it
+		// @TODO only liquidator
+		address liquidator = channel.leader;
+		require(msg.sender == liquidator, 'must be called by liquidator');
+		bytes32 channelId = keccak256(abi.encode(channel));
+		uint challengeExpires = challenges[channelId];
+		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is active or closed');
+		require(block.timestamp > challengeExpires, 'channel is not closable yet');
+
+		uint toRefund = remaining[channelId];
+		remaining[channelId] = 0;
+		challenges[channelId] = CLOSED;
+
+		SafeERC20.transfer(channel.tokenAddr, liquidator, toRefund);
 	}
 }
