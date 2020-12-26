@@ -8,8 +8,6 @@ import "./libs/SignatureValidator.sol";
 contract OUTPACE {
 	// type, state, event, function
 
-	// @TODO challene expiry date 
-	enum ChannelState { Normal, Challenged, Closed }
 	struct Channel {
 		address leader;
 		address follower;
@@ -29,8 +27,9 @@ contract OUTPACE {
 		uint amount;
 	}
 
- 	// channelId => channelState
-	mapping (bytes32 => ChannelState) public states;
+ 	// channelId => challengeBlockTime
+	// has two santinel values: 0 means no challenge, uint(-1) means failed challenge (channel is closed)
+	mapping (bytes32 => uint) public challenges;
 	
 	// remaining per channel (channelId => uint)
 	mapping (bytes32 => uint) public remaining;
@@ -51,11 +50,11 @@ contract OUTPACE {
 	// protocol params - make it an optional dependency
 
 
-	function open(Channel calldata channel, bytes32 depositId, uint amount) external {
+	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
 		require(deposits[channelId][depositId] == 0, 'deposit already exists');
-		require(states[channelId] == ChannelState.Normal, 'channel is closed or challenged');
+		require(challenges[channelId] == 0, 'channel is closed or challenged');
 		remaining[channelId] = remaining[channelId] + amount;
 		deposits[channelId][depositId] = amount;
 
@@ -69,9 +68,9 @@ contract OUTPACE {
 		address tokenAddr = withdrawals[0].channel.tokenAddr;
 		for (uint i = 0; i < withdrawals.length; i++) {
 			Withdrawal calldata withdrawal = withdrawals[i];
-			// require channel is not closed
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
 			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
+			// require that the is not closed
 			require(states[channelId] != ChannelState.Closed, 'channel is not closed');
 
 			bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
@@ -99,18 +98,15 @@ contract OUTPACE {
 		require(msg.sender == channel.leader || msg.sender == channel.follower, 'only validators can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		states[channelId] = ChannelState.Challenged;
-		// @TODO set the time during which the challenge was made
 	}
 
-	// @NOTE: what if balance trees get too big - we have to calculate
-	function resume(Channel calldata channel, BalanceLeaf[] calldata tree, bytes32[3][3] calldata sigs) external {
-		// @NOTE: can we have type aliases for bytes32[3]
-		// @NOTE: we don't have the sum of all deposits so we'll have to compute it frm withdrawnPerUser + remaining
-		// what if we don't aggr the total deposits, and we miss certain earners - should be OK, we only care to prove if we've distributed all remaining
-		// that way proofs can be smaller as well! because we can omit every leaf for which withdrawnPerUser is equal to it
-		// but the gas implications in this case are interesting...
-		// Nah - we can't skip leaves because that way sigs won't work
-		// >> in conclusion we'll just have to keep an aggregate of total deposits per channel - that way we solve everything <<
+	function resume(Channel calldata channel, bytes32[3][2] calldata sigs) external {
+		bytes32 channelId = keccak256(abi.encode(channel));
+		require(states[channelId] = ChannelState.Challenged);
+		bytes32 hashToSign = keccak256(abi.encodePacked(channelId, challengeTime));
+		require(SignatureValidator.isValidSignature(hashToSign, channel.leader, sigs[0]), 'leader sig');
+		require(SignatureValidator.isValidSignature(hashToSign, channel.follower, sigs[1]), 'follower sig');
+		states[channelId] = ChannelState.Normal;
 	}
 
 	function close(Channel calldata channel) external {
