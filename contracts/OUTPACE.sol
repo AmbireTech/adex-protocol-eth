@@ -66,36 +66,41 @@ contract OUTPACE {
 		emit LogChannelDeposit(channelId, amount);
 	}
 
-	function withdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
+	function bulkWithdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
 		require(withdrawals.length > 0, 'no withdrawals');
 		uint toWithdraw;
 		address tokenAddr = withdrawals[0].channel.tokenAddr;
 		for (uint i = 0; i < withdrawals.length; i++) {
 			Withdrawal calldata withdrawal = withdrawals[i];
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
-			bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
-			// require that the is not closed
-			require(challenges[channelId] != CLOSED, 'channel is closed');
-
-			bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
-			require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
-			require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
-
-			// check the merkle proof
-			bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
-			require(MerkleProof.isContained(balanceLeaf, withdrawal.proof, withdrawal.stateRoot), 'balance leaf not found');
-
-			uint toWithdrawChannel = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
-			toWithdraw += toWithdrawChannel;
-
-			// Update storage
-			withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
-			remaining[channelId] -= toWithdrawChannel;
+			toWithdraw += calcWithdrawAmount(earner, withdrawal);
 		}
 		// Do not allow to change `to` if the caller is not the earner
 		// @TODO test for this
 		if (earner != msg.sender) to = earner;
 		SafeERC20.transfer(tokenAddr, to, toWithdraw);
+	}
+
+	function calcWithdrawAmount(address earner, Withdrawal calldata withdrawal) internal returns (uint) {
+		bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
+		// require that the is not closed
+		require(challenges[channelId] != CLOSED, 'channel is closed');
+
+		bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
+		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
+		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
+
+		// check the merkle proof
+		bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
+		require(MerkleProof.isContained(balanceLeaf, withdrawal.proof, withdrawal.stateRoot), 'balance leaf not found');
+
+		uint toWithdrawChannel = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
+
+		// Update storage
+		withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
+		remaining[channelId] -= toWithdrawChannel;
+
+		return toWithdrawChannel;
 	}
 
 	function challenge(Channel calldata channel) external {
