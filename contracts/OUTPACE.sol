@@ -66,6 +66,10 @@ contract OUTPACE {
 		emit LogChannelDeposit(channelId, amount);
 	}
 
+	function withdraw(Withdrawal calldata withdrawal) external {
+		SafeERC20.transfer(withdrawal.channel.tokenAddr, msg.sender, calcWithdrawAmount(msg.sender, withdrawal));
+	}
+
 	function bulkWithdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
 		require(withdrawals.length > 0, 'no withdrawals');
 		uint toWithdraw;
