@@ -105,7 +105,7 @@ contract OUTPACE {
 	}
 
 	function challenge(Channel calldata channel) external {
-		require(msg.sender == channel.leader || msg.sender == channel.follower, 'only validators can challenge');
+		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.liquidator, 'only validators and liquidator can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
 		challenges[channelId] = block.timestamp + CHALLENGE_TIME;
