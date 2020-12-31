@@ -49,10 +49,6 @@ contract OUTPACE {
 
 	// @TODO
 	// event design, particularly for withdrawal
-	// safeerc20
-	// withdraw: verification
-	// protocol params - make it an optional dependency
-
 
 	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
