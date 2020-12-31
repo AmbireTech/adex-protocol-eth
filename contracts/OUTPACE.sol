@@ -14,6 +14,7 @@ contract OUTPACE {
 	struct Channel {
 		address leader;
 		address follower;
+		address liquidator;
 		address tokenAddr;
 		bytes23 nonce;
 	}
@@ -122,8 +123,7 @@ contract OUTPACE {
 	}
 
 	function close(Channel calldata channel) external {
-		// @TODO only liquidator
-		address liquidator = channel.leader;
+		address liquidator = channel.liquidator;
 		require(msg.sender == liquidator, 'must be called by liquidator');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
