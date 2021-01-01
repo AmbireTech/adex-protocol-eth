@@ -1,19 +1,23 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
+// @TODO: proper require err msgs for SafeERC20
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
 import "./libs/SignatureValidator.sol";
 
 contract OUTPACE {
 	// @TODO make this a changeable protocol parameter
+	// or reduce it and depend on liquidator to enforce further waits on close()
 	uint public constant CHALLENGE_TIME = 5 days;
 
+	// @TODO: clean this up
 	// type, state, event, function
 
 	struct Channel {
 		address leader;
 		address follower;
+		// @TODO: rename liquidator?
 		address liquidator;
 		address tokenAddr;
 		bytes23 nonce;
@@ -47,7 +51,6 @@ contract OUTPACE {
 	// @TODO should we emit the full channel?
 	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
 
-
 	// @TODO
 	// event design, particularly for withdrawal
 
@@ -76,8 +79,8 @@ contract OUTPACE {
 			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
 			toWithdraw += calcWithdrawAmount(earner, withdrawal);
 		}
-		// Do not allow to change `to` if the caller is not the earner
 		// @TODO test for this
+		// Do not allow to change `to` if the caller is not the earner
 		if (earner != msg.sender) to = earner;
 		SafeERC20.transfer(tokenAddr, to, toWithdraw);
 	}
@@ -105,6 +108,7 @@ contract OUTPACE {
 	}
 
 	function challenge(Channel calldata channel) external {
+		// @TODO: no challenge if no funds remaining?
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.liquidator, 'only validators and liquidator can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
@@ -112,6 +116,7 @@ contract OUTPACE {
 	}
 
 	function resume(Channel calldata channel, bytes32[3][2] calldata sigs) external {
+		// @TODO: can resume if no funds remaining?
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is not challenged');
