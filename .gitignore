@@ -1,3 +1,5 @@
 build/
 node_modules
 .zos.session
+coverage/
+coverage.json
