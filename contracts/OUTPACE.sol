@@ -130,6 +130,7 @@ contract OUTPACE {
 		bytes32 hashToSign = keccak256(abi.encodePacked("resume", channelId, challengeExpires));
 		require(SignatureValidator.isValidSignature(hashToSign, channel.leader, sigs[0]), 'leader sig');
 		require(SignatureValidator.isValidSignature(hashToSign, channel.follower, sigs[1]), 'follower sig');
+
 		challenges[channelId] = 0;
 
 		emit LogChannelResume(channelId);
