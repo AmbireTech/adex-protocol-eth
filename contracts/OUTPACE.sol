@@ -1,18 +1,13 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-// @TODO: proper require err msgs for SafeERC20
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
 import "./libs/SignatureValidator.sol";
 
 contract OUTPACE {
-	// @TODO make this a changeable protocol parameter
-	// or reduce it and depend on liquidator to enforce further waits on close()
-	uint public constant CHALLENGE_TIME = 5 days;
-
-	// @TODO: clean this up
-	// type, state, event, function
+	// This is the bare minimum: the liquidator can enforce longer times
+	uint public constant CHALLENGE_TIME = 3 days;
 
 	struct Channel {
 		address leader;
@@ -51,9 +46,9 @@ contract OUTPACE {
 	// @TODO should we emit the full channel?
 	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
 
+	// Functions
 	// @TODO
 	// event design, particularly for withdrawal
-
 	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
