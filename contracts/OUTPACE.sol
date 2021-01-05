@@ -43,8 +43,12 @@ contract OUTPACE {
 	mapping (bytes32 => mapping (bytes32 => uint)) public deposits;
 
 	// events
-	// @TODO should we emit the full channel?
+	// @TODO should we emit the full channel? see gas costs
 	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
+	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
+	event LogChannelChallenge(bytes32 indexed channelId, uint expires);
+	event LogChannelResume(bytes32 indexed channelId);
+	event LogChannelClose(bytes32 indexed channelId);
 
 	// Functions
 	// @TODO
@@ -85,21 +89,25 @@ contract OUTPACE {
 		// require that the is not closed
 		require(challenges[channelId] != CLOSED, 'channel is closed');
 
+		// Check the signatures
 		bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
 		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
 		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
 
-		// check the merkle proof
+		// Check the merkle proof
 		bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
 		require(MerkleProof.isContained(balanceLeaf, withdrawal.proof, withdrawal.stateRoot), 'balance leaf not found');
 
-		uint toWithdrawChannel = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
+		uint toWithdraw = withdrawal.balanceTreeAmount - withdrawnPerUser[channelId][earner];
 
 		// Update storage
 		withdrawnPerUser[channelId][earner] = withdrawal.balanceTreeAmount;
-		remaining[channelId] -= toWithdrawChannel;
+		remaining[channelId] -= toWithdraw;
 
-		return toWithdrawChannel;
+		// Emit the event
+		emit LogChannelWithdraw(channelId, toWithdraw);
+
+		return toWithdraw;
 	}
 
 	function challenge(Channel calldata channel) external {
@@ -107,7 +115,10 @@ contract OUTPACE {
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.liquidator, 'only validators and liquidator can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
-		challenges[channelId] = block.timestamp + CHALLENGE_TIME;
+		uint expires = block.timestamp + CHALLENGE_TIME;
+		challenges[channelId] = expires;
+
+		emit LogChannelChallenge(channelId, expires);
 	}
 
 	function resume(Channel calldata channel, bytes32[3][2] calldata sigs) external {
@@ -120,6 +131,8 @@ contract OUTPACE {
 		require(SignatureValidator.isValidSignature(hashToSign, channel.leader, sigs[0]), 'leader sig');
 		require(SignatureValidator.isValidSignature(hashToSign, channel.follower, sigs[1]), 'follower sig');
 		challenges[channelId] = 0;
+
+		emit LogChannelResume(channelId);
 	}
 
 	function close(Channel calldata channel) external {
@@ -135,5 +148,7 @@ contract OUTPACE {
 		challenges[channelId] = CLOSED;
 
 		SafeERC20.transfer(channel.tokenAddr, liquidator, toRefund);
+
+		emit LogChannelClose(channelId);
 	}
 }
