@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "./Identity.sol";
@@ -48,7 +48,7 @@ contract IdentityFactory {
 	// The way we mitigate that is by checking if the contract is already deployed and if so, we continue execution
 	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
 		address expectedAddr = address(uint160(uint256(
-			keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code)))
+			keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(code)))
 		)));
 		uint size;
 		assembly { size := extcodesize(expectedAddr) }
