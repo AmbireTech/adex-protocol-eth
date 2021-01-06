@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 
 contract Identity {
-	using SafeMath for uint;
-
 	// Storage
 	// WARNING: be careful when modifying this
 	// privileges and routineAuthorizations must always be 0th and 1th thing in storage,
@@ -118,8 +115,8 @@ contract Identity {
 
 			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 
-			nonce = nonce.add(1);
-			feeAmount = feeAmount.add(txn.feeAmount);
+			nonce = nonce + 1;
+			feeAmount = feeAmount + txn.feeAmount;
 
 			executeCall(txn.to, txn.value, txn.data);
 			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
@@ -139,7 +136,7 @@ contract Identity {
 			Transaction memory txn = txns[i];
 			require(txn.nonce == nonce, 'WRONG_NONCE');
 
-			nonce = nonce.add(1);
+			nonce = nonce + 1;
 
 			executeCall(txn.to, txn.value, txn.data);
 		}

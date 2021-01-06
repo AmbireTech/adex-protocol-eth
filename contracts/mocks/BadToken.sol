@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-import "../libs/SafeMath.sol";
-
 contract BadToken {
 	mapping (address => uint) balances;
 
@@ -12,13 +10,13 @@ contract BadToken {
 
 	// Breaks ERC20 spec: those 2 should return (bool)
 	function transfer(address to, uint value) public {
-		balances[msg.sender] = SafeMath.sub(balances[msg.sender], value);
-		balances[to] = SafeMath.add(balances[to], value);
+		balances[msg.sender] = balances[msg.sender] - value;
+		balances[to] = balances[to] + value;
 	}
 
 	function transferFrom(address from, address to, uint value) public {
-		balances[from] = SafeMath.sub(balances[from], value);
-		balances[to] = SafeMath.add(balances[to], value);
+		balances[from] = balances[from] - value;
+		balances[to] = balances[to] + value;
 	}
 
 	function setBalanceTo(address to, uint value) public {
