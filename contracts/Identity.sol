@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
-import "./libs/ChannelLibrary.sol";
-import "./AdExCore.sol";
 
 contract Identity {
 	using SafeMath for uint;
@@ -99,17 +96,6 @@ contract Identity {
 		emit LogRoutineAuth(hash, authorized);
 	}
 
-	function channelOpen(address coreAddr, ChannelLibrary.Channel memory channel)
-		public
-	{
-		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		if (GeneralERC20(channel.tokenAddr).allowance(address(this), coreAddr) > 0) {
-			SafeERC20.approve(channel.tokenAddr, coreAddr, 0);
-		}
-		SafeERC20.approve(channel.tokenAddr, coreAddr, channel.tokenAmount);
-		AdExCore(coreAddr).channelOpen(channel);
-	}
-
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
 		public
 	{
@@ -164,7 +150,7 @@ contract Identity {
 	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
 		public
 	{
-		require(auth.validUntil >= now, 'AUTHORIZATION_EXPIRED');
+		require(auth.validUntil >= block.timestamp, 'AUTHORIZATION_EXPIRED');
 		bytes32 hash = keccak256(abi.encode(auth));
 		require(routineAuthorizations[hash], 'NO_AUTHORIZATION');
 		uint len = operations.length;
@@ -180,8 +166,8 @@ contract Identity {
 				revert('INVALID_MODE');
 			}
 		}
-		if (auth.weeklyFeeAmount > 0 && (now - routinePaidFees[hash]) >= 7 days) {
-			routinePaidFees[hash] = now;
+		if (auth.weeklyFeeAmount > 0 && (block.timestamp - routinePaidFees[hash]) >= 7 days) {
+			routinePaidFees[hash] = block.timestamp;
 			SafeERC20.transfer(auth.feeTokenAddr, auth.relayer, auth.weeklyFeeAmount);
 		}
 	}
