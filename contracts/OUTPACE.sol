@@ -33,7 +33,7 @@ contract OUTPACE {
  	// channelId => challengeExpirationTime
 	// has two santinel values: 0 means no challenge, uint(-1) means failed challenge (channel is closed)
 	mapping (bytes32 => uint) public challenges;
-	uint private constant CLOSED = ~uint256(0);
+	uint private constant CLOSED = type(uint256).max;
 	
 	// remaining per channel (channelId => uint)
 	mapping (bytes32 => uint) public remaining;
