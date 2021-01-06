@@ -56,7 +56,7 @@ contract('ADXToken', function(accounts) {
 			'prev token amount is 5000'
 		)
 		assert.equal(receipt.events.length, 2, '2 Transfer events')
-		assert.ok(receipt.gasUsed.toNumber() < 100000, 'gas usage is OK')
+		assert.ok(receipt.gasUsed.toNumber() < 105000, 'gas usage is OK')
 
 		assert.deepEqual(await adxToken.totalSupply(), expectedAmnt, 'total supply is reflected')
 

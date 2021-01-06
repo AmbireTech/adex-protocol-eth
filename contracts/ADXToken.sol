@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-import "./libs/SafeMath.sol";
 import "./libs/SafeERC20.sol";
 
 contract ADXSupplyController {
@@ -13,7 +12,7 @@ contract ADXSupplyController {
 
 	function mint(ADXToken token, address owner, uint amount) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
-		uint totalSupplyAfter = SafeMath.add(token.totalSupply(), amount);
+		uint totalSupplyAfter = token.totalSupply() + amount;
 		// 10 September 2020
 		if (block.timestamp < 1599696000) {
 			// 50M * 10**18
@@ -37,8 +36,6 @@ contract ADXSupplyController {
 }
 
 contract ADXToken {
-	using SafeMath for uint;
-
 	// Constants
 	string public constant name = "AdEx Network";
 	string public constant symbol = "ADX";
@@ -55,7 +52,7 @@ contract ADXToken {
 	address public supplyController;
 	address public immutable PREV_TOKEN;
 
-	constructor(address supplyControllerAddr, address prevTokenAddr) public {
+	constructor(address supplyControllerAddr, address prevTokenAddr) {
 		supplyController = supplyControllerAddr;
 		PREV_TOKEN = prevTokenAddr;
 	}
@@ -65,16 +62,16 @@ contract ADXToken {
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
-		balances[msg.sender] = balances[msg.sender].sub(amount);
-		balances[to] = balances[to].add(amount);
+		balances[msg.sender] = balances[msg.sender] - amount;
+		balances[to] = balances[to] + amount;
 		emit Transfer(msg.sender, to, amount);
 		return true;
 	}
 
 	function transferFrom(address from, address to, uint amount) external returns (bool success) {
-		balances[from] = balances[from].sub(amount);
-		allowed[from][msg.sender] = allowed[from][msg.sender].sub(amount);
-		balances[to] = balances[to].add(amount);
+		balances[from] = balances[from] - amount;
+		allowed[from][msg.sender] = allowed[from][msg.sender] - amount;
+		balances[to] = balances[to] + amount;
 		emit Transfer(from, to, amount);
 		return true;
 	}
@@ -91,8 +88,8 @@ contract ADXToken {
 
 	// Supply control
 	function innerMint(address owner, uint amount) internal {
-		totalSupply = totalSupply.add(amount);
-		balances[owner] = balances[owner].add(amount);
+		totalSupply = totalSupply + amount;
+		balances[owner] = balances[owner] + amount;
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
 		emit Transfer(address(0), owner, amount);
 	}
@@ -111,7 +108,7 @@ contract ADXToken {
 	// NOTE: Burning by sending to 0x00 is not possible with many ERC20 implementations, but this one is made specifically for the old ADX
 	uint constant PREV_TO_CURRENT_TOKEN_MULTIPLIER = 100000000000000;
 	function swap(uint prevTokenAmount) external {
-		innerMint(msg.sender, prevTokenAmount.mul(PREV_TO_CURRENT_TOKEN_MULTIPLIER));
+		innerMint(msg.sender, prevTokenAmount * PREV_TO_CURRENT_TOKEN_MULTIPLIER);
 		SafeERC20.transferFrom(PREV_TOKEN, msg.sender, address(0), prevTokenAmount);
 	}
 }

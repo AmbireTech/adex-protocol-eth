@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-import "../libs/SafeMath.sol";
-
 contract Token {
 	mapping (address => uint) balances;
 	// The approvals are pretty much dummy; they're not used in transferFrom
@@ -17,16 +15,16 @@ contract Token {
 
 	function transfer(address to, uint value) public returns (bool) {
 		require(balances[msg.sender] >= value, 'INSUFFICIENT_FUNDS');
-		balances[msg.sender] = SafeMath.sub(balances[msg.sender], value);
-		balances[to] = SafeMath.add(balances[to], value);
+		balances[msg.sender] = balances[msg.sender] - value;
+		balances[to] = balances[to] + value;
 		emit Transfer(msg.sender, to, value);
 		return true;
 	}
 
 	function transferFrom(address from, address to, uint value) public returns (bool) {
 		require(balances[from] >= value, 'INSUFFICIENT_FUNDS');
-		balances[from] = SafeMath.sub(balances[from], value);
-		balances[to] = SafeMath.add(balances[to], value);
+		balances[from] = balances[from] - value;
+		balances[to] = balances[to] + value;
 		if (approvals[msg.sender] > 0) approvals[msg.sender] = 0;
 		emit Transfer(from, to, value);
 		return true;
