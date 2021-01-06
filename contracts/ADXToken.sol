@@ -7,7 +7,7 @@ import "./libs/SafeERC20.sol";
 contract ADXSupplyController {
 	enum GovernanceLevel { None, Mint, All }
 	mapping (address => uint8) public governance;
-	constructor() public {
+	constructor() {
 		governance[msg.sender] = uint8(GovernanceLevel.All);
 	}
 
@@ -15,7 +15,7 @@ contract ADXSupplyController {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		uint totalSupplyAfter = SafeMath.add(token.totalSupply(), amount);
 		// 10 September 2020
-		if (now < 1599696000) {
+		if (block.timestamp < 1599696000) {
 			// 50M * 10**18
 			require(totalSupplyAfter <= 50000000000000000000000000, 'EARLY_MINT_TOO_LARGE');
 		} else {
