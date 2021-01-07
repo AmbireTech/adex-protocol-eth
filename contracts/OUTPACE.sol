@@ -90,7 +90,7 @@ contract OUTPACE {
 		require(challenges[channelId] != CLOSED, 'channel is closed');
 
 		// Check the signatures
-		bytes32 hashToSign = keccak256(abi.encode(channelId, withdrawal.stateRoot));
+		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
 		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
 		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
 
