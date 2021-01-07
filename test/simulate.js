@@ -142,7 +142,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			stateRoot,
 			vsig1,
 			vsig2,
-			proof,
+			proof
 		])).wait()
 
 		console.log('\n------- Single Withdrawal w/o identity - channelWithdraw() --------')
