@@ -12,8 +12,10 @@
     "ethereumjs-util": "^6.1.0",
     "ethers": "^4.0.47",
     "js-sha3": "^0.8.0",
+    "lodash.throttle": "^4.1.1",
     "mongodb": "^3.6.3",
-    "solc": "0.5.13",
+    "node-fetch": "^2.6.1",
+    "solc": "0.5.6",
     "truffle": "^5.1.5"
   },
   "devDependencies": {
@@ -28,8 +30,7 @@
   "scripts": {
     "test": "truffle test",
     "lint": "eslint .  -c .eslintrc.js --fix",
-    "preversion": "./build.sh",
-    "simulate": "truffle test ./test/TestEarningOracle.js"
+    "preversion": "./build.sh"
   },
   "repository": {
     "type": "git",

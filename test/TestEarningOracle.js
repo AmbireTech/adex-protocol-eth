@@ -56,7 +56,7 @@ contract('EarningOracle', function(accounts) {
 		await (await core.channelOpen(channel.toSolidityTuple())).wait()
 
 		await expectEVMError(
-			earningOracle.bulkUpdate([channel.hashHex(core.address)], [userAddr]),
+			earningOracle.bulkUpdate([channel.hashHex(core.address)], [[userAddr]]),
 			'CHANNEL_NOT_EXPIRED'
 		)
 	})
@@ -88,7 +88,7 @@ contract('EarningOracle', function(accounts) {
 
 		await (await core.channelWithdrawExpired(channel.toSolidityTuple())).wait()
 		// call bulk tally
-		await (await earningOracle.bulkUpdate([channel.hashHex(coreAddr)], [userAddr])).wait()
+		await (await earningOracle.bulkUpdate([channel.hashHex(coreAddr)], [[userAddr]])).wait()
 
 		assert.equal(
 			(await earningOracle.getTotalEarning(userAddr)).toNumber(),
@@ -97,7 +97,7 @@ contract('EarningOracle', function(accounts) {
 		)
 
 		await expectEVMError(
-			earningOracle.bulkUpdate([channel.hashHex(coreAddr)], [userAddr]),
+			earningOracle.bulkUpdate([channel.hashHex(coreAddr)], [[userAddr]]),
 			'ALREADY_TALLIED'
 		)
 	})
