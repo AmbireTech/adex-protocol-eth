@@ -17,16 +17,18 @@ contract EarningOracle is IEarningOracle {
         core = _core;
     }
 
-    function bulkUpdate(bytes32[] calldata channelIds, address[] calldata earners) external {
+    function bulkUpdate(bytes32[] calldata channelIds, address[][] calldata earners) external {
         for(uint i = 0; i < channelIds.length; i++) {
             bytes32 channelId = channelIds[i];
-            address earner = earners[i];
-            
-            require(tallied[earner][channelId] == false, 'ALREADY_TALLIED');
+            address[] calldata channelEarners = earners[i];
             require(core.states(channelId) == ChannelLibrary.State.Expired, 'CHANNEL_NOT_EXPIRED');
 
-            tallied[earner][channelId] = true;
-            totalEarnings[earner] += core.withdrawnPerUser(channelId, earner);
+            for(uint j = 0; j < channelEarners.length; j++) {
+                address earner = channelEarners[j];
+                require(tallied[earner][channelId] == false, 'ALREADY_TALLIED');
+                tallied[earner][channelId] = true;
+                totalEarnings[earner] += core.withdrawnPerUser(channelId, earner);
+            }
         }
     }
 
