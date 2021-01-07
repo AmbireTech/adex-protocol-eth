@@ -15,7 +15,7 @@ contract OUTPACE {
 		// @TODO: rename liquidator?
 		address liquidator;
 		address tokenAddr;
-		bytes23 nonce;
+		bytes32 nonce;
 	}
 	struct Withdrawal {
 		Channel channel;
