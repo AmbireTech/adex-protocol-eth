@@ -97,7 +97,7 @@ contract ADXLoyaltyArb is Ownable {
 	IERC20 public constant ADX = IERC20(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
 	IERC20 public constant ADXL = IERC20(0xd9A4cB9dc9296e111c66dFACAb8Be034EE2E1c2C);
 
-	constructor() public {
+	constructor() {
 		ADX.approve(address(uniswap), type(uint256).max);
 		ADX.approve(address(ADXL), type(uint256).max);
 		ADXL.approve(address(uniswap), type(uint256).max);
