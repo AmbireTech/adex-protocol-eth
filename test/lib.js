@@ -13,11 +13,12 @@ async function getWithdrawData(channel, id, addresses, tokenAmnt, outpaceAddr) {
 	const tree = new MerkleTree(elems)
 	const proof = tree.proof(idElem)
 	const stateRoot = tree.getRoot()
-	const channelId = keccak256(abi.rawEncode(
-		['address', 'address', 'address', 'address', 'bytes32'],
-		channel
-	))
-	const hashToSignHex = keccak256(abi.rawEncode(['address', 'bytes32', 'bytes32'], [outpaceAddr, channelId, stateRoot]));
+	const channelId = keccak256(
+		abi.rawEncode(['address', 'address', 'address', 'address', 'bytes32'], channel)
+	)
+	const hashToSignHex = keccak256(
+		abi.rawEncode(['address', 'bytes32', 'bytes32'], [outpaceAddr, channelId, stateRoot])
+	)
 	const [sig1, sig2] = await Promise.all(channel.slice(0, 2).map(v => ethSign(hashToSignHex, v)))
 	return [stateRoot, splitSig(sig1), splitSig(sig2), proof]
 }
