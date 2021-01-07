@@ -67,9 +67,7 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address[] memory addrs, uint8[] memory privLevels)
-		public
-	{
+	constructor(address[] memory addrs, uint8[] memory privLevels) {
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
