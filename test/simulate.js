@@ -223,8 +223,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		console.log('---------------------------------------------------------------------\n')
 	})
 
-	/*
-	it('open a channel, execute many withdrawals through identity', async function() {
+	it('open a channel, execute many withdrawals with identity - same channel', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
 		const rounds = 10
@@ -235,30 +234,18 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const tokenAmnt = 500
 		const fee = 0
 
+		const channel = [...validators, validators[0], token.address, getBytes32(999)]
+		await token.setBalanceTo(earnerAddr, tokenAmnt)
+		await (await outpace.deposit(channel, getBytes32(0), tokenAmnt)).wait()
+
 		const currentNonce = (await id.nonce()).toNumber()
-		let nonceOffset = 0
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
-			const channel = [...validators, validators[0], token.address, getBytes32(channelNonce)]
-
-			const openChannelTxn = await zeroFeeTx(
-				id.address,
-				idInterface.functions.channelOpen.encode([outpaceAddr, channel.toSolidityTuple()]),
-				nonceOffset,
-				id,
-				token
-			)
-			const openChannelSig = splitSig(await ethSign(openChannelTxn.hashHex(), userAcc))
-
-			transactions.push(openChannelTxn.toSolidityTuple())
-			signatures.push(openChannelSig)
-
-			nonceOffset += 1
-
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce ++) {
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)
-			const amtPerAddress = Math.floor(tokenAmnt / (numberOfEarners * rounds))
+			// even though by doing that we get a bigger balance tree than the max deposit, it's not fatal cause we only withdraw from one
+			const amtPerAddress = Math.floor(tokenAmnt / rounds * channelNonce)
 
 			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
 			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
@@ -271,19 +258,19 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 			const channelWithdrawTx = new Transaction({
 				identityContract: id.address,
-				nonce: currentNonce + nonceOffset,
+				nonce: currentNonce + channelNonce,
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: outpaceAddr,
-				data: outpaceInterface.functions.channelWithdraw.encode([
-					channel.toSolidityTuple(),
+				data: outpaceInterface.functions.withdraw.encode([[
+					channel,
+					amtPerAddress,
 					stateRoot,
-					[vsig1, vsig2],
-					proof,
-					amtPerAddress
-				])
+					vsig1,
+					vsig2,
+					proof
+				]])
 			})
-			nonceOffset += 1
 
 			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
 
@@ -295,9 +282,68 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			gasLimit
 		})).wait()
 
-		console.log('\n------- Bulk Open and Withdrawal - Identity.execute() --------')
+		console.log(`\n------- Withdrawal Multiple via identity (${transactions.length} transactions) - Identity.execute() --------`)
 		console.log(`Total gas used: ${withdrawReceipt.gasUsed.toNumber()}`)
 		console.log('-------------------------------------------------------\n')
 	})
-	*/
+
+	it('open a channel, execute many withdrawals with bulk() - same channel', async function() {
+		const minimumChannelEarners = 10
+		const maximumChannelEarners = 20
+		const rounds = 10
+
+		const withdrawals = []
+
+		const tokenAmnt = 500
+		const fee = 0
+
+		const channel = [...validators, validators[0], token.address, getBytes32(9999)]
+		await token.setBalanceTo(earnerAddr, tokenAmnt)
+		await (await outpace.deposit(channel, getBytes32(999), tokenAmnt)).wait()
+
+		const currentNonce = (await id.nonce()).toNumber()
+
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce ++) {
+			const numberOfEarners = Math.floor(
+				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
+			)
+			// even though by doing that we get a bigger balance tree than the max deposit, it's not fatal cause we only withdraw from one
+			const amtPerAddress = Math.floor(tokenAmnt / rounds * channelNonce)
+
+			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
+			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
+				channel,
+				id.address,
+				earnerAddresses,
+				amtPerAddress,
+				outpaceAddr
+			)
+			withdrawals.push([
+				channel,
+				amtPerAddress,
+				stateRoot,
+				vsig1,
+				vsig2,
+				proof
+			])
+		}
+
+		const channelWithdrawTx = new Transaction({
+			identityContract: id.address,
+			nonce: currentNonce,
+			feeTokenAddr: token.address,
+			feeAmount: fee,
+			to: outpaceAddr,
+			data: outpaceInterface.functions.bulkWithdraw.encode([id.address, id.address, withdrawals])
+		})
+		const withdrawSig = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
+
+		const withdrawReceipt = await (await id.execute([channelWithdrawTx.toSolidityTuple()], [withdrawSig], {
+			gasLimit
+		})).wait()
+
+		console.log('\n------- Withdrawal Multiple via bulk --------')
+		console.log(`Total gas used: ${withdrawReceipt.gasUsed.toNumber()}`)
+		console.log('-------------------------------------------------------\n')
+	})
 })
