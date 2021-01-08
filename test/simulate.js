@@ -150,7 +150,6 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		console.log('-------------------------------------------------------\n')
 	})
 
-	/*
 	it('open a channel, execute: channelWithdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
@@ -166,8 +165,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			const channel = [...validators, validators[0], token.address, getBytes32(channelNonce)]
 
 			const openChannelTxn = await zeroFeeTx(
-				id.address,
-				idInterface.functions.channelOpen.encode([outpaceAddr, channel.toSolidityTuple()]),
+				outpaceAddr,
+				outpaceInterface.functions.deposit.encode([channel, getBytes32(channelNonce), tokenAmnt]),
 				0,
 				id,
 				token
@@ -198,13 +197,14 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: outpaceAddr,
-				data: outpaceInterface.functions.channelWithdraw.encode([
-					channel.toSolidityTuple(),
+				data: outpaceInterface.functions.withdraw.encode([[
+					channel,
+					amtPerAddress,
 					stateRoot,
-					[vsig1, vsig2],
-					proof,
-					amtPerAddress
-				])
+					vsig1,
+					vsig2,
+					proof
+				]])
 			})
 
 			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
@@ -218,11 +218,12 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			logIdentityExecuteGasInfo(earnerAddresses.length, gasUsed, proof)
 		}
 
-		console.log('\n------- Single Channel Bulk Withdrawal  - Identity.execute() --------')
+		console.log('\n------- Single Channel Identity Withdrawal - new channel every round - Identity.execute() --------')
 		console.log(`Total gas used: ${totalGasUsed}`)
 		console.log('---------------------------------------------------------------------\n')
 	})
 
+	/*
 	it('open a channel, execute bulk: channelWithdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
