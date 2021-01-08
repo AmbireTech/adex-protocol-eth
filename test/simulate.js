@@ -150,7 +150,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		console.log('-------------------------------------------------------\n')
 	})
 
-	it('open a channel, execute: channelWithdraw', async function() {
+	it('open a channel, execute: withdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
 		const rounds = 15
@@ -224,7 +224,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	})
 
 	/*
-	it('open a channel, execute bulk: channelWithdraw', async function() {
+	it('open a channel, execute many withdrawals through identity', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
 		const rounds = 10
@@ -233,7 +233,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const signatures = []
 
 		const tokenAmnt = 500
-		const fee = 20
+		const fee = 0
 
 		const currentNonce = (await id.nonce()).toNumber()
 		let nonceOffset = 0
@@ -295,7 +295,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			gasLimit
 		})).wait()
 
-		console.log('\n------- Bulk Withdrawal - Identity.execute() --------')
+		console.log('\n------- Bulk Open and Withdrawal - Identity.execute() --------')
 		console.log(`Total gas used: ${withdrawReceipt.gasUsed.toNumber()}`)
 		console.log('-------------------------------------------------------\n')
 	})
