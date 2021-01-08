@@ -65,11 +65,11 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	let id
 
 	const validators = accounts.slice(0, 2)
-	const relayerAddr = accounts[3]
+	const earnerAddr = accounts[3]
 	const userAcc = accounts[4]
 
 	before(async function() {
-		const signer = web3Provider.getSigner(relayerAddr)
+		const signer = web3Provider.getSigner(earnerAddr)
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
 		const outpaceWeb3 = await OUTPACE.deployed()
@@ -77,7 +77,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		outpace = new Contract(outpaceWeb3.address, OUTPACE._json.abi, signer)
 
 		// This IdentityFactory is used to test counterfactual deployment
-		const idFactoryWeb3 = await IdentityFactory.new({ from: relayerAddr })
+		const idFactoryWeb3 = await IdentityFactory.new({ from: earnerAddr })
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 
 		// deploy an Identity
@@ -127,10 +127,10 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 		)
 		const amtPerAddress = Math.floor(tokenAmnt / numberOfEarners)
-		const earnerAddresses = [...getRandomAddresses(numberOfEarners), relayerAddr]
+		const earnerAddresses = [...getRandomAddresses(numberOfEarners), earnerAddr]
 		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
 			channel,
-			relayerAddr,
+			earnerAddr,
 			earnerAddresses,
 			amtPerAddress,
 			outpaceAddr
