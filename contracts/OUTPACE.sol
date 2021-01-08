@@ -51,8 +51,6 @@ contract OUTPACE {
 	event LogChannelClose(bytes32 indexed channelId);
 
 	// Functions
-	// @TODO
-	// event design, particularly for withdrawal
 	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
