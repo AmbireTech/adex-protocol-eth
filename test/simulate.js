@@ -153,13 +153,13 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	it('open a channel, execute: channelWithdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
-		const rounds = 20
+		const rounds = 15
 
 		let totalGasUsed = 0
 		for (let channelNonce = 10; channelNonce < rounds; channelNonce += 1) {
 			const tokenAmnt = 500
 
-			const fee = 20
+			const fee = 0
 
 			// Open a channel via the identity
 			const channel = [...validators, validators[0], token.address, getBytes32(channelNonce)]
