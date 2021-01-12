@@ -89,8 +89,8 @@ contract OUTPACE {
 
 		// Check the signatures
 		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
-		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
-		require(SignatureValidator.isValidSignature(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
+		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
+		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
 
 		// Check the merkle proof
 		bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));
@@ -126,8 +126,8 @@ contract OUTPACE {
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is not challenged');
 		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
 		bytes32 hashToSign = keccak256(abi.encodePacked("resume", channelId, challengeExpires));
-		require(SignatureValidator.isValidSignature(hashToSign, channel.leader, sigLeader), 'leader sig');
-		require(SignatureValidator.isValidSignature(hashToSign, channel.follower, sigFollower), 'follower sig');
+		require(SignatureValidator.isValid(hashToSign, channel.leader, sigLeader), 'leader sig');
+		require(SignatureValidator.isValid(hashToSign, channel.follower, sigFollower), 'follower sig');
 
 		challenges[channelId] = 0;
 

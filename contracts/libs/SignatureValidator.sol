@@ -35,7 +35,7 @@ library SignatureValidator {
 	/// @param signer Address of the signer.
 	/// @param signature ECDSA signature along with the mode [{mode}{v}, {r}, {s}]
 	/// @return Returns whether signature is from a specified user.
-	function isValidSignature(bytes32 hash, address signer, bytes32[3] memory signature) internal pure returns (bool) {
+	function isValid(bytes32 hash, address signer, bytes32[3] memory signature) internal pure returns (bool) {
 		return recoverAddr(hash, signature) == signer;
 	}
 }
