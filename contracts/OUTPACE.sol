@@ -109,7 +109,8 @@ contract OUTPACE {
 	}
 
 	function challenge(Channel calldata channel) external {
-		// @TODO: no challenge if no funds remaining?
+		// Leaving this one out for two reasons 1) save the sload 2) allow challenging in cases like being unavailable to start new campaigns
+		//require(remaining[channelId] > 0, 'no funds to be distributed');
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.liquidator, 'only validators and liquidator can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
