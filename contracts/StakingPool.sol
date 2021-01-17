@@ -156,6 +156,7 @@ contract StakingPool {
 	}
 
 	// Governance functions
+	// @TODO: consider a single owner rather than multiple govt?
 	function setGovernance(address addr, bool hasGovt) external {
 		require(governance[msg.sender], 'NOT_GOVERNANCE');
 		governance[addr] = hasGovt;
@@ -218,6 +219,7 @@ contract StakingPool {
 		innerBurn(msg.sender, shares);
 		// @TODO flexible penalty ratio
 		require(ADXToken.transfer(msg.sender, adxAmount * 8 / 10));
+		// @TODO: event
 	}
 
 	// insurance
@@ -257,5 +259,6 @@ contract StakingPool {
 		// calculate the worth in ADX of the validator's shares
 		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
 		innerBurn(validator, sharesNeeded < balances[validator] ? sharesNeeded : balances[validator]);
+		// @TODO: event?
 	}
 }
