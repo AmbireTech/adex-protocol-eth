@@ -188,5 +188,16 @@ contract StakingPool {
 		require(adxAmount > 0, 'ZERO_AMOUNT');
 		unlocksAt[msg.sender][willUnlockAt] = 0;
 		require(ADXToken.transfer(msg.sender, adxAmount));
+		// @TODO event
 	}
+
+	function rageLeave(uint shares, bool skipMint) external {
+		if (!skipMint) ADXToken.supplyController().mintIncentive();
+		uint totalADX = ADXToken.balanceOf(address(this));
+		uint adxAmount = shares * totalADX / totalSupply;
+		innerBurn(msg.sender, shares);
+		// @TODO flexible penalty ratio
+		require(ADXToken.transfer(msg.sender, adxAmount * 8 / 10));
+	}
+
 }
