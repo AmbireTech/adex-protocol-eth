@@ -120,6 +120,7 @@ contract StakingPool {
 	// @TODO diret ref to supplyController
 	// @TODO set in constructor
 	IUniswap public constant uniswap = IUniswap(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	IChainlinkSimple public constant ADXUSDOracle = IChainlinkSimple(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
 	mapping (address => bool) public governance;
@@ -236,11 +237,17 @@ contract StakingPool {
 		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //WETH; // @TODO should we call the uniswap router? research whether this can change
 		path[2] = tokenOut;
 
-		// You may think this suffers from reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
+		// You may think the uinswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
 		// there's no case in which we 'double-spend' a value
+		// Plus, ADX, USDT and uniswap are all trusted
 
-		// now deduct all the needed to give them to the recipient
-		uint adxAmountMax = totalADX; // @TODO slippage protec
+		// Slippage protection; 5% slippage allowed
+		// @TODO make that dynamic
+		uint price = ADXUSDOracle.latestAnswer();
+		// amount is in 1e6, price is in 1e8
+		// @TODO this changes with more stablecoins, so we have to keep a registry of their multipliers
+		// We need to convert from 1e6 to 1e18 but we divide by 1e8; 18 - 6 + 8 ; verified this by calculating separately
+		uint adxAmountMax = amount * 1.05e20 / price;
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
