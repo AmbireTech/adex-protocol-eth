@@ -19,6 +19,16 @@ interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
 }
 
+interface IUniswap {
+    function swapTokensForExactTokens(
+        uint amountOut,
+        uint amountInMax,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+}
+
 contract StakingPool {
 	// ERC20 stuff
 	// Constants
@@ -33,10 +43,6 @@ contract StakingPool {
 	uint public totalSupply;
 	mapping(address => uint) balances;
 	mapping(address => mapping(address => uint)) allowed;
-	// How much ADX unlocks at a given time for each user
-	mapping (address => mapping(uint => uint)) unlocksAt;
-
-	// @TODO diret ref to supplyController
 
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
@@ -47,10 +53,6 @@ contract StakingPool {
 	// ERC20 events
 	event Approval(address indexed owner, address indexed spender, uint amount);
 	event Transfer(address indexed from, address indexed to, uint amount);
-
-	// Staking pool events
-	event LogLeave(address indexed owner, uint unlockAt, uint amount);
-	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 
 	// ERC20 methods
 	function balanceOf(address owner) external view returns (uint balance) {
@@ -112,10 +114,27 @@ contract StakingPool {
 
 
 	// Pool functionality
+	// How much ADX unlocks at a given time for each user
+	mapping (address => mapping(uint => uint)) unlocksAt;
+
+	// @TODO diret ref to supplyController
+	// @TODO set in constructor
+	IUniswap public constant uniswap = IUniswap(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+
 	IADXToken public ADXToken;
 	mapping (address => bool) public governance;
-	constructor(IADXToken token) {
+	address public liquidator;
+	address public validator;
+
+	// Staking pool events
+	event LogLeave(address indexed owner, uint unlockAt, uint amount);
+	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
+
+	// @TODO proper args here
+	constructor(IADXToken token, address _liquidator, address _validator) {
 		ADXToken = token;
+		liquidator = _liquidator;
+		validator = _validator;
 		governance[msg.sender] = true;
 		// EIP 2612
 		uint chainId;
@@ -200,4 +219,36 @@ contract StakingPool {
 		require(ADXToken.transfer(msg.sender, adxAmount * 8 / 10));
 	}
 
+	// insurance
+	function claim(address tokenOut, address to, uint amount) external {
+		require(msg.sender == liquidator, 'NOT_LIQUIDATOR');
+
+		// @TODO we should call mintIncentive before that?
+		uint totalADX = ADXToken.balanceOf(address(this));
+
+		// Note: whitelist of out tokens
+		//require(isWhitelistedOutToken(tokenOut), 'token not whitelisted')
+		// @TODO proper whitelist
+		require(tokenOut == address(0xdAC17F958D2ee523a2206206994597C13D831ec7), 'TOKEN_NOT_WHITELISTED');
+
+		address[] memory path = new address[](3);
+		path[0] = address(ADXToken);
+		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //WETH; // @TODO should we call the uniswap router? research whether this can change
+		path[2] = tokenOut;
+
+		// You may think this suffers from reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
+		// there's no case in which we 'double-spend' a value
+
+		// now deduct all the needed to give them to the recipient
+		uint adxAmountMax = totalADX; // @TODO slippage protec
+		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
+
+		// calculate the total ADX amount used in the swap
+		uint adxAmountNeeded = amounts[0];
+
+		// burn the validator shares so that they pay for it first, before dilluting other holders
+		// calculate the worth in ADX of the validator's shares
+		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
+		innerBurn(validator, sharesNeeded < balances[validator] ? sharesNeeded : balances[validator]);
+	}
 }
