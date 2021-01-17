@@ -50,6 +50,7 @@ contract StakingPool {
 
 	// Staking pool events
 	event LogLeave(address indexed owner, uint unlockAt, uint amount);
+	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 
 	// ERC20 methods
 	function balanceOf(address owner) external view returns (uint balance) {
@@ -111,20 +112,11 @@ contract StakingPool {
 
 
 	// Pool functionality
-	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
-	event LogSetIncentive(uint incentive, uint time);
-
 	IADXToken public ADXToken;
-	uint public incentivePerTokenPerAnnum;
-	uint public lastMintTime;
-	uint public maxTotalADX;
 	mapping (address => bool) public governance;
-	constructor(IADXToken token, uint incentive, uint cap) {
+	constructor(IADXToken token) {
 		ADXToken = token;
-		incentivePerTokenPerAnnum = incentive;
-		maxTotalADX = cap;
 		governance[msg.sender] = true;
-		lastMintTime = block.timestamp;
 		// EIP 2612
 		uint chainId;
 		assembly {
@@ -141,7 +133,6 @@ contract StakingPool {
 		);
 
 		emit LogSetGovernance(msg.sender, true, block.timestamp);
-		emit LogSetIncentive(incentive, block.timestamp);
 	}
 
 	// Governance functions
@@ -150,25 +141,6 @@ contract StakingPool {
 		governance[addr] = hasGovt;
 		emit LogSetGovernance(addr, hasGovt, block.timestamp);
 	}
-	// This doesn't trigger a mint because otherwise we risk of being unable to setIncentive to 0
-	// if minting is impossible
-	// It's the better tradeoff to make - and the issue of front-running mintIncnetive with setIncentive(0) can
-	// be solved by timelocking the governance
-	function setIncentive(uint newIncentive) external {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
-		incentivePerTokenPerAnnum = newIncentive;
-		lastMintTime = block.timestamp;
-		emit LogSetIncentive(newIncentive, block.timestamp);
-	}
-	function setSymbol(string calldata newSymbol) external {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
-		symbol = newSymbol;
-	}
-	function setMaxTotalADX(uint newMaxTotalADX) external {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
-		maxTotalADX = newMaxTotalADX;
-	}
-
 
 	// Pool stuff
 	function shareValue() external view returns (uint) {
