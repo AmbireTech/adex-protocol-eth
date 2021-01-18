@@ -19,7 +19,8 @@ interface IChainlinkSimple {
 	function latestAnswer() external view returns (uint);
 }
 
-interface IUniswap {
+// Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
+interface IUniswapSimple {
     function swapTokensForExactTokens(
         uint amountOut,
         uint amountInMax,
@@ -118,8 +119,8 @@ contract StakingPool {
 	mapping (address => mapping(uint => uint)) unlocksAt;
 
 	// @TODO diret ref to supplyController
-	// @TODO set in constructor
-	IUniswap public constant uniswap = IUniswap(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	// @TODO set in constructor?
+	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 	IChainlinkSimple public constant ADXUSDOracle = IChainlinkSimple(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
