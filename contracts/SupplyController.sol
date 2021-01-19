@@ -9,6 +9,9 @@ interface IADXToken {
 
 contract ADXSupplyController {
 	enum GovernanceLevel { None, Mint, All }
+
+	uint public immutable CAP = 150000000 * 1e18;
+
 	mapping (address => uint8) public governance;
 	constructor() {
 		governance[msg.sender] = uint8(GovernanceLevel.All);
@@ -17,14 +20,8 @@ contract ADXSupplyController {
 	function mint(IADXToken token, address owner, uint amount) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.Mint), 'NOT_GOVERNANCE');
 		uint totalSupplyAfter = token.totalSupply() + amount;
-		// 10 September 2020
-		if (block.timestamp < 1599696000) {
-			// 50M * 10**18
-			require(totalSupplyAfter <= 50000000000000000000000000, 'EARLY_MINT_TOO_LARGE');
-		} else {
-			// 150M * 10**18
-			require(totalSupplyAfter <= 150000000000000000000000000, 'MINT_TOO_LARGE');
-		}
+		// 150M * 10**18
+		require(totalSupplyAfter <= CAP, 'MINT_TOO_LARGE');
 		token.mint(owner, amount);
 	}
 
