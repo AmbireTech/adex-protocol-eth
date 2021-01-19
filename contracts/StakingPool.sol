@@ -196,8 +196,8 @@ contract StakingPool {
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		uint willUnlockAt = block.timestamp + TIME_TO_UNBOND;
-		// Note: we burn their shares but don't give them the ADX immediately - meaning this ADX will continue incurring rewards
-		// for other stakers during the time, which is intended behavior
+		// Note: we burn their shares but don't give them the ADX immediately
+		// since they no longer hold these shares, they won't occur ADX incentives (which are fixed per second)
 		innerBurn(msg.sender, shares);
 		unlocksAt[msg.sender][willUnlockAt] += adxAmount;
 
