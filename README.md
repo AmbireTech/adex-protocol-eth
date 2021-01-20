@@ -96,6 +96,12 @@ The `ADXLoyaltyPoolIncentiveController` contract:
 * Mainnet: https://etherscan.io/address/0xa52588d04c5b21854f42cbcd9502aa6092e6a779
 * Goerli: https://goerli.etherscan.io/address/0xa52588d04c5b21854f42cbcd9502aa6092e6a779
 
+### v5
+
+The `SupplyController` contract:
+
+* Mainnet: https://mainnet.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
+* Goerli: https://goerli.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
 
 ### Deployment strategy
 
