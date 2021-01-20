@@ -188,6 +188,7 @@ contract StakingPool {
 			innerMint(msg.sender, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
+		// @TODO event? note that innerMint/innerBurn have events
 	}
 
 	// @TODO: rename to stake/unskake?
@@ -202,6 +203,7 @@ contract StakingPool {
 		unlocksAt[msg.sender][willUnlockAt] += adxAmount;
 
 		emit LogLeave(msg.sender, willUnlockAt, adxAmount);
+		// @TODO note that innerMint/innerBurn have events
 	}
 
 	function withdraw(uint willUnlockAt) external {
@@ -220,7 +222,7 @@ contract StakingPool {
 		innerBurn(msg.sender, shares);
 		// @TODO flexible penalty ratio
 		require(ADXToken.transfer(msg.sender, adxAmount * 8 / 10));
-		// @TODO: event
+		// @TODO: event; note that innerMint/innerBurn have events
 	}
 
 	// insurance
