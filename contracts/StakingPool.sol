@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 interface ISupplyController {
-	function mintIncentive() external returns (uint);
-	function mintableIncentive(address owner) external view returns (uint);
+	function mintIncentive(address addr) external;
+	function mintableIncentive(address addr) external view returns (uint);
 }
 
 interface IADXToken {
@@ -176,7 +176,7 @@ contract StakingPool {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
-		ADXToken.supplyController().mintIncentive();
+		ADXToken.supplyController().mintIncentive(address(this));
 
 		uint totalADX = ADXToken.balanceOf(address(this));
 
@@ -193,7 +193,7 @@ contract StakingPool {
 
 	// @TODO: rename to stake/unskake?
 	function leave(uint shares, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive();
+		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		uint willUnlockAt = block.timestamp + TIME_TO_UNBOND;
@@ -216,7 +216,7 @@ contract StakingPool {
 	}
 
 	function rageLeave(uint shares, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive();
+		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		innerBurn(msg.sender, shares);
