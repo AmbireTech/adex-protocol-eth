@@ -24,6 +24,7 @@ contract OUTPACE {
 		bytes32[3] sigLeader;
 		bytes32[3] sigFollower;
 		bytes32[] proof;
+		bytes32 secret;
 	}
 	struct BalanceLeaf {
 		address earner;
@@ -88,7 +89,9 @@ contract OUTPACE {
 		require(challenges[channelId] != CLOSED, 'channel is closed');
 
 		// Check the signatures
-		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
+		bytes32 hashToSign = withdrawal.secret != 0x00
+			? keccak256(abi.encode(address(this), channelId, keccak256(abi.encode(withdrawal.secret)), withdrawal.stateRoot))
+			: keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
 

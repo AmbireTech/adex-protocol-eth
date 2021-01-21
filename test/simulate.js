@@ -48,6 +48,8 @@ function logIdentityExecuteGasInfo(numberOfEarners, gasUsed, proof) {
 const gasLimit = 5000000
 const DAY_SECONDS = 24 * 60 * 60
 
+const NULL_SECRET = getBytes32(0)
+
 contract('Simulate Bulk Withdrawal', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const outpaceInterface = new Interface(OUTPACE._json.abi)
@@ -142,7 +144,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			stateRoot,
 			vsig1,
 			vsig2,
-			proof
+			proof,
+			NULL_SECRET
 		])).wait()
 
 		console.log('\n------- Single Withdrawal w/o identity - channelWithdraw() --------')
@@ -203,7 +206,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 					stateRoot,
 					vsig1,
 					vsig2,
-					proof
+					proof,
+					NULL_SECRET
 				]])
 			})
 
@@ -268,7 +272,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 					stateRoot,
 					vsig1,
 					vsig2,
-					proof
+					proof,
+					NULL_SECRET
 				]])
 			})
 
@@ -324,7 +329,8 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				stateRoot,
 				vsig1,
 				vsig2,
-				proof
+				proof,
+				NULL_SECRET
 			])
 		}
 
