@@ -1,21 +1,9 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-interface ISupplyController {
-	function mintIncentive(address addr) external;
-	function mintableIncentive(address addr) external view returns (uint);
-}
+import "./interfaces/IADXToken.sol";
 
-interface IADXToken {
-	function transfer(address to, uint256 amount) external returns (bool);
-	function transferFrom(address from, address to, uint256 amount) external returns (bool);
-	function approve(address spender, uint256 amount) external returns (bool);
-	function balanceOf(address spender) external view returns (uint);
-	function allowance(address owner, address spender) external view returns (uint);
-	function supplyController() external view returns (ISupplyController);
-}
-
-interface IChainlinkSimple {
+interface IChainlink {
 	function latestAnswer() external view returns (uint);
 }
 
@@ -121,7 +109,7 @@ contract StakingPool {
 	// @TODO diret ref to supplyController
 	// @TODO set in constructor?
 	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlinkSimple public constant ADXUSDOracle = IChainlinkSimple(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
+	IChainlink public constant ADXUSDOracle = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
 	mapping (address => bool) public governance;

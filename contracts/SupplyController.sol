@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.0;
 
-interface IADXToken {
-	function totalSupply() external returns (uint);
-	function mint(address owner, uint amount) external;
-	function changeSupplyController(address newSupplyController) external;
-}
+import "./interfaces/IADXToken.sol";
 
 contract ADXSupplyController {
 	enum GovernanceLevel { None, Mint, All }
