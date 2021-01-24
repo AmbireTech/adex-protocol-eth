@@ -110,6 +110,7 @@ contract OUTPACE {
 
 	function challenge(Channel calldata channel) external {
 		// Leaving this one out for two reasons 1) save the sload 2) allow challenging in cases like being unavailable to start new campaigns
+		// same applies for resuming
 		//require(remaining[channelId] > 0, 'no funds to be distributed');
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'only validators and guardian can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
@@ -121,12 +122,11 @@ contract OUTPACE {
 	}
 
 	function resume(Channel calldata channel, bytes32[3] calldata sigLeader, bytes32[3] calldata sigFollower) external {
-		// @TODO: can resume if no funds remaining?
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is not challenged');
 		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
-		bytes32 hashToSign = keccak256(abi.encodePacked("resume", channelId, challengeExpires));
+		bytes32 hashToSign = keccak256(abi.encodePacked('resume', channelId, challengeExpires));
 		require(SignatureValidator.isValid(hashToSign, channel.leader, sigLeader), 'leader sig');
 		require(SignatureValidator.isValid(hashToSign, channel.follower, sigFollower), 'follower sig');
 
