@@ -5,7 +5,6 @@ import "./libs/SafeERC20.sol";
 
 interface IOUTPACE {
 	// WARINNG: copy paste from OUTPACE!
-	// @TODO
 	struct Channel {
 		address leader;
 		address follower;
@@ -35,7 +34,6 @@ contract Guardian {
 		bytes32 spec;
 	}
 	// variables
-	IOUTPACE public outpace = IOUTPACE(address(0)); // @TODO
 	address public court;
 	mapping (address => address) public poolForValidator;
 	mapping (bytes32 => uint) public remaining;
@@ -56,7 +54,7 @@ contract Guardian {
 	// @TODO staking pool claim() interface
 	
 	// @TODO; should we cache blame
-	function getRefund(IOUTPACE.Channel calldata channel, Campaign calldata campaign) external {
+	function getRefund(IOUTPACE outpace, IOUTPACE.Channel calldata channel, Campaign calldata campaign) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(channelId == campaign.channelId, 'channelId matches');
 		// ensure the channel is closed (fail if it can't be closed yet)
