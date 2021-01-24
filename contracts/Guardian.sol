@@ -9,8 +9,7 @@ interface IOUTPACE {
 	struct Channel {
 		address leader;
 		address follower;
-		// @TODO: rename liquidator?
-		address liquidator;
+		address guardian;
 		address tokenAddr;
 		bytes32 nonce;
 	}
@@ -26,7 +25,7 @@ interface IStakingPool {
 	function claim(address tokenOut, address to, uint amount) external;
 }
 
-contract Liquidator {
+contract Guardian {
 	struct Campaign {
 		// @TODO do we need the channelId if outpace is already segmenting?
 		// probably not
@@ -81,7 +80,6 @@ contract Liquidator {
 			//require(outpace.canBeClosed())
 
 			remainingFunds = outpace.remaining(channelId);
-			// @TODO close
 			outpace.close(channel);
 			// assign blame now
 			//blame[channel] = validator // call court if available

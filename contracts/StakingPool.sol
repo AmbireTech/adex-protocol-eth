@@ -113,7 +113,7 @@ contract StakingPool {
 
 	IADXToken public ADXToken;
 	mapping (address => bool) public governance;
-	address public liquidator;
+	address public guardian;
 	address public validator;
 
 	// Staking pool events
@@ -121,9 +121,9 @@ contract StakingPool {
 	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 
 	// @TODO proper args here
-	constructor(IADXToken token, address _liquidator, address _validator) {
+	constructor(IADXToken token, address _guardian, address _validator) {
 		ADXToken = token;
-		liquidator = _liquidator;
+		guardian = _guardian;
 		validator = _validator;
 		governance[msg.sender] = true;
 		// EIP 2612
@@ -215,7 +215,7 @@ contract StakingPool {
 
 	// insurance
 	function claim(address tokenOut, address to, uint amount) external {
-		require(msg.sender == liquidator, 'NOT_LIQUIDATOR');
+		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
 		// @TODO we should call mintIncentive before that?
 		uint totalADX = ADXToken.balanceOf(address(this));
