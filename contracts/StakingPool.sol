@@ -227,7 +227,7 @@ contract StakingPool {
 
 		address[] memory path = new address[](3);
 		path[0] = address(ADXToken);
-		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; //WETH; // @TODO should we call the uniswap router? research whether this can change
+		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH; // @TODO should we call the uniswap router? research whether this can change
 		path[2] = tokenOut;
 
 		// You may think the uinswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
@@ -250,6 +250,6 @@ contract StakingPool {
 		// calculate the worth in ADX of the validator's shares
 		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
 		innerBurn(validator, sharesNeeded < balances[validator] ? sharesNeeded : balances[validator]);
-		// @TODO: event?
+		// @TODO: event? keep in mind innerBurn generates an even
 	}
 }

@@ -12,7 +12,8 @@ contract OUTPACE {
 	struct Channel {
 		address leader;
 		address follower;
-		// @TODO: rename liquidator?
+		// @TODO: rename liquidator? this entity has two roles: it's the beneficiery of the remaining channel funds if it's closed, and it can trigger a challenge
+		// maybe 'guardian'?
 		address liquidator;
 		address tokenAddr;
 		bytes32 nonce;
@@ -31,7 +32,7 @@ contract OUTPACE {
 	}
 
  	// channelId => challengeExpirationTime
-	// has two santinel values: 0 means no challenge, uint(-1) means failed challenge (channel is closed)
+	// has two santinel values: 0 means no challenge, uint.max means failed challenge (channel is closed)
 	mapping (bytes32 => uint) public challenges;
 	uint private constant CLOSED = type(uint256).max;
 	
