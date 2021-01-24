@@ -40,6 +40,7 @@ contract Liquidator {
 	address public court;
 	mapping (address => address) public poolForValidator;
 	mapping (bytes32 => uint) public remaining;
+	mapping (bytes32 => mapping(bytes32 => bool)) refunds;
 
 	function registerPool(address pool) external {
 		require(poolForValidator[msg.sender] == address(0), 'staking pool already registered');
@@ -68,8 +69,10 @@ contract Liquidator {
 
 		// @TODO encode vs encodepacked
 		bytes32 depositId = keccak256(abi.encode(campaign));
-		uint deposit = outpace.deposits(campaign.channelId, depositId);
+		require(!refunds[channelId][depositId], 'refund already received');
+		refunds[channelId][depositId] = true;
 
+		uint deposit = outpace.deposits(campaign.channelId, depositId);
 		uint remainingFunds = remaining[channelId];
 
 		if (!outpace.isClosed(channelId)) {
