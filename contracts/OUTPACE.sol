@@ -6,15 +6,14 @@ import "./libs/MerkleProof.sol";
 import "./libs/SignatureValidator.sol";
 
 contract OUTPACE {
-	// This is the bare minimum: the liquidator can enforce longer times
+	// This is the bare minimum: the guardian can enforce longer times
 	uint public constant CHALLENGE_TIME = 3 days;
 
+	// The guardian has two roles: it's the beneficiery of the remaining channel funds if it's closed, and it can trigger a challenge
 	struct Channel {
 		address leader;
 		address follower;
-		// @TODO: rename liquidator? this entity has two roles: it's the beneficiery of the remaining channel funds if it's closed, and it can trigger a challenge
-		// maybe 'guardian'?
-		address liquidator;
+		address guardian;
 		address tokenAddr;
 		bytes32 nonce;
 	}
@@ -112,7 +111,7 @@ contract OUTPACE {
 	function challenge(Channel calldata channel) external {
 		// Leaving this one out for two reasons 1) save the sload 2) allow challenging in cases like being unavailable to start new campaigns
 		//require(remaining[channelId] > 0, 'no funds to be distributed');
-		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.liquidator, 'only validators and liquidator can challenge');
+		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'only validators and guardian can challenge');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
 		uint expires = block.timestamp + CHALLENGE_TIME;
@@ -137,8 +136,8 @@ contract OUTPACE {
 	}
 
 	function close(Channel calldata channel) external {
-		address liquidator = channel.liquidator;
-		require(msg.sender == liquidator, 'must be called by liquidator');
+		address guardian = channel.guardian;
+		require(msg.sender == guardian, 'must be called by guardian');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is active or closed');
@@ -148,7 +147,7 @@ contract OUTPACE {
 		remaining[channelId] = 0;
 		challenges[channelId] = CLOSED;
 
-		SafeERC20.transfer(channel.tokenAddr, liquidator, toRefund);
+		SafeERC20.transfer(channel.tokenAddr, guardian, toRefund);
 
 		emit LogChannelClose(channelId);
 	}
