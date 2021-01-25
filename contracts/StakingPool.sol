@@ -115,6 +115,7 @@ contract StakingPool {
 	mapping (address => bool) public governance;
 	address public guardian;
 	address public validator;
+	uint public pendingToUnlock;
 
 	// Staking pool events
 	event LogLeave(address indexed owner, uint unlockAt, uint amount);
@@ -155,7 +156,7 @@ contract StakingPool {
 	// Pool stuff
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
-		return (ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this)))
+		return (ADXToken.balanceOf(address(this)) - pendingToUnlock + ADXToken.supplyController().mintableIncentive(address(this)))
 			* 1e18
 			/ totalSupply;
 	}
@@ -166,7 +167,7 @@ contract StakingPool {
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		ADXToken.supplyController().mintIncentive(address(this));
 
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
@@ -182,13 +183,14 @@ contract StakingPool {
 	// @TODO: rename to stake/unskake?
 	function leave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
 		uint adxAmount = shares * totalADX / totalSupply;
 		uint willUnlockAt = block.timestamp + TIME_TO_UNBOND;
 		// Note: we burn their shares but don't give them the ADX immediately
 		// since they no longer hold these shares, they won't occur ADX incentives (which are fixed per second)
 		innerBurn(msg.sender, shares);
 		unlocksAt[msg.sender][willUnlockAt] += adxAmount;
+		pendingToUnlock += adxAmount;
 
 		emit LogLeave(msg.sender, willUnlockAt, adxAmount);
 		// @TODO note that innerMint/innerBurn have events
@@ -199,13 +201,14 @@ contract StakingPool {
 		uint adxAmount = unlocksAt[msg.sender][willUnlockAt];
 		require(adxAmount > 0, 'ZERO_AMOUNT');
 		unlocksAt[msg.sender][willUnlockAt] = 0;
+		pendingToUnlock -= adxAmount;
 		require(ADXToken.transfer(msg.sender, adxAmount));
 		// @TODO event
 	}
 
 	function rageLeave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
 		uint adxAmount = shares * totalADX / totalSupply;
 		innerBurn(msg.sender, shares);
 		// @TODO flexible penalty ratio
@@ -218,7 +221,7 @@ contract StakingPool {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
 		// @TODO we should call mintIncentive before that?
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
 
 		// Note: whitelist of out tokens
 		//require(isWhitelistedOutToken(tokenOut), 'token not whitelisted')
@@ -241,6 +244,7 @@ contract StakingPool {
 		// @TODO this changes with more stablecoins, so we have to keep a registry of their multipliers
 		// We need to convert from 1e6 to 1e18 but we divide by 1e8; 18 - 6 + 8 ; verified this by calculating separately
 		uint adxAmountMax = amount * 1.05e20 / price;
+		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
