@@ -54,10 +54,13 @@ contract OUTPACE {
 	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
-		require(deposits[channelId][depositId] == 0, 'deposit already exists');
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
 		remaining[channelId] = remaining[channelId] + amount;
-		deposits[channelId][depositId] = amount;
+
+		if (depositId != 0x00) {
+			require(deposits[channelId][depositId] == 0, 'deposit already exists');
+			deposits[channelId][depositId] = amount;
+		}
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), amount);
 		emit LogChannelDeposit(channelId, amount);
