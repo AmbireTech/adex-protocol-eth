@@ -101,4 +101,5 @@ contract Guardian {
 	}
 
 	// @TODO: owner, setCourt
+	// @TODO allow the owner to trigger challenges
 }
