@@ -25,9 +25,6 @@ contract StakingPool {
 	uint8 public constant decimals = 18;
 	string public symbol = "ADX-STAKING";
 
-	// @TODO: make this mutable?
-	uint constant TIME_TO_UNBOND = 20 days;
-
 	// Mutable variables
 	uint public totalSupply;
 	mapping(address => uint) balances;
@@ -103,10 +100,9 @@ contract StakingPool {
 
 
 	// Pool functionality
-	// How much ADX unlocks at a given time for each user
-	mapping (address => mapping(uint => uint)) unlocksAt;
-
-	// @TODO diret ref to supplyController
+	// @TODO: make this mutable?
+	uint constant TIME_TO_UNBOND = 20 days;
+	// @TODO maybe a direct reference to supplyController will save gas
 	// @TODO set in constructor?
 	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 	IChainlink public constant ADXUSDOracle = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
@@ -115,10 +111,23 @@ contract StakingPool {
 	mapping (address => bool) public governance;
 	address public guardian;
 	address public validator;
-	uint public pendingToUnlock;
+
+	// Commitment ID against the max amount of tokens it will pay out
+	mapping (bytes32 => uint) commitments;
+	// How many of a user's shares are locked
+	mapping (address => uint) lockedShares;
+	// Unbonding commitment from a staker
+	struct UnbondCommitment {
+		address owner;
+		uint shares;
+		uint unlocksAt;
+	}
 
 	// Staking pool events
-	event LogLeave(address indexed owner, uint unlockAt, uint amount);
+	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
+	// @TODO can we embed the struct itself?
+	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
+	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 
 	// @TODO proper args here
@@ -156,7 +165,7 @@ contract StakingPool {
 	// Pool stuff
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
-		return (ADXToken.balanceOf(address(this)) - pendingToUnlock + ADXToken.supplyController().mintableIncentive(address(this)))
+		return (ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this)))
 			* 1e18
 			/ totalSupply;
 	}
@@ -167,7 +176,7 @@ contract StakingPool {
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		ADXToken.supplyController().mintIncentive(address(this));
 
-		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
+		uint totalADX = ADXToken.balanceOf(address(this));
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
@@ -183,32 +192,48 @@ contract StakingPool {
 	// @TODO: rename to stake/unskake?
 	function leave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
-		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
-		uint adxAmount = shares * totalADX / totalSupply;
-		uint willUnlockAt = block.timestamp + TIME_TO_UNBOND;
-		// Note: we burn their shares but don't give them the ADX immediately
-		// since they no longer hold these shares, they won't occur ADX incentives (which are fixed per second)
-		innerBurn(msg.sender, shares);
-		unlocksAt[msg.sender][willUnlockAt] += adxAmount;
-		pendingToUnlock += adxAmount;
 
-		emit LogLeave(msg.sender, willUnlockAt, adxAmount);
-		// @TODO note that innerMint/innerBurn have events
+		require(shares <= balances[msg.sender] - lockedShares[msg.sender], 'INSUFFICIENT_SHARES');
+		uint totalADX = ADXToken.balanceOf(address(this));
+		uint maxTokens = shares * totalADX / totalSupply;
+		uint unlocksAt = block.timestamp + TIME_TO_UNBOND;
+		UnbondCommitment memory commitment = UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt });
+		bytes32 commitmentId = keccak256(abi.encode(commitment));
+		require(commitments[commitmentId] == 0, 'COMMITMENT_EXISTS');
+
+		commitments[commitmentId] = maxTokens;
+		lockedShares[msg.sender] += shares;
+
+		emit LogLeave(msg.sender, shares, unlocksAt, maxTokens);
 	}
 
-	function withdraw(uint willUnlockAt) external {
-		require(block.timestamp > willUnlockAt, 'UNLOCK_TOO_EARLY');
-		uint adxAmount = unlocksAt[msg.sender][willUnlockAt];
-		require(adxAmount > 0, 'ZERO_AMOUNT');
-		unlocksAt[msg.sender][willUnlockAt] = 0;
-		pendingToUnlock -= adxAmount;
-		require(ADXToken.transfer(msg.sender, adxAmount));
-		// @TODO event
+	// @TODO: should we provide an extra helper to calculate how many tokens a user will get at withdraw?
+
+	// withdraw: shares, token
+	// Commitment map, event log to mmic LogLeave, always withdraw full commitments
+	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
+		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+
+		require(block.timestamp > unlocksAt, 'UNLOCK_TOO_EARLY');
+		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt })));
+		uint maxTokens = commitments[commitmentId];
+		require(maxTokens > 0, 'NO_COMMITMENT');
+		uint totalADX = ADXToken.balanceOf(address(this));
+		uint currentTokens = shares * totalADX / totalSupply;
+		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
+
+		commitments[commitmentId] = 0;
+		lockedShares[msg.sender] -= shares;
+
+		innerBurn(msg.sender, shares);
+		require(ADXToken.transfer(msg.sender, receivedTokens));
+
+		emit LogWithdraw(msg.sender, shares, unlocksAt, maxTokens, receivedTokens);
 	}
 
 	function rageLeave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
-		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
+		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		innerBurn(msg.sender, shares);
 		// @TODO flexible penalty ratio
@@ -221,7 +246,7 @@ contract StakingPool {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
 		// @TODO we should call mintIncentive before that?
-		uint totalADX = ADXToken.balanceOf(address(this)) - pendingToUnlock;
+		uint totalADX = ADXToken.balanceOf(address(this));
 
 		// Note: whitelist of out tokens
 		//require(isWhitelistedOutToken(tokenOut), 'token not whitelisted')
