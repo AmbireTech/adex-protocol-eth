@@ -129,6 +129,7 @@ contract StakingPool {
 	// @TODO can we embed the struct itself?
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
+	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
 	event LogClaim(address tokenAddr, address to, uint amount, uint burnedValidatorShares);
 
 	// @TODO proper args here
@@ -234,10 +235,12 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
+		uint receivedTokens = adxAmount * 8 / 10;
 		innerBurn(msg.sender, shares);
-		// @TODO flexible penalty ratio
-		require(ADXToken.transfer(msg.sender, adxAmount * 8 / 10));
-		// @TODO: event; note that innerMint/innerBurn have events
+		// @TODO mutable penalty ratio
+		require(ADXToken.transfer(msg.sender, receivedTokens));
+
+		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
 	}
 
 	// insurance
