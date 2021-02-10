@@ -124,11 +124,12 @@ contract StakingPool {
 	}
 
 	// Staking pool events
+	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
 	// @TODO can we embed the struct itself?
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
-	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
+	event LogClaim(address tokenAddr, address to, uint amount, uint burnedValidatorShares);
 
 	// @TODO proper args here
 	constructor(IADXToken token, address _guardian, address _validator) {
@@ -209,8 +210,6 @@ contract StakingPool {
 
 	// @TODO: should we provide an extra helper to calculate how many tokens a user will get at withdraw?
 
-	// withdraw: shares, token
-	// Commitment map, event log to mmic LogLeave, always withdraw full commitments
 	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -278,7 +277,9 @@ contract StakingPool {
 		// burn the validator shares so that they pay for it first, before dilluting other holders
 		// calculate the worth in ADX of the validator's shares
 		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
-		innerBurn(validator, sharesNeeded < balances[validator] ? sharesNeeded : balances[validator]);
-		// @TODO: event? keep in mind innerBurn generates an even
+		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
+		if (toBurn > 0) innerBurn(validator, toBurn);
+
+		emit LogClaim(tokenOut, to, amount, toBurn);
 	}
 }
