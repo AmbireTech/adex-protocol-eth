@@ -39,8 +39,8 @@ contract OUTPACE {
 	mapping (bytes32 => uint) public remaining;
 	// withdrawn per channel user (channelId => (account => uint))
 	mapping (bytes32 => mapping (address => uint)) public withdrawnPerUser;
-	// deposits per channel (channelId => (depositId => uint))
-	mapping (bytes32 => mapping (bytes32 => uint)) public deposits;
+	// deposits per channel (channelId => (depositor => uint))
+	mapping (bytes32 => mapping (address => uint)) public deposits;
 
 	// events
 	// @TODO should we emit the full channel? see gas costs
@@ -51,16 +51,12 @@ contract OUTPACE {
 	event LogChannelClose(bytes32 indexed channelId);
 
 	// Functions
-	function deposit(Channel calldata channel, bytes32 depositId, uint amount) external {
+	function deposit(Channel calldata channel, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
 		remaining[channelId] = remaining[channelId] + amount;
-
-		if (depositId != 0x00) {
-			require(deposits[channelId][depositId] == 0, 'deposit already exists');
-			deposits[channelId][depositId] = amount;
-		}
+		deposits[channelId][msg.sender] += amount;
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), amount);
 		emit LogChannelDeposit(channelId, amount);
