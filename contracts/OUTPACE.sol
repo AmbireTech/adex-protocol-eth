@@ -53,12 +53,12 @@ contract OUTPACE {
 	event LogChannelClose(bytes32 indexed channelId);
 
 	// Functions
-	function deposit(Channel calldata channel, uint amount) external {
+	function deposit(Channel calldata channel, address recipient, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
 		require(challenges[channelId] != CLOSED, 'channel is closed');
 		remaining[channelId] += amount;
-		deposits[channelId][msg.sender] += amount;
+		deposits[channelId][recipient] += amount;
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), amount);
 		emit LogChannelDeposit(channelId, amount);
