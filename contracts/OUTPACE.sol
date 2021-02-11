@@ -56,7 +56,7 @@ contract OUTPACE {
 	function deposit(Channel calldata channel, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
-		require(challenges[channelId] == 0, 'channel is closed or challenged');
+		require(challenges[channelId] != CLOSED, 'channel is closed');
 		remaining[channelId] += amount;
 		deposits[channelId][msg.sender] += amount;
 
