@@ -41,6 +41,8 @@ contract OUTPACE {
 	mapping (bytes32 => mapping (address => uint)) public withdrawnPerUser;
 	// deposits per channel (channelId => (depositor => uint))
 	mapping (bytes32 => mapping (address => uint)) public deposits;
+	// last used stateRoot per channel
+	mapping (bytes32 => bytes32) public lastStateRoot;
 
 	// events
 	// @TODO should we emit the full channel? see gas costs
@@ -84,7 +86,10 @@ contract OUTPACE {
 	function calcWithdrawAmount(address earner, Withdrawal calldata withdrawal) internal returns (uint) {
 		bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
 		// require that the is not closed
-		require(challenges[channelId] != CLOSED, 'channel is closed');
+		uint challengeExpirationTime = challenges[channelId];
+		require(challengeExpirationTime != CLOSED, 'channel is closed');
+		// We only need to update this for challenged channels since it's needed on liquidation
+		if (challengeExpirationTime != 0) lastStateRoot[channelId] = withdrawal.stateRoot;
 
 		// Check the signatures
 		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
