@@ -55,7 +55,7 @@ contract OUTPACE {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'zero deposit');
 		require(challenges[channelId] == 0, 'channel is closed or challenged');
-		remaining[channelId] = remaining[channelId] + amount;
+		remaining[channelId] += amount;
 		deposits[channelId][msg.sender] += amount;
 
 		SafeERC20.transferFrom(channel.tokenAddr, msg.sender, address(this), amount);
