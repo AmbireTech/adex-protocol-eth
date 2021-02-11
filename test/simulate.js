@@ -121,7 +121,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		await token.setBalanceTo(userAcc, tokenAmnt)
 
 		const userSigner = web3Provider.getSigner(userAcc)
-		await (await outpace.connect(userSigner).deposit(channel, getBytes32(0), tokenAmnt)).wait()
+		await (await outpace.connect(userSigner).deposit(channel, tokenAmnt)).wait()
 
 		const numberOfEarners = Math.floor(
 			getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
@@ -166,7 +166,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 			const openChannelTxn = await zeroFeeTx(
 				outpaceAddr,
-				outpaceInterface.functions.deposit.encode([channel, getBytes32(channelNonce), tokenAmnt]),
+				outpaceInterface.functions.deposit.encode([channel, tokenAmnt]),
 				0,
 				id,
 				token
@@ -236,7 +236,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const channel = [...validators, validators[0], token.address, getBytes32(999)]
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, getBytes32(0), tokenAmnt)).wait()
+		await (await outpace.deposit(channel, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
@@ -299,7 +299,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const channel = [...validators, validators[0], token.address, getBytes32(9999)]
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, getBytes32(999), tokenAmnt)).wait()
+		await (await outpace.deposit(channel, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
