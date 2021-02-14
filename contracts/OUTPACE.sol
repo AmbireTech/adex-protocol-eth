@@ -55,8 +55,8 @@ contract OUTPACE {
 	// Functions
 	function deposit(Channel calldata channel, address recipient, uint amount) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
-		require(amount > 0, 'zero deposit');
-		require(challenges[channelId] != CLOSED, 'channel is closed');
+		require(amount > 0, 'NO_DEPOSIT');
+		require(challenges[channelId] != CLOSED, 'CHANNEL_CLOSED');
 		remaining[channelId] += amount;
 		deposits[channelId][recipient] += amount;
 
@@ -69,12 +69,12 @@ contract OUTPACE {
 	}
 
 	function bulkWithdraw(address earner, address to, Withdrawal[] calldata withdrawals) external {
-		require(withdrawals.length > 0, 'no withdrawals');
+		require(withdrawals.length > 0, 'NO_WITHDRAWALS');
 		uint toWithdraw;
 		address tokenAddr = withdrawals[0].channel.tokenAddr;
 		for (uint i = 0; i < withdrawals.length; i++) {
 			Withdrawal calldata withdrawal = withdrawals[i];
-			require(withdrawal.channel.tokenAddr == tokenAddr, 'only one token can be withdrawn');
+			require(withdrawal.channel.tokenAddr == tokenAddr, 'MUST_USE_SAME_TOKEN');
 			toWithdraw += calcWithdrawAmount(earner, withdrawal);
 		}
 		// @TODO test for this
@@ -87,7 +87,7 @@ contract OUTPACE {
 		bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
 		// require that the is not closed
 		uint challengeExpirationTime = challenges[channelId];
-		require(challengeExpirationTime != CLOSED, 'channel is closed');
+		require(challengeExpirationTime != CLOSED, 'CHANNEL_CLOSED');
 		// We only need to update this for challenged channels since it's needed on liquidation
 		if (challengeExpirationTime != 0) lastStateRoot[channelId] = withdrawal.stateRoot;
 
@@ -116,9 +116,9 @@ contract OUTPACE {
 		// Leaving this one out for two reasons 1) save the sload 2) allow challenging in cases like being unavailable to start new campaigns
 		// same applies for resuming
 		//require(remaining[channelId] > 0, 'no funds to be distributed');
-		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'only validators and guardian can challenge');
+		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'NOT_AUTHORIZED');
 		bytes32 channelId = keccak256(abi.encode(channel));
-		require(challenges[channelId] == 0, 'channel is closed or challenged');
+		require(challenges[channelId] == 0, 'CHANNEL_ALREADY_CHALLENGED');
 		uint expires = block.timestamp + CHALLENGE_TIME;
 		challenges[channelId] = expires;
 
@@ -128,11 +128,11 @@ contract OUTPACE {
 	function resume(Channel calldata channel, bytes32[3] calldata sigLeader, bytes32[3] calldata sigFollower) external {
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
-		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is not challenged');
+		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
 		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
 		bytes32 hashToSign = keccak256(abi.encodePacked('resume', channelId, challengeExpires));
-		require(SignatureValidator.isValid(hashToSign, channel.leader, sigLeader), 'leader sig');
-		require(SignatureValidator.isValid(hashToSign, channel.follower, sigFollower), 'follower sig');
+		require(SignatureValidator.isValid(hashToSign, channel.leader, sigLeader), 'INVALID_LEADER_SIG');
+		require(SignatureValidator.isValid(hashToSign, channel.follower, sigFollower), 'INVALID_FOLLOWER_SIG');
 
 		challenges[channelId] = 0;
 
@@ -144,8 +144,8 @@ contract OUTPACE {
 		require(msg.sender == guardian, 'must be called by guardian');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
-		require(challengeExpires != 0 && challengeExpires != CLOSED, 'channel is active or closed');
-		require(block.timestamp > challengeExpires, 'channel is not closable yet');
+		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
+		require(block.timestamp > challengeExpires, 'CHANNEL_NOT_CLOSABLE');
 
 		uint toRefund = remaining[channelId];
 		remaining[channelId] = 0;
