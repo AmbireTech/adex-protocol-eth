@@ -1,13 +1,14 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-const { providers, Contract, Wallet } = require('ethers')
-const { Interface, hexlify } = require('ethers').utils
+const { providers, Contract, ContractFactory, Wallet  } = require('ethers')
+const { Interface, hexlify, getCreate2Address } = require('ethers').utils
 
 const OUTPACE = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 const Sweeper = artifacts.require('Sweeper')
+const Depositor = artifacts.require('Depositor')
 
 const { zeroFeeTx, ethSign, getWithdrawData } = require('./lib')
 const { splitSig, Transaction } = require('../js')
@@ -113,7 +114,37 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 	})
 
 	it('deposits', async function() {
-		const sweeper = await Sweeper.new()
+		// used only for the sweeper; maybe temporary
+		const { keccak256 } = require('ethers').utils
+		const abi = require('ethereumjs-abi')
+		const signer = web3Provider.getSigner(earnerAddr)
+		const sweeperWeb3 = await Sweeper.new()
+		const sweeper = new Contract(sweeperWeb3.address, Sweeper._json.abi, signer)
+		const depositorAddr = accounts[7]
+		const channel = [...validators, validators[0], token.address, getBytes32(69)]
+		const channelId = keccak256(
+			abi.rawEncode(['address', 'address', 'address', 'address', 'bytes32'], channel)
+		)
+		console.log(await outpace.deposits(channelId, depositorAddr), 'deposits before - must be 0')
+		const amount = 196969
+		const factory = new ContractFactory(Depositor.abi, Depositor.bytecode)
+		const initCode = factory.getDeployTransaction(outpace.address, channel, depositorAddr).data
+		const depositAddr = getCreate2Address({
+			from: sweeper.address,
+			salt: getBytes32(0),
+			initCode
+		})
+		// send tokens to the deposit addr and then sweep it
+		await token.setBalanceTo(depositAddr, amount)
+		const receipt = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		console.log(await token.balanceOf(depositAddr), 'must be 0')
+		console.log(receipt, 'must have deposit logs')
+		console.log(receipt.gasUsed.toNumber(), 'gas used')
+		console.log(await outpace.deposits(channelId, depositorAddr), 'deposits after')
+		// do it again
+		await token.setBalanceTo(depositAddr, amount)
+		const receipt2 = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		console.log(receipt2.gasUsed.toNumber(), 'gas used')
 	})
 
 	it('open a channel, execute w/o identity: withdraw', async function() {
