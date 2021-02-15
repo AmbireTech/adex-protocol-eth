@@ -5,9 +5,9 @@ import "../OUTPACE.sol";
 import "./Depositor.sol";
 
 contract Sweeper {
-	function sweep(OUTPACE outpace, OUTPACE.Channel memory channel, address[] memory depositors) external {
+	function sweep(address token, address[] calldata depositors) external {
 		for (uint i = 0; i < depositors.length; i++) {
-			new Depositor{ salt: bytes32(0) }(outpace, channel, depositors[i]);
+			new Depositor{ salt: bytes32(0) }(token, depositors[i]);
 		}
 	}
 }

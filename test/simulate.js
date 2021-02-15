@@ -121,7 +121,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const channel = [...validators, validators[0], token.address, getBytes32(69)]
 		const amount = 196969
 		const factory = new ContractFactory(Depositor.abi, Depositor.bytecode)
-		const initCode = factory.getDeployTransaction(outpace.address, channel, depositorAddr).data
+		const initCode = factory.getDeployTransaction(token.address, depositorAddr).data
 		const depositAddr = getCreate2Address({
 			from: sweeper.address,
 			salt: getBytes32(0),
@@ -129,13 +129,13 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		})
 		// send tokens to the deposit addr and then sweep it
 		await token.setBalanceTo(depositAddr, amount)
-		const receipt = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		const receipt = await (await sweeper.sweep(token.address, [depositorAddr])).wait()
 		console.log(await token.balanceOf(depositAddr), 'must be 0')
 		console.log(receipt, 'must have deposit logs')
 		console.log(receipt.gasUsed.toNumber(), 'gas used')
 		// do it again
 		await token.setBalanceTo(depositAddr, amount)
-		const receipt2 = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		const receipt2 = await (await sweeper.sweep(token.address, [depositorAddr])).wait()
 		console.log(receipt2.gasUsed.toNumber(), 'gas used')
 	})
 
