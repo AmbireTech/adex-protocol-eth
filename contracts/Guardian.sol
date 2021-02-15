@@ -17,9 +17,11 @@ contract Guardian {
 	// channelId => spender => isRefunded
 	mapping (bytes32 => mapping(address => bool)) refunds;
 	uint public interestPromilles = 1100;
+	OUTPACE outpace;
 
-	constructor() {
+	constructor(OUTPACE _outpace) {
 		owner = msg.sender;
+		outpace = _outpace;
 	}
 
 	function setOwner(address newOwner) external {
@@ -38,7 +40,7 @@ contract Guardian {
 		interestPromilles = newInterest;
 	}
 
-	function challenge(OUTPACE outpace, OUTPACE.Channel calldata channel) external {
+	function challenge(OUTPACE.Channel calldata channel) external {
 		require(msg.sender == owner, 'not owner');
 		outpace.challenge(channel);
 	}
@@ -55,8 +57,9 @@ contract Guardian {
 		return channel.leader;
 	}
 	
-	// @TODO; should we cache blame?
-	function getRefund(OUTPACE outpace, OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof) external {
+	// @TODO: should we cache blame?
+	function getRefund(OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof) external {
+		require(channel.guardian == address(this), 'not guardian');
 		bytes32 channelId = keccak256(abi.encode(channel));
 		// ensure the channel is closed (fail if it can't be closed yet)
 		// calculate blame, and how much funds we already got back from the channel, how much we should slash
