@@ -7,6 +7,7 @@ const OUTPACE = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
+const Sweeper = artifacts.require('Sweeper')
 
 const { zeroFeeTx, ethSign, getWithdrawData } = require('./lib')
 const { splitSig, Transaction } = require('../js')
@@ -111,6 +112,10 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		await (await id.execute([tx.toSolidityTuple()], [sigs], { gasLimit })).wait()
 	})
 
+	it('deposits', async function() {
+		const sweeper = await Sweeper.new()
+	})
+
 	it('open a channel, execute w/o identity: withdraw', async function() {
 		const minimumChannelEarners = 10
 		const maximumChannelEarners = 20
@@ -121,7 +126,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		await token.setBalanceTo(userAcc, tokenAmnt)
 
 		const userSigner = web3Provider.getSigner(userAcc)
-		await (await outpace.connect(userSigner).deposit(channel, tokenAmnt)).wait()
+		await (await outpace.connect(userSigner).deposit(channel, userAcc, tokenAmnt)).wait()
 
 		const numberOfEarners = Math.floor(
 			getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
@@ -166,7 +171,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 			const openChannelTxn = await zeroFeeTx(
 				outpaceAddr,
-				outpaceInterface.functions.deposit.encode([channel, tokenAmnt]),
+				outpaceInterface.functions.deposit.encode([channel, id.address, tokenAmnt]),
 				0,
 				id,
 				token
@@ -236,7 +241,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const channel = [...validators, validators[0], token.address, getBytes32(999)]
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, tokenAmnt)).wait()
+		await (await outpace.deposit(channel, earnerAddr, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
@@ -299,7 +304,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const channel = [...validators, validators[0], token.address, getBytes32(9999)]
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, tokenAmnt)).wait()
+		await (await outpace.deposit(channel, earnerAddr, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
