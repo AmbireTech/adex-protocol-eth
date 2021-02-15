@@ -16,6 +16,7 @@ contract Guardian {
 	mapping (bytes32 => uint) public remaining;
 	// channelId => spender => isRefunded
 	mapping (bytes32 => mapping(address => bool)) refunds;
+	uint public interestPromilles = 1100;
 
 	constructor() {
 		owner = msg.sender;
@@ -29,6 +30,12 @@ contract Guardian {
 	function setCourt(address newCourt) external {
 		require(msg.sender == owner, 'not owner');
 		court = newCourt;
+	}
+
+	function setInterest(uint newInterest) external {
+		require(msg.sender == owner, 'not owner');
+		require(newInterest > 1000 && newInterest < 2000, 'must be between 1 and 2');
+		interestPromilles = newInterest;
 	}
 
 	function challenge(OUTPACE outpace, OUTPACE.Channel calldata channel) external {
@@ -66,9 +73,7 @@ contract Guardian {
 
 		bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
 		require(MerkleProof.isContained(balanceLeaf, proof, outpace.lastStateRoot(channelId)), 'balance leaf not found');
-		// @TODO: mutable
-		// add a 10% premium
-		uint refundableDeposit = (totalDeposited-spentAmount) * 11 / 10;
+		uint refundableDeposit = (totalDeposited-spentAmount) * interestPromilles / 1000;
 
 		if (outpace.challenges(channelId) != type(uint256).max) {
 			//require(remaining == 0) // make sure our internal state makes sense
