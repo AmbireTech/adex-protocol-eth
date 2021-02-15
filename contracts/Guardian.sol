@@ -10,11 +10,31 @@ interface IStakingPool {
 
 contract Guardian {
 	// variables
+	address public owner;
 	address public court;
 	mapping (address => address) public poolForValidator;
 	mapping (bytes32 => uint) public remaining;
 	// channelId => spender => isRefunded
 	mapping (bytes32 => mapping(address => bool)) refunds;
+
+	constructor() {
+		owner = msg.sender;
+	}
+
+	function setOwner(address newOwner) external {
+		require(msg.sender == owner, 'not owner');
+		owner = newOwner;
+	}
+
+	function setCourt(address newCourt) external {
+		require(msg.sender == owner, 'not owner');
+		court = newCourt;
+	}
+
+	function challenge(OUTPACE outpace, OUTPACE.Channel calldata channel) external {
+		require(msg.sender == owner, 'not owner');
+		outpace.challenge(channel);
+	}
 
 	function registerPool(address pool) external {
 		require(poolForValidator[msg.sender] == address(0), 'staking pool already registered');
@@ -80,7 +100,4 @@ contract Guardian {
 			SafeERC20.transfer(channel.tokenAddr, spender, refundableDeposit);
 		}
 	}
-
-	// @TODO: owner, setCourt
-	// @TODO allow the owner to trigger challenges
 }
