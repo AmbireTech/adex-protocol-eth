@@ -71,8 +71,12 @@ contract Guardian {
 		uint totalDeposited = outpace.deposits(channelId, spender);
 		uint remainingFunds = remaining[channelId];
 
-		bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
-		require(MerkleProof.isContained(balanceLeaf, proof, outpace.lastStateRoot(channelId)), 'balance leaf not found');
+		bytes32 lastStateRoot = outpace.lastStateRoot(channelId);
+		// if lastStateRoot is 0, spentAmount can also be 0 without verification
+		if (!(spentAmount == 0 && lastStateRoot == bytes32(0))) {
+			bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
+			require(MerkleProof.isContained(balanceLeaf, proof, lastStateRoot), 'balance leaf not found');
+		}
 		uint refundableDeposit = (totalDeposited-spentAmount) * interestPromilles / 1000;
 
 		if (outpace.challenges(channelId) != type(uint256).max) {
