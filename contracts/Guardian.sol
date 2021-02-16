@@ -80,11 +80,18 @@ contract Guardian {
 			bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
 			require(MerkleProof.isContained(balanceLeaf, proof, lastStateRoot), 'balance leaf not found');
 		}
-		uint refundableDeposit = (totalDeposited-spentAmount) * interestPromilles / 1000;
+		// @TODO consider not applying the interest multiplier if there is no lastStateRoot
+		// cause without it, some might open non-legit channels with real validators, let them expire and try to claim the interest
+		uint refundableDeposit = totalDeposited-spentAmount;
+		// @TODO: also do not apply interest when there is no pool to blame
+		if (lastStateRoot != bytes32(0)) {
+			refundableDeposit = refundableDeposit * interestPromilles / 1000;
+		}
 
 		if (outpace.challenges(channelId) != type(uint256).max) {
 			//require(remaining == 0) // make sure our internal state makes sense
 			// @TODO also require that some additional time is passed (eg 1 week)
+			// this would make sure that people have time to withdraw their funds
 			//require(outpace.canBeClosed())
 
 			remainingFunds = outpace.remaining(channelId);
