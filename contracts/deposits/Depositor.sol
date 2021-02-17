@@ -10,7 +10,7 @@ contract Depositor {
 		SafeERC20.approve(channel.tokenAddr, address(outpace), amount);
 		outpace.deposit(channel, depositor, amount);
 		assembly {
-			selfdestruct(0)
+			selfdestruct(depositor)
 		}
 	}
 }
