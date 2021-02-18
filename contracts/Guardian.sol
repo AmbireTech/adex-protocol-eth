@@ -83,8 +83,9 @@ contract Guardian {
 		// @TODO consider not applying the interest multiplier if there is no lastStateRoot
 		// cause without it, some might open non-legit channels with real validators, let them expire and try to claim the interest
 		uint refundableDeposit = totalDeposited-spentAmount;
-		// @TODO: also do not apply interest when there is no pool to blame
-		if (lastStateRoot != bytes32(0)) {
+		address poolAddr = poolForValidator[getBlame(channel)];
+		// Only apply the 10% interest if the channel has been used and there's a pool from which to get it
+		if (lastStateRoot != bytes32(0) && poolAddr != address(0)) {
 			refundableDeposit = refundableDeposit * interestPromilles / 1000;
 		}
 
@@ -102,15 +103,13 @@ contract Guardian {
 
 		if (remainingFunds == 0) {
 			// Optimizing the case in which remaining has ran out - then we just claim directly to the recipient (campaign.creator)
-			address poolAddr = poolForValidator[getBlame(channel)];
-			require(poolAddr != address(0), 'no pool');
+			require(poolAddr != address(0), 'more funds needed but no pool')
 			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, refundableDeposit);
 		} else {
 			if (remainingFunds < refundableDeposit) {
 				// Note the liquidation itself is a resposibility of the staking contract
 				// the rationale is that some staking pools might hold LP tokens, so the liquidation logic should be in the pool
-				address poolAddr = poolForValidator[getBlame(channel)];
-				require(poolAddr != address(0), 'no pool');
+				require(poolAddr != address(0), 'more funds needed but no pool')
 				IStakingPool(poolAddr).claim(channel.tokenAddr, address(this), refundableDeposit-remainingFunds);
 				remainingFunds = refundableDeposit;
 			}
