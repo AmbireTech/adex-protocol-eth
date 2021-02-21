@@ -124,6 +124,7 @@ contract StakingPool {
 	}
 
 	// claims/penalizations limits
+	uint public MAX_DAILY_PENALTIES_PROMILLES;
 	uint public limitLastReset;
 	uint public limitRemaining;
 
@@ -138,11 +139,16 @@ contract StakingPool {
 	event LogPenalize(uint burnedADX);
 
 	// @TODO proper args here
-	constructor(IADXToken token, address _guardian, address _validator) {
+	constructor(IADXToken token, address _guardian, address _validator, uint dailyPenalties) {
 		ADXToken = token;
 		guardian = _guardian;
 		validator = _validator;
 		governance[msg.sender] = true;
+		emit LogSetGovernance(msg.sender, true, block.timestamp);
+
+		// max daily penalties
+		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
+		MAX_DAILY_PENALTIES_PROMILLES = dailyPenalties;
 		// EIP 2612
 		uint chainId;
 		assembly {
@@ -157,8 +163,6 @@ contract StakingPool {
 				address(this)
 			)
 		);
-
-		emit LogSetGovernance(msg.sender, true, block.timestamp);
 	}
 
 	// Governance functions
@@ -310,6 +314,6 @@ contract StakingPool {
 	function resetLimits() external {
 		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
 		limitLastReset = block.timestamp;
-		limitRemaining = ADXToken.balanceOf(address(this)) * 5 / 100;
+		limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
 	}
 }
