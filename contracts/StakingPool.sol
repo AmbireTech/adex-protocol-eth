@@ -280,13 +280,17 @@ contract StakingPool {
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
-		uint adxAmountNeeded = amounts[0];
+		uint adxAmountUsed = amounts[0];
 
 		// burn the validator shares so that they pay for it first, before dilluting other holders
 		// calculate the worth in ADX of the validator's shares
-		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
+		uint sharesNeeded = adxAmountUsed * totalSupply / totalADX;
 		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
 		if (toBurn > 0) innerBurn(validator, toBurn);
+
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
+		require(limitRemaining >= adxAmountUsed, 'LIMITS');
+		limitRemaining -= adxAmountUsed;
 
 		// @TODO: emit sharePrice here?
 		emit LogClaim(tokenOut, to, amount, toBurn);
@@ -295,13 +299,16 @@ contract StakingPool {
 	// amount is in 1e6
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
+		require(limitRemaining >= adxAmount, 'LIMITS');
+		limitRemaining -= adxAmount;
 		ADXToken.transfer(address(0), adxAmount);
 		emit LogPenalize(adxAmount);
 	}
 
 	// anyone can call this
 	function resetLimits() external {
-		require(block.timestamp - limitLastReset > 24 hours, 'insufficient time ellapsed');
+		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
 		limitLastReset = block.timestamp;
 		limitRemaining = ADXToken.balanceOf(address(this)) * 5 / 100;
 	}
