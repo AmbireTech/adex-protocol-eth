@@ -130,7 +130,8 @@ contract StakingPool {
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
-	event LogClaim(address tokenAddr, address to, uint amount, uint burnedValidatorShares);
+	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares);
+	event LogPenalize(uint burnedADX);
 
 	// @TODO proper args here
 	constructor(IADXToken token, address _guardian, address _validator) {
@@ -283,6 +284,14 @@ contract StakingPool {
 		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
 		if (toBurn > 0) innerBurn(validator, toBurn);
 
+		// @TODO: emit sharePrice here?
 		emit LogClaim(tokenOut, to, amount, toBurn);
+	}
+
+	// amount is in 1e6
+	function penalize(uint adxAmount) external {
+		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		ADXToken.transfer(address(0), adxAmount);
+		emit LogPenalize(adxAmount);
 	}
 }
