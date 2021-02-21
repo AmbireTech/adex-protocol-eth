@@ -113,15 +113,19 @@ contract StakingPool {
 	address public validator;
 
 	// Commitment ID against the max amount of tokens it will pay out
-	mapping (bytes32 => uint) commitments;
+	mapping (bytes32 => uint) public commitments;
 	// How many of a user's shares are locked
-	mapping (address => uint) lockedShares;
+	mapping (address => uint) public lockedShares;
 	// Unbonding commitment from a staker
 	struct UnbondCommitment {
 		address owner;
 		uint shares;
 		uint unlocksAt;
 	}
+
+	// claims/penalizations limits
+	uint public limitLastReset;
+	uint public limitRemaining;
 
 	// Staking pool events
 	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
@@ -293,5 +297,12 @@ contract StakingPool {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 		ADXToken.transfer(address(0), adxAmount);
 		emit LogPenalize(adxAmount);
+	}
+
+	// anyone can call this
+	function resetLimits() external {
+		require(block.timestamp - limitLastReset > 24 hours, 'insufficient time ellapsed');
+		limitLastReset = block.timestamp;
+		limitRemaining = ADXToken.balanceOf(address(this)) * 5 / 100;
 	}
 }
