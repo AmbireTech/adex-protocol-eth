@@ -3,6 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IADXToken.sol";
 
+interface IERCDecimals {
+	function decimals() external view returns (uint);
+}
+
 interface IChainlink {
 	function latestAnswer() external view returns (uint);
 }
@@ -265,10 +269,11 @@ contract StakingPool {
 		// Slippage protection; 5% slippage allowed
 		// @TODO make that dynamic
 		uint price = ADXUSDOracle.latestAnswer();
-		// amount is in 1e6, price is in 1e8
-		// @TODO this changes with more stablecoins, so we have to keep a registry of their multipliers
-		// We need to convert from 1e6 to 1e18 but we divide by 1e8; 18 - 6 + 8 ; verified this by calculating separately
-		uint adxAmountMax = amount * 1.05e20 / price;
+		// chainlink price is in 1e8
+		// for example, if the amount is in 1e6;
+		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually 
+		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
+		uint adxAmountMax = amount * multiplier / price;
 		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
