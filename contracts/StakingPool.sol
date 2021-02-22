@@ -271,7 +271,7 @@ contract StakingPool {
 		uint price = ADXUSDOracle.latestAnswer();
 		// chainlink price is in 1e8
 		// for example, if the amount is in 1e6;
-		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually 
+		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
 		uint adxAmountMax = amount * multiplier / price;
 		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
@@ -294,7 +294,6 @@ contract StakingPool {
 		emit LogClaim(tokenOut, to, amount, toBurn);
 	}
 
-	// amount is in 1e6
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
