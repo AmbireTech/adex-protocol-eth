@@ -24,6 +24,8 @@ contract StakingMigrator {
 
 	mapping(bytes32 => uint) migratedBonds;
 
+	event LogRequestMigrate(address indexed owner, uint amount, uint nonce);
+
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
 		ADXToken.approve(address(_newStaking), type(uint256).max);
@@ -35,6 +37,8 @@ contract StakingMigrator {
 		require(staking.bonds(id).active, 'BOND_NOT_ACTIVE');
 
 		migratedBonds[id] = 1;
+
+		emit LogRequestMigrate(msg.sender, amount, nonce);
 	}
 
 	function finishMigration(uint amount, uint nonce, address recipient) external {
