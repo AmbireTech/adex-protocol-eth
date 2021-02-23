@@ -35,7 +35,6 @@ contract StakingMigrator {
 		require(staking.bonds(id).active, 'BOND_NOT_ACTIVE');
 
 		migratedBonds[id] = 1;
-
 	}
 
 	function finishMigration(uint amount, uint nonce, address recipient) external {
@@ -49,7 +48,6 @@ contract StakingMigrator {
 		ADXToken.supplyController().mint(address(ADXToken), address(this), bonus);
 		ADXToken.transferFrom(msg.sender, address(this), amount);
 
-		newStaking.enter(amount + bonus);
-		newStaking.transfer(recipient, newStaking.balanceOf(address(this)));
+		newStaking.enterTo(recipient, amount + bonus);
 	}
 }
