@@ -174,7 +174,7 @@ contract StakingPool {
 			/ totalSupply;
 	}
 
-	function enter(uint256 amount) external {
+	function innerEnter(address recipient, uint amount) internal {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
@@ -184,13 +184,21 @@ contract StakingPool {
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
-			innerMint(msg.sender, amount);
+			innerMint(recipient, amount);
 		} else {
 			uint256 newShares = amount * totalSupply / totalADX;
-			innerMint(msg.sender, newShares);
+			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
 		// @TODO event? note that innerMint/innerBurn have events
+	}
+
+	function enter(uint amount) external {
+		innerEnter(msg.sender, amount);
+	}
+
+	function enterTo(address recipient, uint amount) external {
+		innerEnter(recipient, amount);
 	}
 
 	// @TODO: rename to stake/unskake?
