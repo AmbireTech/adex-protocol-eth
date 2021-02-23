@@ -20,7 +20,7 @@ contract StakingMigrator {
 	bytes32 public constant poolId = 0x2ce0c96383fb229d9776f33846e983a956a7d95844fac57b180ed0071d93bb28;
 	StakingPool public newStaking;
 	
-	uint public constant BONUS_PROMILLES = 67;
+	uint public constant BONUS_PROMILLES = 97;
 
 	mapping(bytes32 => uint) migratedBonds;
 
