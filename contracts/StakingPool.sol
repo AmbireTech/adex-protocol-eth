@@ -133,18 +133,16 @@ contract StakingPool {
 
 	// Staking pool events
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
-	// @TODO can we embed the struct itself?
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares);
 	event LogPenalize(uint burnedADX);
 
-	// @TODO proper args here
-	constructor(IADXToken token, address _guardian, address _validator, uint dailyPenalties) {
+	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties) {
 		ADXToken = token;
-		guardian = _guardian;
-		validator = _validator;
+		guardian = guardianAddr;
+		validator = validatorAddr;
 
 		// max daily penalties
 		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
