@@ -190,7 +190,8 @@ contract StakingPool {
 			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
-		// @TODO event? note that innerMint/innerBurn have events
+
+		// no events, as innerMint already emits enough to know the shares amount and price
 	}
 
 	function enter(uint amount) external {
@@ -275,7 +276,6 @@ contract StakingPool {
 		// Plus, ADX, USDT and uniswap are all trusted
 
 		// Slippage protection; 5% slippage allowed
-		// @TODO make that dynamic
 		uint price = ADXUSDOracle.latestAnswer();
 		// chainlink price is in 1e8
 		// for example, if the amount is in 1e6;
