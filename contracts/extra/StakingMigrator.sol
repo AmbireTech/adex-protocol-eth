@@ -44,7 +44,7 @@ contract StakingMigrator {
 	function finishMigration(uint amount, uint nonce, address recipient) external {
 		bytes32 id = keccak256(abi.encode(address(staking), msg.sender, amount, poolId, nonce));
 		require(migratedBonds[id] == 1, 'BOND_NOT_STAGED');
-		require(staking.bonds(id).active, 'BOND_STILL_ACTIVE');
+		require(!staking.bonds(id).active, 'BOND_STILL_ACTIVE');
 
 		migratedBonds[id] = 2;
 
