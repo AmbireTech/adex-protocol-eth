@@ -202,7 +202,14 @@ contract StakingPool {
 		innerEnter(recipient, amount);
 	}
 
-	// @TODO: rename to stake/unskake?
+	function unbondingCommitmentWorth(address owner, uint shares, uint unlocksAt) external view returns (uint) {
+		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shares: shares, unlocksAt: unlocksAt })));
+		uint maxTokens = commitments[commitmentId];
+		uint totalADX = ADXToken.balanceOf(address(this));
+		uint currentTokens = shares * totalADX / totalSupply;
+		return currentTokens > maxTokens ? maxTokens : currentTokens;
+	}
+
 	function leave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -220,7 +227,6 @@ contract StakingPool {
 		emit LogLeave(msg.sender, shares, unlocksAt, maxTokens);
 	}
 
-	// @TODO: should we provide an extra helper to calculate how many tokens a user will get at withdraw?
 	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -257,7 +263,9 @@ contract StakingPool {
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
-		// @TODO we should call mintIncentive before that?
+		// NOTE: minting is intentionally skipped here
+		// This means that a validator may be punished a bit more when burning their shares,
+		// but it guarantees that claim() always works
 		uint totalADX = ADXToken.balanceOf(address(this));
 
 		// Note: whitelist of out tokens
