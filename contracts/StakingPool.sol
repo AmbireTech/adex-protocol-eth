@@ -221,7 +221,6 @@ contract StakingPool {
 	}
 
 	// @TODO: should we provide an extra helper to calculate how many tokens a user will get at withdraw?
-
 	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -307,7 +306,7 @@ contract StakingPool {
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, 'LIMITS');
 		limitRemaining -= adxAmount;
-		ADXToken.transfer(address(0), adxAmount);
+		require(ADXToken.transfer(address(0), adxAmount));
 		emit LogPenalize(adxAmount);
 	}
 
