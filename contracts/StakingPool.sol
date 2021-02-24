@@ -246,9 +246,9 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
-		uint receivedTokens = adxAmount * 8 / 10;
-		innerBurn(msg.sender, shares);
 		// @TODO mutable penalty ratio
+		uint receivedTokens = adxAmount * 7 / 10;
+		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
 		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
