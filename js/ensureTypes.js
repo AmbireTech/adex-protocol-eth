@@ -22,4 +22,26 @@ function Bytes(b) {
 	return b
 }
 
-module.exports = { Uint256, Bytes32, Address, Bytes }
+function Bytes32Array(bytes32Array, size) {
+	// no size specified
+	if (size === -1) {
+		return bytes32Array.map(x => Bytes32(x))
+	}
+	return bytes32Array.length === size && bytes32Array.map(x => Bytes32(x))
+}
+
+function Array(data, size) {
+	// @TODO
+	return data
+}
+
+function Channel(channel) {
+	Address(channel.leader)
+	Address(channel.follower)
+	Address(channel.guardian)
+	Address(channel.tokenAddr)
+	Bytes32(channel.nonce)
+	return channel
+}
+
+module.exports = { Uint256, Bytes32, Address, Bytes, Bytes32Array, Channel, Array }

@@ -12,16 +12,15 @@ async function expectEVMError(promise, errString) {
 	}
 }
 
-function sampleChannel(accounts, tokenAddr, creator, amount, validUntil, nonce) {
-	const spec = Buffer.alloc(32)
-	spec.writeUInt32BE(nonce)
+function sampleChannel(leader, follower, guardian, tokenAddr, nonce) {
+	const nonceBytes = Buffer.alloc(32)
+	nonceBytes.writeUInt32BE(nonce)
 	return new Channel({
-		creator,
+		leader,
+		follower,
+		guardian,
 		tokenAddr,
-		tokenAmount: amount,
-		validUntil,
-		validators: [accounts[0], accounts[1]],
-		spec
+		nonce: nonceBytes
 	})
 }
 

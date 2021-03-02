@@ -103,13 +103,13 @@ contract Guardian {
 
 		if (remainingFunds == 0) {
 			// Optimizing the case in which remaining has ran out - then we just claim directly to the recipient (campaign.creator)
-			require(poolAddr != address(0), 'more funds needed but no pool')
+			require(poolAddr != address(0), 'more funds needed but no pool');
 			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, refundableDeposit);
 		} else {
 			if (remainingFunds < refundableDeposit) {
 				// Note the liquidation itself is a resposibility of the staking contract
 				// the rationale is that some staking pools might hold LP tokens, so the liquidation logic should be in the pool
-				require(poolAddr != address(0), 'more funds needed but no pool')
+				require(poolAddr != address(0), 'more funds needed but no pool');
 				IStakingPool(poolAddr).claim(channel.tokenAddr, address(this), refundableDeposit-remainingFunds);
 				remainingFunds = refundableDeposit;
 			}
