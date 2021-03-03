@@ -3,9 +3,8 @@ const keccak256 = require('js-sha3').keccak256
 const ensure = require('./ensureTypes')
 
 const ChannelState = {
-	Unknown: 0,
-	Active: 1,
-	Expired: 2
+	Challenged: '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+	Active: '0'
 }
 
 function Channel(args) {

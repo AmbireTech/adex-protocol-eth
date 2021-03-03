@@ -1,3 +1,4 @@
+const { hexlify } = require('ethers').utils
 const { Channel } = require('../js')
 
 async function expectEVMError(promise, errString) {
@@ -59,4 +60,46 @@ async function setTime(web3, time) {
 	})
 }
 
-module.exports = { expectEVMError, sampleChannel, moveTime, setTime }
+function takeSnapshot(web3) {
+	return new Promise((resolve, reject) => {
+		web3.currentProvider.send(
+			{
+				jsonrpc: '2.0',
+				method: 'evm_snapshot',
+				params: [],
+				id: Date.now()
+			},
+			handleJsonRPCErr.bind(null, resolve, reject)
+		)
+	})
+}
+
+function revertToSnapshot(web3, snapShotId) {
+	return new Promise((resolve, reject) => {
+		web3.currentProvider.send(
+			{
+				jsonrpc: '2.0',
+				method: 'evm_revert',
+				params: [snapShotId],
+				id: Date.now()
+			},
+			handleJsonRPCErr.bind(null, resolve, reject)
+		)
+	})
+}
+
+const getBytes32 = n => {
+	const nonce = Buffer.alloc(32)
+	nonce.writeUInt32BE(n)
+	return hexlify(nonce)
+}
+
+module.exports = {
+	expectEVMError,
+	sampleChannel,
+	moveTime,
+	setTime,
+	takeSnapshot,
+	revertToSnapshot,
+	getBytes32
+}
