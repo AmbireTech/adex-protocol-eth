@@ -10,10 +10,15 @@ function Address(x) {
 		throw new Error('invalid address: must start with a 0x and be 42 characters long')
 	return x
 }
+
 function Bytes32(b) {
+	if (typeof b === 'string' && b.startsWith('0x') && b.length === 66) {
+		return Buffer.from(b.slice(2), 'hex')
+	}
 	if (!(b.length === 32 && Buffer.isBuffer(b))) throw new Error('32 byte Buffer expected')
 	return b
 }
+
 function Bytes(b) {
 	if (typeof b === 'string' && b.startsWith('0x')) {
 		return Buffer.from(b.slice(2), 'hex')
@@ -30,11 +35,6 @@ function Bytes32Array(bytes32Array, size) {
 	return bytes32Array.length === size && bytes32Array.map(x => Bytes32(x))
 }
 
-function Array(data, size) {
-	// @TODO
-	return data
-}
-
 function Channel(channel) {
 	Address(channel.leader)
 	Address(channel.follower)
@@ -44,4 +44,4 @@ function Channel(channel) {
 	return channel
 }
 
-module.exports = { Uint256, Bytes32, Address, Bytes, Bytes32Array, Channel, Array }
+module.exports = { Uint256, Bytes32, Address, Bytes, Bytes32Array, Channel }

@@ -4,9 +4,9 @@ function Withdraw(args) {
 	this.channel = args.channel
 	this.balanceTreeAmount = ensure.Uint256(args.balanceTreeAmount)
 	this.stateRoot = ensure.Bytes32(args.stateRoot)
-	this.sigLeader = ensure.Array(args.sigLeader, 3)
-	this.sigFollower = ensure.Array(args.sigFollower, 3)
-	this.proof = ensure.Array(args.proof, -1)
+	this.sigLeader = ensure.Bytes32Array(args.sigLeader, 3)
+	this.sigFollower = ensure.Bytes32Array(args.sigFollower, 3)
+	this.proof = ensure.Bytes32Array(args.proof, -1)
 
 	Object.freeze(this)
 

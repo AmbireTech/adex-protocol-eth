@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable no-await-in-loop */
-const { providers, Contract, ContractFactory, Wallet  } = require('ethers')
-const { Interface, hexlify, getCreate2Address } = require('ethers').utils
+const { providers, Contract, ContractFactory, Wallet } = require('ethers')
+const { Interface, getCreate2Address } = require('ethers').utils
 
 const OUTPACE = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
@@ -10,18 +10,13 @@ const MockToken = artifacts.require('./mocks/Token')
 const Sweeper = artifacts.require('Sweeper')
 const Depositor = artifacts.require('Depositor')
 
+const { getBytes32 } = require('./')
 const { zeroFeeTx, ethSign, getWithdrawData } = require('./lib')
 const { splitSig, Transaction } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 const { solcModule } = require('../js/solc')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
-
-const getBytes32 = n => {
-	const nonce = Buffer.alloc(32)
-	nonce.writeUInt32BE(n)
-	return hexlify(nonce)
-}
 
 // generate random address
 function getRandomAddresses(size) {
@@ -48,7 +43,7 @@ function logIdentityExecuteGasInfo(numberOfEarners, gasUsed, proof) {
 }
 
 const gasLimit = 5000000
-const DAY_SECONDS = 24 * 60 * 60
+// const DAY_SECONDS = 24 * 60 * 60
 
 contract('Simulate Bulk Withdrawal', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
@@ -225,14 +220,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: outpaceAddr,
-				data: outpaceInterface.functions.withdraw.encode([[
-					channel,
-					amtPerAddress,
-					stateRoot,
-					vsig1,
-					vsig2,
-					proof
-				]])
+				data: outpaceInterface.functions.withdraw.encode([
+					[channel, amtPerAddress, stateRoot, vsig1, vsig2, proof]
+				])
 			})
 
 			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
@@ -246,7 +236,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			logIdentityExecuteGasInfo(earnerAddresses.length, gasUsed, proof)
 		}
 
-		console.log('\n------- Single Channel Identity Withdrawal - new channel every round - Identity.execute() --------')
+		console.log(
+			'\n------- Single Channel Identity Withdrawal - new channel every round - Identity.execute() --------'
+		)
 		console.log(`Total gas used: ${totalGasUsed}`)
 		console.log('---------------------------------------------------------------------\n')
 	})
@@ -268,12 +260,12 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const currentNonce = (await id.nonce()).toNumber()
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce ++) {
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce++) {
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)
 			// even though by doing that we get a bigger balance tree than the max deposit, it's not fatal cause we only withdraw from one
-			const amtPerAddress = Math.floor(tokenAmnt / rounds * channelNonce)
+			const amtPerAddress = Math.floor((tokenAmnt / rounds) * channelNonce)
 
 			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
 			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
@@ -290,14 +282,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: outpaceAddr,
-				data: outpaceInterface.functions.withdraw.encode([[
-					channel,
-					amtPerAddress,
-					stateRoot,
-					vsig1,
-					vsig2,
-					proof
-				]])
+				data: outpaceInterface.functions.withdraw.encode([
+					[channel, amtPerAddress, stateRoot, vsig1, vsig2, proof]
+				])
 			})
 
 			const withdrawSigs = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
@@ -310,7 +297,11 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			gasLimit
 		})).wait()
 
-		console.log(`\n------- Withdrawal Multiple via identity (${transactions.length} transactions) - Identity.execute() --------`)
+		console.log(
+			`\n------- Withdrawal Multiple via identity (${
+				transactions.length
+			} transactions) - Identity.execute() --------`
+		)
 		console.log(`Total gas used: ${withdrawReceipt.gasUsed.toNumber()}`)
 		console.log('-------------------------------------------------------\n')
 	})
@@ -331,12 +322,12 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const currentNonce = (await id.nonce()).toNumber()
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce ++) {
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce++) {
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)
 			// even though by doing that we get a bigger balance tree than the max deposit, it's not fatal cause we only withdraw from one
-			const amtPerAddress = Math.floor(tokenAmnt / rounds * channelNonce)
+			const amtPerAddress = Math.floor((tokenAmnt / rounds) * channelNonce)
 
 			const earnerAddresses = [...getRandomAddresses(numberOfEarners), id.address]
 			const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
@@ -346,14 +337,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				amtPerAddress,
 				outpaceAddr
 			)
-			withdrawals.push([
-				channel,
-				amtPerAddress,
-				stateRoot,
-				vsig1,
-				vsig2,
-				proof
-			])
+			withdrawals.push([channel, amtPerAddress, stateRoot, vsig1, vsig2, proof])
 		}
 
 		const channelWithdrawTx = new Transaction({
@@ -366,9 +350,13 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		})
 		const withdrawSig = splitSig(await ethSign(channelWithdrawTx.hashHex(), userAcc))
 
-		const withdrawReceipt = await (await id.execute([channelWithdrawTx.toSolidityTuple()], [withdrawSig], {
-			gasLimit
-		})).wait()
+		const withdrawReceipt = await (await id.execute(
+			[channelWithdrawTx.toSolidityTuple()],
+			[withdrawSig],
+			{
+				gasLimit
+			}
+		)).wait()
 
 		console.log('\n------- Withdrawal Multiple via bulk --------')
 		console.log(`Total gas used: ${withdrawReceipt.gasUsed.toNumber()}`)

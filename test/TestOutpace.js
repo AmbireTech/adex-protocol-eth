@@ -6,13 +6,14 @@ const MockToken = artifacts.require('Token')
 const MockLibs = artifacts.require('Libs')
 const Guardian = artifacts.require('Guardian')
 
-const { moveTime, sampleChannel, expectEVMError } = require('./')
+const { moveTime, sampleChannel, expectEVMError, takeSnapshot, revertToSnapshot } = require('./')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-const { ChannelState, Channel, MerkleTree, splitSig, Withdraw } = require('../js')
+const { Channel, MerkleTree, splitSig, Withdraw } = require('../js')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
+const threeDaysInSeconds = 259200
 
 contract('OUTPACE', function(accounts) {
 	let token
@@ -24,6 +25,7 @@ contract('OUTPACE', function(accounts) {
 	const userAcc = accounts[0]
 	const leader = accounts[1]
 	const follower = accounts[2]
+	const user2 = accounts[3]
 
 	before(async function() {
 		const tokenWeb3 = await MockToken.new()
@@ -55,7 +57,7 @@ contract('OUTPACE', function(accounts) {
 	})
 
 	it('deposit', async function() {
-		const channel = sampleChannel(leader, follower, guardian.address, token.address, 0)
+		const channel = sampleChannel(leader, follower, userAcc, token.address, 0)
 		await expectEVMError(core.deposit(channel.toSolidityTuple(), userAcc, 0), 'NO_DEPOSIT')
 
 		const receipt = await (await core.deposit(
@@ -75,6 +77,27 @@ contract('OUTPACE', function(accounts) {
 		)
 
 		assert.equal(ev.args.channelId, channel.hashHex(), 'channel hash matches')
+
+		// deposit is updated
+		assert.equal(
+			await core.deposits(channel.hashHex(), userAcc),
+			defaultTokenAmount,
+			'user core deposit balance is correct'
+		)
+		// remaining is updated
+		assert.equal(
+			await core.remaining(channel.hashHex()),
+			defaultTokenAmount,
+			'channel remaining balance is correct'
+		)
+
+		// close channel
+		await (await core.challenge(channel.toSolidityTuple())).wait()
+		await moveTime(web3, threeDaysInSeconds + 2)
+		await (await core.close(channel.toSolidityTuple())).wait()
+
+		// should prevent deposit on a closed channel
+		await expectEVMError(core.deposit(channel.toSolidityTuple(), userAcc, 1), 'CHANNEL_CLOSED')
 	})
 
 	it('withdraw', async function() {
@@ -92,7 +115,7 @@ contract('OUTPACE', function(accounts) {
 			userLeafAmnt
 		)
 
-		// valid withraw
+		// valid withdraw
 		const validWithdrawal = new Withdraw({
 			channel,
 			balanceTreeAmount: userLeafAmnt,
@@ -193,7 +216,42 @@ contract('OUTPACE', function(accounts) {
 			await expectEVMError(core.withdraw(invalidLessAmountWithdrawal.toSolidityTuple()), '')
 		}
 
-		// @TODO missing updated multiple balance tree args
+		// updated multiple balance tree args
+		const updatedMultipleUserLeafAmount = userLeafAmnt + 3
+		const [
+			updatedMultipleBalanceStateRoot,
+			updatedMultipleBalanceValidSigs,
+			updatedMultipleBalanceProof
+		] = await balanceTreeToWithdrawArgs(
+			channel,
+			{ [userAcc]: updatedMultipleUserLeafAmount, [leader]: 1, [follower]: 1 },
+			userAcc,
+			updatedMultipleUserLeafAmount
+		)
+
+		// valid withdraw
+		const updatedMultipleBalanceValidWithdrawal = new Withdraw({
+			channel,
+			balanceTreeAmount: updatedMultipleUserLeafAmount,
+			stateRoot: updatedMultipleBalanceStateRoot,
+			sigLeader: updatedMultipleBalanceValidSigs[0],
+			sigFollower: updatedMultipleBalanceValidSigs[1],
+			proof: updatedMultipleBalanceProof
+		})
+
+		const updatedMultipleBalanceValidWithdrawReceipt = await (await core.withdraw(
+			updatedMultipleBalanceValidWithdrawal.toSolidityTuple()
+		)).wait()
+
+		assert.ok(
+			updatedMultipleBalanceValidWithdrawReceipt.events.find(x => x.event === 'LogChannelWithdraw'),
+			'has LogChannelWithdraw event'
+		)
+		assert.equal(
+			await token.balanceOf(userAcc),
+			updatedMultipleUserLeafAmount,
+			'user has a proper token balance'
+		)
 	})
 
 	it('bulkWithdraw', async function() {
@@ -272,20 +330,43 @@ contract('OUTPACE', function(accounts) {
 
 	it('challenge', async function() {
 		const totalDeposit = defaultTokenAmount
-		const channel = sampleChannel(leader, follower, guardian.address, token.address, 9)
+
+		const channel = sampleChannel(leader, follower, user2, token.address, 9)
 
 		await (await core.deposit(channel.toSolidityTuple(), userAcc, totalDeposit)).wait()
 
 		// can't challenge because unauthorized
 		await expectEVMError(core.challenge(channel.toSolidityTuple()), 'NOT_AUTHORIZED')
+		// users that can challenge a channel ie.e leader, follower & guardian
+		const challengers = [leader, follower, user2]
 
-		// challenge
-		const challengeReceipt = await (await core
+		let snapShotId
+		// eslint-disable-next-line no-restricted-syntax
+		for (const challenger of challengers) {
+			// eslint-disable-next-line no-await-in-loop
+			snapShotId = (await takeSnapshot(web3)).result
+			// eslint-disable-next-line no-await-in-loop
+			const challengeReceipt = await (await core
+				.connect(web3Provider.getSigner(challenger))
+				.challenge(channel.toSolidityTuple())).wait()
+
+			const ev = challengeReceipt.events.find(x => x.event === 'LogChannelChallenge')
+			assert.ok(ev, 'has LogChannelChallenge event')
+			// eslint-disable-next-line no-await-in-loop
+			await revertToSnapshot(web3, snapShotId)
+		}
+
+		// challenge again
+		await (await core
 			.connect(web3Provider.getSigner(leader))
 			.challenge(channel.toSolidityTuple())).wait()
 
-		const ev = challengeReceipt.events.find(x => x.event === 'LogChannelChallenge')
-		assert.ok(ev, 'has LogChannelChallenge event')
+		// confirm the expires date
+		assert.equal(
+			(await core.challenges(channel.hashHex())).toNumber(),
+			(await web3.eth.getBlock('latest')).timestamp + threeDaysInSeconds,
+			'has the proper expires timestamp'
+		)
 
 		// can't challenge because channel already challenged
 		await expectEVMError(
@@ -350,6 +431,13 @@ contract('OUTPACE', function(accounts) {
 
 		const ev = resumeReceipt.events.find(x => x.event === 'LogChannelResume')
 		assert.ok(ev, 'has LogChannelResume event')
+
+		// confirm reset challenges
+		assert.equal(
+			(await core.challenges(channel.hashHex())).toNumber(),
+			0,
+			'should reset challenges value for channel'
+		)
 	})
 
 	it('close', async function() {
@@ -370,7 +458,6 @@ contract('OUTPACE', function(accounts) {
 		// challenge
 		await (await core.challenge(channel.toSolidityTuple())).wait()
 
-		const threeDaysInSeconds = 259200
 		await expectEVMError(core.close(channel.toSolidityTuple()), 'CHANNEL_NOT_CLOSABLE')
 
 		await moveTime(web3, Math.floor(Date.now() / 1000) + threeDaysInSeconds)
