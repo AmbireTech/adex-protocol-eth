@@ -5,21 +5,12 @@ import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 
 contract Identity {
-	// Storage
-	// WARNING: be careful when modifying this
-	// privileges and routineAuthorizations must always be 0th and 1th thing in storage,
-	// because of the proxies we generate that delegatecall into this contract (which assume storage slot 0 and 1)
-	mapping (address => uint8) public privileges;
+	mapping (address => bool) public privileges;
 	// The next allowed nonce
 	uint public nonce = 0;
 
-	enum PrivilegeLevel {
-		None,
-		Transactions
-	}
-
 	// Events
-	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
+	event LogPrivilegeChanged(address indexed addr, bool privLevel);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -37,7 +28,7 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address[] memory addrs, uint8[] memory privLevels) {
+	constructor(address[] memory addrs, bool[] memory privLevels) {
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
 			privileges[addrs[i]] = privLevels[i];
@@ -49,7 +40,7 @@ contract Identity {
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		privileges[addr] = privLevel;
+		privileges[addr] = true;
 		emit LogPrivilegeChanged(addr, privLevel);
 	}
 
@@ -73,14 +64,14 @@ contract Identity {
 			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeAmount, txn.to, txn.value, txn.data));
 			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
 
-			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
+			require(privileges[signer] == true, 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 
 			nonce = nonce + 1;
 			feeAmount = feeAmount + txn.feeAmount;
 
 			executeCall(txn.to, txn.value, txn.data);
 			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
-			require(privileges[signer] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
+			require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 		}
 		if (feeAmount > 0) {
 			SafeERC20.transfer(feeTokenAddr, msg.sender, feeAmount);
@@ -90,7 +81,7 @@ contract Identity {
 	function executeBySender(Transaction[] memory txns)
 		public
 	{
-		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'INSUFFICIENT_PRIVILEGE_SENDER');
+		require(privileges[msg.sender] == true, 'INSUFFICIENT_PRIVILEGE_SENDER');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
@@ -101,7 +92,7 @@ contract Identity {
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// The actual anti-bricking mechanism - do not allow the sender to drop his own priviledges
-		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[msg.sender] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
