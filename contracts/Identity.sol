@@ -10,30 +10,16 @@ contract Identity {
 	// privileges and routineAuthorizations must always be 0th and 1th thing in storage,
 	// because of the proxies we generate that delegatecall into this contract (which assume storage slot 0 and 1)
 	mapping (address => uint8) public privileges;
-	// Routine authorizations
-	mapping (bytes32 => bool) public routineAuthorizations;
 	// The next allowed nonce
 	uint public nonce = 0;
-	// Routine operations are authorized at once for a period, fee is paid once
-	mapping (bytes32 => uint256) public routinePaidFees;
-
-	// Constants
-	bytes4 private constant CHANNEL_WITHDRAW_SELECTOR = bytes4(keccak256('channelWithdraw((address,address,uint256,uint256,address[],bytes32),bytes32,bytes32[3][],bytes32[],uint256)'));
-	bytes4 private constant CHANNEL_WITHDRAW_EXPIRED_SELECTOR = bytes4(keccak256('channelWithdrawExpired((address,address,uint256,uint256,address[],bytes32))'));
 
 	enum PrivilegeLevel {
 		None,
-		Routines,
 		Transactions
-	}
-	enum RoutineOp {
-		ChannelWithdraw,
-		ChannelWithdrawExpired
 	}
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, uint8 privLevel);
-	event LogRoutineAuth(bytes32 hash, bool authorized);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -51,22 +37,6 @@ contract Identity {
 		bytes data;
 	}
 
-	// RoutineAuthorizations allow the user to authorize (via keys >= PrivilegeLevel.Routines) a relayer to do any number of routines
-	// those routines are safe: e.g. sweeping channels (withdrawing off-chain balances to the identity)
-	// while the fee will be paid only ONCE per auth per period (1 week), the authorization can be used until validUntil
-	// while the routines are safe, there is some level of implied trust as the relayer may run executeRoutines without any routines to claim the fee
-	struct RoutineAuthorization {
-		address relayer;
-		address outpace;
-		uint validUntil;
-		address feeTokenAddr;
-		uint weeklyFeeAmount;
-	}
-	struct RoutineOperation {
-		RoutineOp mode;
-		bytes data;
-	}
-
 	constructor(address[] memory addrs, uint8[] memory privLevels) {
 		uint len = privLevels.length;
 		for (uint i=0; i<len; i++) {
@@ -81,14 +51,6 @@ contract Identity {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		privileges[addr] = privLevel;
 		emit LogPrivilegeChanged(addr, privLevel);
-	}
-
-	function setRoutineAuth(bytes32 hash, bool authorized)
-		external
-	{
-		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		routineAuthorizations[hash] = authorized;
-		emit LogRoutineAuth(hash, authorized);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
@@ -140,31 +102,6 @@ contract Identity {
 		}
 		// The actual anti-bricking mechanism - do not allow the sender to drop his own priviledges
 		require(privileges[msg.sender] >= uint8(PrivilegeLevel.Transactions), 'PRIVILEGE_NOT_DOWNGRADED');
-	}
-
-	function executeRoutines(RoutineAuthorization memory auth, RoutineOperation[] memory operations)
-		public
-	{
-		require(auth.validUntil >= block.timestamp, 'AUTHORIZATION_EXPIRED');
-		bytes32 hash = keccak256(abi.encode(auth));
-		require(routineAuthorizations[hash], 'NO_AUTHORIZATION');
-		uint len = operations.length;
-		for (uint i=0; i<len; i++) {
-			RoutineOperation memory op = operations[i];
-			if (op.mode == RoutineOp.ChannelWithdraw) {
-				// Channel: Withdraw
-				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_SELECTOR, op.data));
-			} else if (op.mode == RoutineOp.ChannelWithdrawExpired) {
-				// Channel: Withdraw Expired
-				executeCall(auth.outpace, 0, abi.encodePacked(CHANNEL_WITHDRAW_EXPIRED_SELECTOR, op.data));
-			} else {
-				revert('INVALID_MODE');
-			}
-		}
-		if (auth.weeklyFeeAmount > 0 && (block.timestamp - routinePaidFees[hash]) >= 7 days) {
-			routinePaidFees[hash] = block.timestamp;
-			SafeERC20.transfer(auth.feeTokenAddr, auth.relayer, auth.weeklyFeeAmount);
-		}
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
