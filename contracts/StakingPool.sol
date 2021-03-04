@@ -105,8 +105,8 @@ contract StakingPool {
 
 	// Pool functionality
 	// @TODO: make this mutable?
-	uint constant TIME_TO_UNBOND = 20 days;
-	uint constant RAGE_RECEIVED_PROMILLES = 700;
+	uint public constant TIME_TO_UNBOND = 20 days;
+	uint public constant RAGE_RECEIVED_PROMILLES = 700;
 	// @TODO maybe a direct reference to supplyController will save gas
 	// @TODO set in constructor?
 	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
