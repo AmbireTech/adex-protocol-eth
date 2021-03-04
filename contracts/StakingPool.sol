@@ -106,6 +106,7 @@ contract StakingPool {
 	// Pool functionality
 	// @TODO: make this mutable?
 	uint constant TIME_TO_UNBOND = 20 days;
+	uint constant RAGE_RECEIVED_PROMILLES = 700;
 	// @TODO maybe a direct reference to supplyController will save gas
 	// @TODO set in constructor?
 	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -250,7 +251,7 @@ contract StakingPool {
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		// @TODO mutable penalty ratio
-		uint receivedTokens = adxAmount * 7 / 10;
+		uint receivedTokens = adxAmount * RAGE_RECEIVED_PROMILLES / 1000;
 		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
