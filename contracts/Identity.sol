@@ -5,12 +5,13 @@ import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidator.sol";
 
 contract Identity {
+
 	mapping (address => bool) public privileges;
 	// The next allowed nonce
 	uint public nonce = 0;
 
 	// Events
-	event LogPrivilegeChanged(address indexed addr, bool privLevel);
+	event LogPrivilegeChanged(address indexed addr, bool priv);
 
 	// Transaction structure
 	// Those can be executed by keys with >= PrivilegeLevel.Transactions
@@ -28,20 +29,20 @@ contract Identity {
 		bytes data;
 	}
 
-	constructor(address[] memory addrs, bool[] memory privLevels) {
-		uint len = privLevels.length;
+	constructor(address[] memory addrs) {
+		uint len = addrs.length;
 		for (uint i=0; i<len; i++) {
-			privileges[addrs[i]] = privLevels[i];
-			emit LogPrivilegeChanged(addrs[i], privLevels[i]);
+			privileges[addrs[i]] = true;
+			emit LogPrivilegeChanged(addrs[i], true);
 		}
 	}
 
-	function setAddrPrivilege(address addr, uint8 privLevel)
+	function setAddrPrivilege(address addr, bool priv)
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
-		privileges[addr] = true;
-		emit LogPrivilegeChanged(addr, privLevel);
+		privileges[addr] = priv;
+		emit LogPrivilegeChanged(addr, priv);
 	}
 
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
