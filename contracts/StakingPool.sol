@@ -138,7 +138,7 @@ contract StakingPool {
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
-	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares);
+	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
 	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties) {
@@ -305,8 +305,7 @@ contract StakingPool {
 		require(limitRemaining >= adxAmountUsed, 'LIMITS');
 		limitRemaining -= adxAmountUsed;
 
-		// @TODO: emit sharePrice here?
-		emit LogClaim(tokenOut, to, amount, toBurn);
+		emit LogClaim(tokenOut, to, amount, toBurn, adxAmountUsed, totalADX, totalSupply);
 	}
 
 	function penalize(uint adxAmount) external {
