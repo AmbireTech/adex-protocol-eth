@@ -13,13 +13,14 @@ interface IChainlink {
 
 // Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
 interface IUniswapSimple {
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
+	function WETH() external pure returns (address);
+	function swapTokensForExactTokens(
+		uint amountOut,
+		uint amountInMax,
+		address[] calldata path,
+		address to,
+		uint deadline
+	) external returns (uint[] memory amounts);
 }
 
 contract StakingPool {
@@ -274,7 +275,7 @@ contract StakingPool {
 
 		address[] memory path = new address[](3);
 		path[0] = address(ADXToken);
-		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH; // @TODO should we call the uniswap router? research whether this can change
+		path[1] = uniswap.WETH();
 		path[2] = tokenOut;
 
 		// You may think the uinswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
