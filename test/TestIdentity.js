@@ -11,15 +11,13 @@ const MockToken = artifacts.require('./mocks/Token')
 const { moveTime, sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
-const { Transaction, RoutineOps, Channel, splitSig, MerkleTree } = require('../js')
+const { Transaction, Channel, splitSig, MerkleTree } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 const { solcModule } = require('../js/solc')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
-
-const DAY_SECONDS = 24 * 60 * 60
 
 // WARNING
 // READ THIS!
@@ -44,7 +42,6 @@ contract('Identity', function(accounts) {
 	//
 
 	const leader = accounts[1]
-	console.log({ leader })
 	const follower = accounts[2]
 	const relayerAddr = accounts[3]
 	const userAcc = accounts[4]
@@ -292,7 +289,6 @@ contract('Identity', function(accounts) {
 		// await token.setBalanceTo(id.address, tokenAmnt)
 
 		const fee = 20
-		// const blockTime = (await web3.eth.getBlock('latest')).timestamp
 
 		// Deposit on a channel via the identity
 		const channel = sampleChannel(leader, follower, leader, token.address, 0)
@@ -368,172 +364,103 @@ contract('Identity', function(accounts) {
 		// 	initialRelayerBal.toNumber() + fee,
 		// 	'relayer has received the fee only once for now'
 		// )
-
-		// // Does not work with an invalid routine auth
-		// const invalidAuth1 = new RoutineAuthorization({ ...auth, relayer: userAcc })
-		// await expectEVMError(
-		// 	id.executeRoutines(invalidAuth1.toSolidityTuple(), [op]),
-		// 	'NO_AUTHORIZATION'
-		// )
-
-		// // Fee will be paid again, since it's weekly
-		// await moveTime(web3, DAY_SECONDS * 7 + 10)
-		// await (await executeRoutines()).wait()
-		// assert.equal(
-		// 	await token.balanceOf(relayerAddr),
-		// 	initialRelayerBal.toNumber() + fee * 2,
-		// 	'relayer has received the fee twice'
-		// )
-
-		// // We can no longer call after the authorization has expired
-		// await moveTime(web3, DAY_SECONDS * 7 + 10)
-		// await expectEVMError(id.executeRoutines(auth.toSolidityTuple(), [op]), 'AUTHORIZATION_EXPIRED')
 	})
 
-	// it('routines: open a channel, and channelWithdrawExpired', async function() {
-	// 	// hack: blockTime is not moved sufficiently from the previous test for some reason
-	// 	// so we just + 40 days
-	// 	const blockTime = (await web3.eth.getBlock('latest')).timestamp + 40 * DAY_SECONDS
-	// 	const tokenAmnt = 1066
-	// 	await token.setBalanceTo(id.address, tokenAmnt)
+	it('IdentityFactory: deployAndExecute', async function() {
+		const tokenAmnt = 1000
+		const feeAmount = 120
+		await token.setBalanceTo(userAcc, tokenAmnt)
 
-	// 	const channel = sampleChannel(
-	// 		validators,
-	// 		token.address,
-	// 		id.address,
-	// 		tokenAmnt,
-	// 		blockTime + DAY_SECONDS,
-	// 		0
-	// 	)
-	// 	const relayerTx = await zeroFeeTx(
-	// 		coreAddr,
-	// 		coreInterface.functions.channelOpen.encode([channel.toSolidityTuple()])
-	// 	)
-	// 	const hash = relayerTx.hashHex()
-	// 	const sig = splitSig(await ethSign(hash, userAcc))
-	// 	await (await id.execute([relayerTx.toSolidityTuple()], [sig], { gasLimit })).wait()
+		const [initialFactoryBal, initialRelayerBal] = await Promise.all([
+			await token.balanceOf(identityFactory.address),
+			await token.balanceOf(relayerAddr)
+		])
 
-	// 	// Checks if all our funds have been locked in the channel
-	// 	assert.equal(
-	// 		await token.balanceOf(id.address),
-	// 		0,
-	// 		'channel has been opened and all our funds are locked up'
-	// 	)
+		const channel = sampleChannel(leader, follower, userAcc, token.address, 122)
 
-	// 	const executeRoutines = id.executeRoutines.bind(id, defaultAuth.toSolidityTuple())
+		const core = new Contract(coreAddr, Outpace._json.abi, web3Provider.getSigner(userAcc))
+		await (await core.deposit(channel.toSolidityTuple(), userAcc, tokenAmnt)).wait()
 
-	// 	// withdrawExpired should work
-	// 	const withdrawExpiredOp = RoutineOps.channelWithdrawExpired([channel.toSolidityTuple()])
-	// 	// ensure we report the underlying OUTPACE error properly, through the Identity contract
-	// 	await expectEVMError(executeRoutines([withdrawExpiredOp], { gasLimit }), 'NOT_EXPIRED')
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
+			...getStorageSlotsFromArtifact(Identity)
+		})
+		assert.equal(
+			(await token.balanceOf(expectedAddr)).toNumber(),
+			0,
+			'the balance of the new Identity is 0'
+		)
 
-	// 	// move time, withdrawExpired successfully and check results
-	// 	await moveTime(web3, DAY_SECONDS * 80)
-	// 	const expiredReceipt = await (await executeRoutines([withdrawExpiredOp], { gasLimit })).wait()
-	// 	// LogWithdrawExpired and Transfer
-	// 	assert.equal(expiredReceipt.events.length, 2, 'right event count')
-	// 	assert.equal(await token.balanceOf(id.address), tokenAmnt, 'full deposit refunded')
-	// })
+		// Prepare all the data needed for withdrawal
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, expectedAddr, tokenAmnt)
 
-	// it('IdentityFactory: deployAndExecute', async function() {
-	// 	const tokenAmnt = 1000
-	// 	const feeAmount = 120
-	// 	await token.setBalanceTo(channelCreatorAddr, tokenAmnt)
+		const withdrawal = new Withdraw({
+			channel,
+			balanceTreeAmount: tokenAmnt,
+			stateRoot,
+			sigLeader: vsig1,
+			sigFollower: vsig2,
+			proof
+		})
 
-	// 	const blockTime = (await web3.eth.getBlock('latest')).timestamp
-	// 	const [initialFactoryBal, initialRelayerBal] = await Promise.all([
-	// 		await token.balanceOf(identityFactory.address),
-	// 		await token.balanceOf(relayerAddr)
-	// 	])
+		// Make the tx that will call the rotuines
+		const tx1 = new Transaction({
+			identityContract: expectedAddr,
+			nonce: 0,
+			feeTokenAddr: token.address,
+			feeAmount,
+			to: coreAddr,
+			data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+		})
 
-	// 	const channel = sampleChannel(
-	// 		validators,
-	// 		token.address,
-	// 		channelCreatorAddr,
-	// 		tokenAmnt,
-	// 		blockTime + DAY_SECONDS,
-	// 		0
-	// 	)
-	// 	const core = new Contract(coreAddr, AdExCore._json.abi, channelSigner)
-	// 	await (await core.channelOpen(channel.toSolidityTuple())).wait()
+		const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
 
-	// 	const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 2]], {
-	// 		...getStorageSlotsFromArtifact(Identity)
-	// 	})
-	// 	assert.equal(
-	// 		(await token.balanceOf(expectedAddr)).toNumber(),
-	// 		0,
-	// 		'the balance of the new Identity is 0'
-	// 	)
+		const receipt = await (await identityFactory.deployAndExecute(
+			bytecode,
+			salt,
+			[tx1.toSolidityTuple()],
+			[sig],
+			{
+				gasLimit
+			}
+		)).wait()
+		// LogChannelWithdraw, Transfer (withdraw), Transfer (tx fee), LogDeployed
+		assert.equal(receipt.events.length, 4, 'proper events length')
+		assert.equal(
+			(await token.balanceOf(expectedAddr)).toNumber(),
+			tokenAmnt - feeAmount,
+			'Identity balance is correct'
+		)
+		assert.equal(
+			(await token.balanceOf(identityFactory.address)).toNumber(),
+			initialFactoryBal.toNumber() + feeAmount,
+			'IdentityFactory balance is correct'
+		)
 
-	// 	// Prepare all the data needed for withdrawal
-	// 	const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(channel, expectedAddr, tokenAmnt)
+		// Only relayer allowed to withdraw fee
+		const identityFactoryEvil = new Contract(
+			identityFactory.address,
+			IdentityFactory._json.abi,
+			web3Provider.getSigner(evilAcc)
+		)
+		await expectEVMError(
+			identityFactoryEvil.withdraw(token.address, evilAcc, feeAmount, { gasLimit }),
+			'ONLY_CREATOR'
+		)
 
-	// 	const tx1 = new Transaction({
-	// 		identityContract: expectedAddr,
-	// 		nonce: 0,
-	// 		feeTokenAddr: token.address,
-	// 		// This fee would pay for the transaction AND for the deploy
-	// 		// The relayer can just check if this is sufficient to pay for the deploy and decide whether to relay based on that
-	// 		feeAmount,
-	// 		to: coreAddr,
-	// 		data: coreInterface.functions.channelWithdraw.encode([
-	// 			channel.toSolidityTuple(),
-	// 			stateRoot,
-	// 			[vsig1, vsig2],
-	// 			proof,
-	// 			tokenAmnt
-	// 		])
-	// 	})
-	// 	const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
-
-	// 	const receipt = await (await identityFactory.deployAndExecute(
-	// 		bytecode,
-	// 		salt,
-	// 		[tx1.toSolidityTuple()],
-	// 		[sig],
-	// 		{
-	// 			gasLimit
-	// 		}
-	// 	)).wait()
-	// 	// LogChannelWithdraw, Transfer (withdraw), Transfer (tx fee), LogDeployed
-	// 	assert.equal(receipt.events.length, 4, 'proper events length')
-	// 	assert.equal(
-	// 		(await token.balanceOf(expectedAddr)).toNumber(),
-	// 		tokenAmnt - feeAmount,
-	// 		'Identity balance is correct'
-	// 	)
-	// 	assert.equal(
-	// 		(await token.balanceOf(identityFactory.address)).toNumber(),
-	// 		initialFactoryBal.toNumber() + feeAmount,
-	// 		'IdentityFactory balance is correct'
-	// 	)
-
-	// 	// Only relayer allowed to withdraw fee
-	// 	const identityFactoryEvil = new Contract(
-	// 		identityFactory.address,
-	// 		IdentityFactory._json.abi,
-	// 		web3Provider.getSigner(evilAcc)
-	// 	)
-	// 	await expectEVMError(
-	// 		identityFactoryEvil.withdraw(token.address, evilAcc, feeAmount, { gasLimit }),
-	// 		'ONLY_CREATOR'
-	// 	)
-
-	// 	// Relayer can withdraw the fee
-	// 	await (await identityFactory.withdraw(token.address, relayerAddr, feeAmount, {
-	// 		gasLimit
-	// 	})).wait()
-	// 	assert.equal(
-	// 		await token.balanceOf(relayerAddr),
-	// 		initialRelayerBal.toNumber() + feeAmount,
-	// 		'relayer balance is correct'
-	// 	)
-	// })
+		// Relayer can withdraw the fee
+		await (await identityFactory.withdraw(token.address, relayerAddr, feeAmount, {
+			gasLimit
+		})).wait()
+		assert.equal(
+			await token.balanceOf(relayerAddr),
+			initialRelayerBal.toNumber() + feeAmount,
+			'relayer balance is correct'
+		)
+	})
 
 	// This is a "super-counterfactual" test: we will create an account, this account will earn from a channel,
 	// and THEN we will, at once, create the contract, sweep the channel and allow the account to withdraw their funds
-	it.only('IdentityFactory: deployAndExecute: create a new account after it has already earned from channels, withdraw via routines', async function() {
+	it('IdentityFactory: deployAndExecute: create a new account after it has already earned from channels, withdraw via routines', async function() {
 		const tokenAmnt = 500
 		await token.setBalanceTo(userAcc, tokenAmnt * 3)
 

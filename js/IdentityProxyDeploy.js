@@ -99,8 +99,7 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 	)
 	const privSlot = storageVariableNodes.findIndex(x => x.name === 'privileges')
 	assert.notEqual(privSlot, -1, 'privSlot was not found')
-	// const routineAuthsSlot = storageVariableNodes.findIndex(x => x.name === 'routineAuthorizations')
-	// assert.notEqual(routineAuthsSlot, -1, 'routineAuthsSlot was not found')
+
 	return { privSlot }
 }
 
