@@ -108,10 +108,9 @@ contract StakingPool {
 	// @TODO: make this mutable?
 	uint public constant TIME_TO_UNBOND = 20 days;
 	uint public constant RAGE_RECEIVED_PROMILLES = 700;
-	// @TODO maybe a direct reference to supplyController will save gas
-	// @TODO set in constructor?
-	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlink public constant ADXUSDOracle = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
+
+	IUniswapSimple public constant uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	IChainlink public constant ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
 	address public guardian;
@@ -141,10 +140,12 @@ contract StakingPool {
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
-	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties) {
+	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties, IUniswapSimple uni, IChainlink oracle) {
 		ADXToken = token;
 		guardian = guardianAddr;
 		validator = validatorAddr;
+		uniswap = uni;
+		ADXUSDOracle = oracle;
 
 		// max daily penalties
 		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
