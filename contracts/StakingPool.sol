@@ -3,19 +3,24 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IADXToken.sol";
 
+interface IERCDecimals {
+	function decimals() external view returns (uint);
+}
+
 interface IChainlink {
 	function latestAnswer() external view returns (uint);
 }
 
 // Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
 interface IUniswapSimple {
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
+	function WETH() external pure returns (address);
+	function swapTokensForExactTokens(
+		uint amountOut,
+		uint amountInMax,
+		address[] calldata path,
+		address to,
+		uint deadline
+	) external returns (uint[] memory amounts);
 }
 
 contract StakingPool {
@@ -101,21 +106,20 @@ contract StakingPool {
 
 	// Pool functionality
 	// @TODO: make this mutable?
-	uint constant TIME_TO_UNBOND = 20 days;
-	// @TODO maybe a direct reference to supplyController will save gas
-	// @TODO set in constructor?
-	IUniswapSimple public constant uniswap = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlink public constant ADXUSDOracle = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
+	uint public constant TIME_TO_UNBOND = 20 days;
+	uint public constant RAGE_RECEIVED_PROMILLES = 700;
+
+	IUniswapSimple public constant uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	IChainlink public constant ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
-	mapping (address => bool) public governance;
 	address public guardian;
 	address public validator;
 
 	// Commitment ID against the max amount of tokens it will pay out
-	mapping (bytes32 => uint) commitments;
+	mapping (bytes32 => uint) public commitments;
 	// How many of a user's shares are locked
-	mapping (address => uint) lockedShares;
+	mapping (address => uint) public lockedShares;
 	// Unbonding commitment from a staker
 	struct UnbondCommitment {
 		address owner;
@@ -123,21 +127,30 @@ contract StakingPool {
 		uint unlocksAt;
 	}
 
+	// claims/penalizations limits
+	uint public immutable MAX_DAILY_PENALTIES_PROMILLES;
+	uint public limitLastReset;
+	uint public limitRemaining;
+
 	// Staking pool events
-	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
-	// @TODO can we embed the struct itself?
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
-	event LogClaim(address tokenAddr, address to, uint amount, uint burnedValidatorShares);
+	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
+	event LogPenalize(uint burnedADX);
 
-	// @TODO proper args here
-	constructor(IADXToken token, address _guardian, address _validator) {
+	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties, IUniswapSimple uni, IChainlink oracle) {
 		ADXToken = token;
-		guardian = _guardian;
-		validator = _validator;
-		governance[msg.sender] = true;
+		guardian = guardianAddr;
+		validator = validatorAddr;
+		uniswap = uni;
+		ADXUSDOracle = oracle;
+
+		// max daily penalties
+		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
+		MAX_DAILY_PENALTIES_PROMILLES = dailyPenalties;
+
 		// EIP 2612
 		uint chainId;
 		assembly {
@@ -152,16 +165,6 @@ contract StakingPool {
 				address(this)
 			)
 		);
-
-		emit LogSetGovernance(msg.sender, true, block.timestamp);
-	}
-
-	// Governance functions
-	// @TODO: consider a single owner rather than multiple govt?
-	function setGovernance(address addr, bool hasGovt) external {
-		require(governance[msg.sender], 'NOT_GOVERNANCE');
-		governance[addr] = hasGovt;
-		emit LogSetGovernance(addr, hasGovt, block.timestamp);
 	}
 
 	// Pool stuff
@@ -172,7 +175,7 @@ contract StakingPool {
 			/ totalSupply;
 	}
 
-	function enter(uint256 amount) external {
+	function innerEnter(address recipient, uint amount) internal {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
@@ -182,16 +185,32 @@ contract StakingPool {
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
 		if (totalSupply == 0 || totalADX == 0) {
-			innerMint(msg.sender, amount);
+			innerMint(recipient, amount);
 		} else {
 			uint256 newShares = amount * totalSupply / totalADX;
-			innerMint(msg.sender, newShares);
+			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
-		// @TODO event? note that innerMint/innerBurn have events
+
+		// no events, as innerMint already emits enough to know the shares amount and price
 	}
 
-	// @TODO: rename to stake/unskake?
+	function enter(uint amount) external {
+		innerEnter(msg.sender, amount);
+	}
+
+	function enterTo(address recipient, uint amount) external {
+		innerEnter(recipient, amount);
+	}
+
+	function unbondingCommitmentWorth(address owner, uint shares, uint unlocksAt) external view returns (uint) {
+		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shares: shares, unlocksAt: unlocksAt })));
+		uint maxTokens = commitments[commitmentId];
+		uint totalADX = ADXToken.balanceOf(address(this));
+		uint currentTokens = shares * totalADX / totalSupply;
+		return currentTokens > maxTokens ? maxTokens : currentTokens;
+	}
+
 	function leave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -208,8 +227,6 @@ contract StakingPool {
 
 		emit LogLeave(msg.sender, shares, unlocksAt, maxTokens);
 	}
-
-	// @TODO: should we provide an extra helper to calculate how many tokens a user will get at withdraw?
 
 	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
@@ -235,9 +252,9 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
-		uint receivedTokens = adxAmount * 8 / 10;
-		innerBurn(msg.sender, shares);
 		// @TODO mutable penalty ratio
+		uint receivedTokens = adxAmount * RAGE_RECEIVED_PROMILLES / 1000;
+		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
 		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
@@ -247,7 +264,9 @@ contract StakingPool {
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
-		// @TODO we should call mintIncentive before that?
+		// NOTE: minting is intentionally skipped here
+		// This means that a validator may be punished a bit more when burning their shares,
+		// but it guarantees that claim() always works
 		uint totalADX = ADXToken.balanceOf(address(this));
 
 		// Note: whitelist of out tokens
@@ -257,7 +276,7 @@ contract StakingPool {
 
 		address[] memory path = new address[](3);
 		path[0] = address(ADXToken);
-		path[1] = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // WETH; // @TODO should we call the uniswap router? research whether this can change
+		path[1] = uniswap.WETH();
 		path[2] = tokenOut;
 
 		// You may think the uinswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
@@ -265,24 +284,44 @@ contract StakingPool {
 		// Plus, ADX, USDT and uniswap are all trusted
 
 		// Slippage protection; 5% slippage allowed
-		// @TODO make that dynamic
 		uint price = ADXUSDOracle.latestAnswer();
-		// amount is in 1e6, price is in 1e8
-		// @TODO this changes with more stablecoins, so we have to keep a registry of their multipliers
-		// We need to convert from 1e6 to 1e18 but we divide by 1e8; 18 - 6 + 8 ; verified this by calculating separately
-		uint adxAmountMax = amount * 1.05e20 / price;
+		// chainlink price is in 1e8
+		// for example, if the amount is in 1e6;
+		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
+		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
+		uint adxAmountMax = amount * multiplier / price;
 		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
-		uint adxAmountNeeded = amounts[0];
+		uint adxAmountUsed = amounts[0];
 
 		// burn the validator shares so that they pay for it first, before dilluting other holders
 		// calculate the worth in ADX of the validator's shares
-		uint sharesNeeded = adxAmountNeeded * totalSupply / totalADX;
+		uint sharesNeeded = adxAmountUsed * totalSupply / totalADX;
 		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
 		if (toBurn > 0) innerBurn(validator, toBurn);
 
-		emit LogClaim(tokenOut, to, amount, toBurn);
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
+		require(limitRemaining >= adxAmountUsed, 'LIMITS');
+		limitRemaining -= adxAmountUsed;
+
+		emit LogClaim(tokenOut, to, amount, toBurn, adxAmountUsed, totalADX, totalSupply);
+	}
+
+	function penalize(uint adxAmount) external {
+		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
+		require(limitRemaining >= adxAmount, 'LIMITS');
+		limitRemaining -= adxAmount;
+		require(ADXToken.transfer(address(0), adxAmount));
+		emit LogPenalize(adxAmount);
+	}
+
+	// anyone can call this
+	function resetLimits() external {
+		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
+		limitLastReset = block.timestamp;
+		limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
 	}
 }
