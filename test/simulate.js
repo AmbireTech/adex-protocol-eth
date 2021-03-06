@@ -260,7 +260,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const currentNonce = (await id.nonce()).toNumber()
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce++) {
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)
@@ -322,7 +322,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 
 		const currentNonce = (await id.nonce()).toNumber()
 
-		for (let channelNonce = 0; channelNonce < rounds; channelNonce++) {
+		for (let channelNonce = 0; channelNonce < rounds; channelNonce += 1) {
 			const numberOfEarners = Math.floor(
 				getRandomArbitrary(minimumChannelEarners, maximumChannelEarners)
 			)

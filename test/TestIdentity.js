@@ -3,7 +3,7 @@ const { providers, Contract } = require('ethers')
 const { Interface, randomBytes, getAddress } = require('ethers').utils
 const { generateAddress2 } = require('ethereumjs-util')
 
-const Outpace = artifacts.require('Outpace')
+const Outpace = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
