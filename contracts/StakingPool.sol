@@ -113,6 +113,7 @@ contract StakingPool {
 	IChainlink public constant ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
+	mapping (address => bool) public governance;
 	address public guardian;
 	address public validator;
 
@@ -128,11 +129,12 @@ contract StakingPool {
 	}
 
 	// claims/penalizations limits
-	uint public immutable MAX_DAILY_PENALTIES_PROMILLES;
+	uint public MAX_DAILY_PENALTIES_PROMILLES;
 	uint public limitLastReset;
 	uint public limitRemaining;
 
 	// Staking pool events
+	event LogSetGovernance(address indexed addr, bool hasGovt, uint time);
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
@@ -147,10 +149,12 @@ contract StakingPool {
 		uniswap = uni;
 		ADXUSDOracle = oracle;
 
+		governance[msg.sender] = true;
+		emit LogSetGovernance(msg.sender, true, block.timestamp);
+
 		// max daily penalties
 		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
 		MAX_DAILY_PENALTIES_PROMILLES = dailyPenalties;
-
 		// EIP 2612
 		uint chainId;
 		assembly {
@@ -165,6 +169,14 @@ contract StakingPool {
 				address(this)
 			)
 		);
+	}
+
+	// Governance functions
+	// @TODO: consider a single owner rather than multiple govt?
+	function setGovernance(address addr, bool hasGovt) external {
+		require(governance[msg.sender], 'NOT_GOVERNANCE');
+		governance[addr] = hasGovt;
+		emit LogSetGovernance(addr, hasGovt, block.timestamp);
 	}
 
 	// Pool stuff
