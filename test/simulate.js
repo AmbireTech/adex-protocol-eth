@@ -78,7 +78,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		identityFactory = new Contract(idFactoryWeb3.address, IdentityFactory._json.abi, signer)
 
 		// deploy an Identity
-		const idWeb3 = await Identity.new([], [])
+		const idWeb3 = await Identity.new([])
 		baseIdentityAddr = idWeb3.address
 
 		const bytecode = getProxyDeployBytecode(

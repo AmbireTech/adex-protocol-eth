@@ -8,7 +8,7 @@ const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
 
-const { moveTime, sampleChannel, expectEVMError } = require('./')
+const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
 const { Transaction, Channel, splitSig, MerkleTree } = require('../js')
@@ -47,8 +47,7 @@ contract('Identity', function(accounts) {
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
 	const anotherAccount = accounts[7]
-	const anotherAccountSigner = web3Provider.getSigner(anotherAccount)
-	const validUntil = 4000000000
+	// const anotherAccountSigner = web3Provider.getSigner(anotherAccount)
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -285,7 +284,6 @@ contract('Identity', function(accounts) {
 
 	it('actions: channel deposit, withdraw', async function() {
 		const tokenAmnt = 500
-
 		// await token.setBalanceTo(id.address, tokenAmnt)
 
 		const fee = 20
@@ -355,15 +353,6 @@ contract('Identity', function(accounts) {
 			initialRelayerBal.toNumber() + fee,
 			'relayer has received the fee'
 		)
-
-		// Do it again to make sure the fee is not paid out twice
-		// this will work just ifne cause we can call channelWithdraw again as long as the channel is not expired
-		// await (await executeWithdrawTxn()).wait()
-		// assert.equal(
-		// 	await token.balanceOf(relayerAddr),
-		// 	initialRelayerBal.toNumber() + fee,
-		// 	'relayer has received the fee only once for now'
-		// )
 	})
 
 	it('IdentityFactory: deployAndExecute', async function() {
