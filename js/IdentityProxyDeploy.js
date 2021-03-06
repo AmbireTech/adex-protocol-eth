@@ -44,7 +44,7 @@ function getProxyDeployBytecode(proxiedAddr, privLevels, opts, solcModule) {
 	}
 
 	const content = `
-pragma solidity ^0.5.3;
+pragma solidity ^0.5.6;
 ${erc20Header}
 contract IdentityProxy {
 	constructor()
