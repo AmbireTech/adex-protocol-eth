@@ -109,8 +109,8 @@ contract StakingPool {
 	uint public constant TIME_TO_UNBOND = 20 days;
 	uint public constant RAGE_RECEIVED_PROMILLES = 700;
 
-	IUniswapSimple public constant uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlink public constant ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
+	IUniswapSimple public immutable uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	IChainlink public immutable ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
 	address public guardian;
