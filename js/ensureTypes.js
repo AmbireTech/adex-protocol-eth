@@ -29,7 +29,7 @@ function Bytes(b) {
 
 function Bytes32Array(bytes32Array, size) {
 	// no size specified
-	if (size === -1) {
+	if (size === -1 || size === undefined) {
 		return bytes32Array.map(x => Bytes32(x))
 	}
 	return bytes32Array.length === size && bytes32Array.map(x => Bytes32(x))
