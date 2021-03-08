@@ -106,15 +106,16 @@ contract StakingPool {
 
 	// Pool functionality
 	// @TODO: make this mutable?
-	uint public constant TIME_TO_UNBOND = 20 days;
-	uint public constant RAGE_RECEIVED_PROMILLES = 700;
+	uint public TIME_TO_UNBOND = 20 days;
+	uint public RAGE_RECEIVED_PROMILLES = 700;
 
-	IUniswapSimple public immutable uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlink public immutable ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
+	IUniswapSimple public uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
+	IChainlink public ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
 	IADXToken public ADXToken;
 	address public guardian;
 	address public validator;
+	address public governance;
 
 	// Commitment ID against the max amount of tokens it will pay out
 	mapping (bytes32 => uint) public commitments;
@@ -128,7 +129,7 @@ contract StakingPool {
 	}
 
 	// claims/penalizations limits
-	uint public immutable MAX_DAILY_PENALTIES_PROMILLES;
+	uint public MAX_DAILY_PENALTIES_PROMILLES;
 	uint public limitLastReset;
 	uint public limitRemaining;
 
@@ -140,16 +141,13 @@ contract StakingPool {
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
-	constructor(IADXToken token, address guardianAddr, address validatorAddr, uint dailyPenalties, IUniswapSimple uni, IChainlink oracle) {
+	constructor(IADXToken token, IUniswapSimple uni, IChainlink oracle, address guardianAddr, address validatorAddr, address governanceAddr) {
 		ADXToken = token;
-		guardian = guardianAddr;
-		validator = validatorAddr;
 		uniswap = uni;
 		ADXUSDOracle = oracle;
-
-		// max daily penalties
-		require(dailyPenalties <= 500, 'DAILY_PENALTY_TOO_LARGE');
-		MAX_DAILY_PENALTIES_PROMILLES = dailyPenalties;
+		guardian = guardianAddr;
+		validator = validatorAddr;
+		governance = governanceAddr;
 
 		// EIP 2612
 		uint chainId;
@@ -165,6 +163,28 @@ contract StakingPool {
 				address(this)
 			)
 		);
+	}
+
+	// Governance functions
+	function setGovernance(address addr) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		governance = addr;
+	}
+	function setDailyPenaltyMax(uint max) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		require(max <= 500, 'DAILY_PENALTY_TOO_LARGE');
+		MAX_DAILY_PENALTIES_PROMILLES = max;
+		resetLimits();
+	}
+	function setRageReceived(uint rageReceived) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		require(rageReceived <= 1000, 'TOO_LARGE');
+		RAGE_RECEIVED_PROMILLES = rageReceived;
+	}
+	function setTimeToUnbond(uint time) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		require(time >= 1 days && time <= 30 days, 'BOUNDS');
+		TIME_TO_UNBOND = time;
 	}
 
 	// Pool stuff
@@ -252,7 +272,6 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
-		// @TODO mutable penalty ratio
 		uint receivedTokens = adxAmount * RAGE_RECEIVED_PROMILLES / 1000;
 		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
@@ -319,7 +338,7 @@ contract StakingPool {
 	}
 
 	// anyone can call this
-	function resetLimits() external {
+	function resetLimits() public {
 		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
 		limitLastReset = block.timestamp;
 		limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
