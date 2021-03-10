@@ -67,6 +67,8 @@ contract Identity {
 
 			require(privileges[signer] == true, 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 
+			// NOTE: we have to change nonce on every txn: do not be tempted to optimize this by incrementing it once by the full txn count
+			// otherwise reentrancies are possible, and/or anyone who is reading nonce within a txn will read a wrong value
 			nonce = nonce + 1;
 			feeAmount = feeAmount + txn.feeAmount;
 
