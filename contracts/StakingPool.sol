@@ -105,7 +105,6 @@ contract StakingPool {
 
 
 	// Pool functionality
-	// @TODO: make this mutable?
 	uint public TIME_TO_UNBOND = 20 days;
 	uint public RAGE_RECEIVED_PROMILLES = 700;
 
