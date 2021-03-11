@@ -43,7 +43,6 @@ function logIdentityExecuteGasInfo(numberOfEarners, gasUsed, proof) {
 }
 
 const gasLimit = 5000000
-// const DAY_SECONDS = 24 * 60 * 60
 
 contract('Simulate Bulk Withdrawal', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
