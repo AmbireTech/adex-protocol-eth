@@ -35,7 +35,6 @@ Channel.prototype.hashHex = function() {
 }
 
 Channel.prototype.toSolidityTuple = function() {
-	// etherjs doesn't seem to want BN.js instances; hex is the lowest common denominator for web3/ethers
 	return [this.leader, this.follower, this.guardian, this.tokenAddr, this.nonce]
 }
 
