@@ -311,7 +311,6 @@ contract('Identity', function(accounts) {
 		})
 
 		const withdrawTxn = [
-			// we use the deposit on Outpace here
 			new Transaction({
 				identityContract: id.address,
 				nonce: (await id.nonce()).toNumber(),
@@ -338,7 +337,7 @@ contract('Identity', function(accounts) {
 		const balAfter = (await token.balanceOf(id.address)).toNumber()
 		assert.equal(
 			balAfter - initialIdentityBal.toNumber(),
-			tokenAmnt - fee, // @TODO confirm this
+			tokenAmnt - fee,
 			'token amount withdrawn is right'
 		)
 		// withdraw (channel to Identity), LogChannelWithdraw, Transfer (fee)
