@@ -541,6 +541,12 @@ contract('Identity', function(accounts) {
 
 		// we should be able to withdraw to relayer addr
 		const amountToWithdraw = (await token.balanceOf(identityFactory.address)).toNumber()
+		await expectEVMError(
+			identityFactory
+				.connect(web3Provider.getSigner(userAcc))
+				.withdraw(token.address, relayerAddr, amountToWithdraw),
+			'ONLY_CREATOR'
+		)
 		const factoryWithdrawReceipt = await (await identityFactory.withdraw(
 			token.address,
 			relayerAddr,
