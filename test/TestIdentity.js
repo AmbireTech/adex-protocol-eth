@@ -92,7 +92,6 @@ contract('Identity', function(accounts) {
 				amount: feeAmnt,
 				// Using this option is fine if the token.address is a token that reverts on failures
 				unsafeERC20: true
-				// safeERC20Artifact: artifacts.require('SafeERC20')
 			},
 			...getStorageSlotsFromArtifact(Identity)
 		})
