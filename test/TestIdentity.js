@@ -39,7 +39,6 @@ contract('Identity', function(accounts) {
 	let baseIdentityAddr
 	// The Identity contract instance that will be used
 	let id
-	//
 
 	const leader = accounts[1]
 	const follower = accounts[2]
@@ -47,7 +46,6 @@ contract('Identity', function(accounts) {
 	const userAcc = accounts[4]
 	const evilAcc = accounts[5]
 	const anotherAccount = accounts[7]
-	// const anotherAccountSigner = web3Provider.getSigner(anotherAccount)
 
 	before(async function() {
 		const signer = web3Provider.getSigner(relayerAddr)
@@ -94,7 +92,6 @@ contract('Identity', function(accounts) {
 				amount: feeAmnt,
 				// Using this option is fine if the token.address is a token that reverts on failures
 				unsafeERC20: true
-				// safeERC20Artifact: artifacts.require('SafeERC20')
 			},
 			...getStorageSlotsFromArtifact(Identity)
 		})
@@ -148,9 +145,8 @@ contract('Identity', function(accounts) {
 		)
 
 		// Do the execute() correctly, verify if it worked
-		const sig = splitSig(await ethSign(hash, userAcc))
-
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [sig], {
+		const relayerTxSig = splitSig(await ethSign(hash, userAcc))
+		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [relayerTxSig], {
 			gasLimit
 		})).wait()
 
@@ -168,7 +164,7 @@ contract('Identity', function(accounts) {
 		// console.log('relay cost', receipt.gasUsed.toString(10))
 
 		// A nonce can only be used once
-		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [sig]), 'WRONG_NONCE')
+		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [relayerTxSig]), 'WRONG_NONCE')
 
 		// Try to downgrade the privilege: should not be allowed
 		const relayerDowngradeTx = await zeroFeeTx(
@@ -284,7 +280,6 @@ contract('Identity', function(accounts) {
 
 	it('actions: channel deposit, withdraw', async function() {
 		const tokenAmnt = 500
-		// await token.setBalanceTo(id.address, tokenAmnt)
 
 		const fee = 20
 
@@ -315,7 +310,6 @@ contract('Identity', function(accounts) {
 		})
 
 		const withdrawTxn = [
-			// we use the deposit on Outpace here
 			new Transaction({
 				identityContract: id.address,
 				nonce: (await id.nonce()).toNumber(),
@@ -342,7 +336,7 @@ contract('Identity', function(accounts) {
 		const balAfter = (await token.balanceOf(id.address)).toNumber()
 		assert.equal(
 			balAfter - initialIdentityBal.toNumber(),
-			tokenAmnt - fee, // @TODO confirm this
+			tokenAmnt - fee,
 			'token amount withdrawn is right'
 		)
 		// withdraw (channel to Identity), LogChannelWithdraw, Transfer (fee)
@@ -455,7 +449,7 @@ contract('Identity', function(accounts) {
 
 		const txFeeAmount = 100
 
-		const [, initialFactoryBal] = await Promise.all([
+		const [initialRelayerBal, initialFactoryBal] = await Promise.all([
 			token.balanceOf(relayerAddr),
 			token.balanceOf(identityFactory.address)
 		])
@@ -465,7 +459,6 @@ contract('Identity', function(accounts) {
 
 		// Create a new channel
 		const channel = sampleChannel(leader, follower, userAcc, token.address, 122)
-		// const signer = web3Provider.getSigner(relayerAddr)
 
 		const core = new Contract(coreAddr, Outpace._json.abi, web3Provider.getSigner(userAcc))
 		await (await core.deposit(channel.toSolidityTuple(), userAcc, tokenAmnt)).wait()
@@ -526,16 +519,42 @@ contract('Identity', function(accounts) {
 		// console.log('gas used:', receipt.gasUsed.toNumber())
 
 		assert.equal(
-			await token.balanceOf(accountToWithdrawTo),
+			(await token.balanceOf(accountToWithdrawTo)).toNumber(),
 			maxToWithdraw,
 			'we managed to withdraw our balance out of the identity'
 		)
 
 		// since the factory is the sender...
 		assert.equal(
-			await token.balanceOf(identityFactory.address),
+			(await token.balanceOf(identityFactory.address)).toNumber(),
 			initialFactoryBal.toNumber() + txFeeAmount,
 			'factory has received fee'
+		)
+
+		assert.equal(
+			(await token.balanceOf(relayerAddr)).toNumber(),
+			initialRelayerBal.toNumber(),
+			'relayer balance is unchanged'
+		)
+
+		// we should be able to withdraw to relayer addr
+		const amountToWithdraw = (await token.balanceOf(identityFactory.address)).toNumber()
+		await expectEVMError(
+			identityFactory
+				.connect(web3Provider.getSigner(userAcc))
+				.withdraw(token.address, relayerAddr, amountToWithdraw),
+			'ONLY_CREATOR'
+		)
+		const factoryWithdrawReceipt = await (await identityFactory.withdraw(
+			token.address,
+			relayerAddr,
+			amountToWithdraw
+		)).wait()
+		assert.equal(factoryWithdrawReceipt.events.length, 1, 'events length is right')
+		assert.equal(
+			(await token.balanceOf(relayerAddr)).toNumber(),
+			amountToWithdraw + initialRelayerBal.toNumber(),
+			'withdraw earnings from IdentityFactory'
 		)
 	})
 
