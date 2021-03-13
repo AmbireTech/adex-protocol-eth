@@ -223,6 +223,7 @@ contract StakingPool {
 	}
 
 	function unbondingCommitmentWorth(address owner, uint shares, uint unlocksAt) external view returns (uint) {
+		if (totalSupply == 0) return 0;
 		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shares: shares, unlocksAt: unlocksAt })));
 		uint maxTokens = commitments[commitmentId];
 		uint totalADX = ADXToken.balanceOf(address(this));
