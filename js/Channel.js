@@ -48,7 +48,7 @@ Channel.prototype.hashToSignHex = function(contractAddr, stateRoot) {
 	return `0x${this.hashToSign(contractAddr, stateRoot).toString('hex')}`
 }
 
-Channel.prototype.getResumeSignableRoot = function(challengeExpires) {
+Channel.prototype.getResumeSignableMessage = function(challengeExpires) {
 	return Buffer.from(
 		keccak256.arrayBuffer(
 			abi.solidityPack(
@@ -59,8 +59,8 @@ Channel.prototype.getResumeSignableRoot = function(challengeExpires) {
 	)
 }
 
-Channel.prototype.getResumeSignableRootHex = function(challengeExpires) {
-	return `0x${this.getResumeSignableRoot(challengeExpires).toString('hex')}`
+Channel.prototype.getResumeSignableMessageHex = function(challengeExpires) {
+	return `0x${this.getResumeSignableMessage(challengeExpires).toString('hex')}`
 }
 
 // This returns the same as .hashToSign, .hashToSignHex, but it takes the channelId rather than (the whole channel + contract addr)
