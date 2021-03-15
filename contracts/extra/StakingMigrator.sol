@@ -20,8 +20,9 @@ contract StakingMigrator {
 	IADXToken public constant ADXToken = IADXToken(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
 	bytes32 public constant poolId = 0x2ce0c96383fb229d9776f33846e983a956a7d95844fac57b180ed0071d93bb28;
 	StakingPool public newStaking;
-	
-	uint public constant BONUS_PROMILLES = 97;
+
+	// must be 1000 + the bonus promilles
+	uint public constant WITH_BONUS_PROMILLES = 1097;
 
 	mapping(bytes32 => bool) migratedBonds;
 
@@ -41,11 +42,11 @@ contract StakingMigrator {
 		ILegacyStaking.BondState memory bondState = legacyStaking.bonds(id);
 		require(bondState.active, 'BOND_NOT_ACTIVE');
 
+		// @TODO willUnlock must be lower than 22 april (30 days after 23 march)
 		if (bondState.willUnlock > 0) {
 			ADXToken.supplyController().mint(address(ADXToken), recipient, bondAmount);
 		} else {
-			uint bonus = bondAmount * BONUS_PROMILLES / 1000;
-			uint toMint = bondAmount + bonus;
+			uint toMint = bondAmount * WITH_BONUS_PROMILLES / 1000;
 			ADXToken.supplyController().mint(address(ADXToken), address(this), toMint);
 
 			// if there is an extraAmount, we expect that the staker will send it to this contract before calling this,
