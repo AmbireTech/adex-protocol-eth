@@ -31,6 +31,8 @@ contract StakingMigrator {
 		ADXToken.approve(address(_newStaking), type(uint256).max);
 	}
 
+	// NOTE: this works by minting the full bondAmount, which is correct if the pool never had any slashing prior
+	// to the migration, which is the case for the Tom pool
 	function migrate(uint bondAmount, uint nonce, address recipient, uint extraAmount) external {
 		require(legacyStaking.slashPoints(poolId) == 1e18, 'POOL_NOT_SLASHED');
 
