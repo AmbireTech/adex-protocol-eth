@@ -12,48 +12,45 @@ interface ILegacyStaking {
 		uint64 willUnlock;
 	}
 	function bonds(bytes32 id) external view returns (BondState calldata);
+	function slashPoints(bytes32 id) external view returns (uint);
 }
 
 contract StakingMigrator {
-	ILegacyStaking public constant staking = ILegacyStaking(0x4846C6837ec670Bbd1f5b485471c8f64ECB9c534);
+	ILegacyStaking public constant legacyStaking = ILegacyStaking(0x4846C6837ec670Bbd1f5b485471c8f64ECB9c534);
 	IADXToken public constant ADXToken = IADXToken(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
 	bytes32 public constant poolId = 0x2ce0c96383fb229d9776f33846e983a956a7d95844fac57b180ed0071d93bb28;
 	StakingPool public newStaking;
 	
 	uint public constant BONUS_PROMILLES = 97;
 
-	mapping(bytes32 => uint) migratedBonds;
-
-	event LogRequestMigrate(address indexed owner, uint amount, uint nonce);
+	mapping(bytes32 => bool) migratedBonds;
 
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
 		ADXToken.approve(address(_newStaking), type(uint256).max);
 	}
 
-	function requestMigrate(uint amount, uint nonce) external {
-		bytes32 id = keccak256(abi.encode(address(staking), msg.sender, amount, poolId, nonce));
-		require(migratedBonds[id] == 0, 'BOND_MIGRATED');
-		require(staking.bonds(id).active, 'BOND_NOT_ACTIVE');
+	function migrate(uint bondAmount, uint nonce, address recipient, uint extraAmount) external {
+		require(legacyStaking.slashPoints(poolId) == 1e18, 'POOL_NOT_SLASHED');
 
-		migratedBonds[id] = 1;
+		bytes32 id = keccak256(abi.encode(address(legacyStaking), msg.sender, bondAmount, poolId, nonce));
 
-		emit LogRequestMigrate(msg.sender, amount, nonce);
-	}
+		require(!migratedBonds[id], 'BOND_MIGRATED');
+		migratedBonds[id] = true;
 
-	function finishMigration(uint bondAmount, uint nonce, address recipient, uint actualAmount) external {
-		require(actualAmount >= bondAmount, 'AMOUNTS_INCONSISTENT');
+		ILegacyStaking.BondState memory bondState = legacyStaking.bonds(id);
+		require(bondState.active, 'BOND_NOT_ACTIVE');
 
-		bytes32 id = keccak256(abi.encode(address(staking), msg.sender, bondAmount, poolId, nonce));
-		require(migratedBonds[id] == 1, 'BOND_NOT_STAGED');
-		require(!staking.bonds(id).active, 'BOND_STILL_ACTIVE');
+		if (bondState.willUnlock > 0) {
+			ADXToken.supplyController().mint(address(ADXToken), recipient, bondAmount);
+		} else {
+			uint bonus = bondAmount * BONUS_PROMILLES / 1000;
+			uint toMint = bondAmount + bonus;
+			ADXToken.supplyController().mint(address(ADXToken), address(this), toMint);
 
-		migratedBonds[id] = 2;
-
-		uint bonus = bondAmount * BONUS_PROMILLES / 1000;
-		ADXToken.supplyController().mint(address(ADXToken), address(this), bonus);
-		ADXToken.transferFrom(msg.sender, address(this), actualAmount);
-
-		newStaking.enterTo(recipient, actualAmount + bonus);
+			// if there is an extraAmount, we expect that the staker will send it to this contract before calling this,
+			// in the same txn (by using Identity)
+			newStaking.enterTo(recipient, toMint + extraAmount);
+		}
 	}
 }
