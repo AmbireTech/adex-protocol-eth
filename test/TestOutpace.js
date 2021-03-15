@@ -440,7 +440,7 @@ contract('OUTPACE', function(accounts) {
 		)
 	})
 
-	it.only('close', async function() {
+	it('close', async function() {
 		// msg.sender
 		const totalDeposit = defaultTokenAmount
 		// leader is the guardian of the channel
