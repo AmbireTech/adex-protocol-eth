@@ -10,9 +10,9 @@ const MockToken = artifacts.require('./mocks/Token')
 const Sweeper = artifacts.require('Sweeper')
 const Depositor = artifacts.require('Depositor')
 
-const { getBytes32 } = require('./')
+const { getBytes32, sampleChannel } = require('./')
 const { zeroFeeTx, ethSign, getWithdrawData } = require('./lib')
-const { splitSig, Transaction } = require('../js')
+const { splitSig, Transaction, Withdraw } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 const { solcModule } = require('../js/solc')
 
@@ -112,7 +112,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const sweeperWeb3 = await Sweeper.new()
 		const sweeper = new Contract(sweeperWeb3.address, Sweeper._json.abi, signer)
 		const depositorAddr = accounts[7]
-		const channel = [...validators, validators[0], token.address, getBytes32(69)]
+		const channel = sampleChannel(validators[0], validators[1], validators[0], token.address, 69)
 		const amount = 196969
 		const factory = new ContractFactory(Depositor.abi, Depositor.bytecode)
 		const initCode = factory.getDeployTransaction(outpace.address, channel, depositorAddr).data
@@ -123,13 +123,17 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		})
 		// send tokens to the deposit addr and then sweep it
 		await token.setBalanceTo(depositAddr, amount)
-		const receipt = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		const receipt = await (await sweeper.sweep(outpace.address, channel.toSolidityTuple(), [
+			depositorAddr
+		])).wait()
 		console.log(await token.balanceOf(depositAddr), 'must be 0')
 		console.log(receipt, 'must have deposit logs')
 		console.log(receipt.gasUsed.toNumber(), 'gas used')
 		// do it again
 		await token.setBalanceTo(depositAddr, amount)
-		const receipt2 = await (await sweeper.sweep(outpace.address, channel, [depositorAddr])).wait()
+		const receipt2 = await (await sweeper.sweep(outpace.address, channel.toSolidityTuple(), [
+			depositorAddr
+		])).wait()
 		console.log(receipt2.gasUsed.toNumber(), 'gas used')
 	})
 
@@ -139,7 +143,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const tokenAmnt = 500
 
 		// Open a channel via the identity
-		const channel = [...validators, validators[0], token.address, getBytes32(100)]
+		const channel = sampleChannel(validators[0], validators[1], validators[0], token.address, 100)
 		await token.setBalanceTo(userAcc, tokenAmnt)
 
 		const userSigner = web3Provider.getSigner(userAcc)
@@ -159,7 +163,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		)
 
 		const receipt = await (await outpace.withdraw([
-			channel,
+			channel.toSolidityTuple(),
 			amtPerAddress,
 			stateRoot,
 			vsig1,
@@ -184,11 +188,21 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 			const fee = 0
 
 			// Open a channel via the identity
-			const channel = [...validators, validators[0], token.address, getBytes32(channelNonce)]
+			const channel = sampleChannel(
+				validators[0],
+				validators[1],
+				validators[0],
+				token.address,
+				channelNonce
+			)
 
 			const openChannelTxn = await zeroFeeTx(
 				outpaceAddr,
-				outpaceInterface.functions.deposit.encode([channel, id.address, tokenAmnt]),
+				outpaceInterface.functions.deposit.encode([
+					channel.toSolidityTuple(),
+					id.address,
+					tokenAmnt
+				]),
 				0,
 				id,
 				token
@@ -220,7 +234,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				feeAmount: fee,
 				to: outpaceAddr,
 				data: outpaceInterface.functions.withdraw.encode([
-					[channel, amtPerAddress, stateRoot, vsig1, vsig2, proof]
+					[channel.toSolidityTuple(), amtPerAddress, stateRoot, vsig1, vsig2, proof]
 				])
 			})
 
@@ -253,9 +267,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const tokenAmnt = 500
 		const fee = 0
 
-		const channel = [...validators, validators[0], token.address, getBytes32(999)]
+		const channel = sampleChannel(validators[0], validators[1], validators[0], token.address, 999)
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, earnerAddr, tokenAmnt)).wait()
+		await (await outpace.deposit(channel.toSolidityTuple(), earnerAddr, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
@@ -282,7 +296,7 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				feeAmount: fee,
 				to: outpaceAddr,
 				data: outpaceInterface.functions.withdraw.encode([
-					[channel, amtPerAddress, stateRoot, vsig1, vsig2, proof]
+					[channel.toSolidityTuple(), amtPerAddress, stateRoot, vsig1, vsig2, proof]
 				])
 			})
 
@@ -315,9 +329,9 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 		const tokenAmnt = 500
 		const fee = 0
 
-		const channel = [...validators, validators[0], token.address, getBytes32(9999)]
+		const channel = sampleChannel(validators[0], validators[1], validators[0], token.address, 9999)
 		await token.setBalanceTo(earnerAddr, tokenAmnt)
-		await (await outpace.deposit(channel, earnerAddr, tokenAmnt)).wait()
+		await (await outpace.deposit(channel.toSolidityTuple(), earnerAddr, tokenAmnt)).wait()
 
 		const currentNonce = (await id.nonce()).toNumber()
 
@@ -336,7 +350,16 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				amtPerAddress,
 				outpaceAddr
 			)
-			withdrawals.push([channel, amtPerAddress, stateRoot, vsig1, vsig2, proof])
+			const withdraw = new Withdraw({
+				channel,
+				balanceTreeAmount: amtPerAddress,
+				stateRoot,
+				sigLeader: vsig1,
+				sigFollower: vsig2,
+				proof
+			})
+			withdrawals.push(withdraw.toSolidityTuple())
+			// withdrawals.push([channel, amtPerAddress, stateRoot, vsig1, vsig2, proof])
 		}
 
 		const channelWithdrawTx = new Transaction({
