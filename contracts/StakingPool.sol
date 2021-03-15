@@ -185,6 +185,10 @@ contract StakingPool {
 		require(time >= 1 days && time <= 30 days, 'BOUNDS');
 		TIME_TO_UNBOND = time;
 	}
+	function setGuardian(address newGuardian) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		guardian = newGuardian;
+	}
 
 	// Pool stuff
 	function shareValue() external view returns (uint) {
