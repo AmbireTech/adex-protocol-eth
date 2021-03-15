@@ -41,17 +41,19 @@ contract StakingMigrator {
 		emit LogRequestMigrate(msg.sender, amount, nonce);
 	}
 
-	function finishMigration(uint amount, uint nonce, address recipient) external {
-		bytes32 id = keccak256(abi.encode(address(staking), msg.sender, amount, poolId, nonce));
+	function finishMigration(uint bondAmount, uint nonce, address recipient, uint actualAmount) external {
+		require(actualAmount >= bondAmount, 'AMOUNTS_INCONSISTENT');
+
+		bytes32 id = keccak256(abi.encode(address(staking), msg.sender, bondAmount, poolId, nonce));
 		require(migratedBonds[id] == 1, 'BOND_NOT_STAGED');
 		require(!staking.bonds(id).active, 'BOND_STILL_ACTIVE');
 
 		migratedBonds[id] = 2;
 
-		uint bonus = amount * BONUS_PROMILLES / 1000;
+		uint bonus = bondAmount * BONUS_PROMILLES / 1000;
 		ADXToken.supplyController().mint(address(ADXToken), address(this), bonus);
-		ADXToken.transferFrom(msg.sender, address(this), amount);
+		ADXToken.transferFrom(msg.sender, address(this), actualAmount);
 
-		newStaking.enterTo(recipient, amount + bonus);
+		newStaking.enterTo(recipient, actualAmount + bonus);
 	}
 }
