@@ -80,8 +80,6 @@ contract Guardian {
 
 			remainingFunds = outpace.remaining(channelId);
 			outpace.close(channel);
-			// assign blame now
-			//blame[channel] = validator // call court if available
 		}
 
 		if (remainingFunds == 0) {
