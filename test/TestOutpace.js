@@ -407,7 +407,7 @@ contract('OUTPACE', function(accounts) {
 			.challenge(channel.toSolidityTuple())).wait()
 
 		const expires = await core.challenges(channel.hashHex())
-		const root = channel.getResumeSignableRootHex(expires.toNumber())
+		const root = channel.getResumeSignableMessageHex(expires.toNumber())
 
 		const sig1 = splitSig(await ethSign(root, leader))
 		const sig2 = splitSig(await ethSign(root, follower))
