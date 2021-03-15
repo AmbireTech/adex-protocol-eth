@@ -3,6 +3,7 @@ const keccak256 = require('js-sha3').keccak256
 const ensure = require('./ensureTypes')
 
 const ChannelState = {
+	// hex representation of solidity type(uint256).max
 	Challenged: '115792089237316195423570985008687907853269984665640564039457584007913129639935',
 	Active: '0'
 }
