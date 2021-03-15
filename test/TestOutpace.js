@@ -10,7 +10,7 @@ const { moveTime, sampleChannel, expectEVMError, takeSnapshot, revertToSnapshot 
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
-const { Channel, MerkleTree, splitSig, Withdraw } = require('../js')
+const { Channel, MerkleTree, splitSig, Withdraw, ChannelState } = require('../js')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 const threeDaysInSeconds = 259200
@@ -469,8 +469,8 @@ contract('OUTPACE', function(accounts) {
 		// check states
 		assert.equal((await core.remaining(channel.hashHex())).toNumber(), 0, 'incorrect remaining')
 		assert.equal(
-			(await core.challenges(channel.hashHex())).toString(),
-			'115792089237316195423570985008687907853269984665640564039457584007913129639935',
+			(await core.challenges(channel.hashHex())).toString('hex'),
+			ChannelState.Challenged,
 			'incorrect challenge state'
 		)
 
