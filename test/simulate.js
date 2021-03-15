@@ -359,7 +359,6 @@ contract('Simulate Bulk Withdrawal', function(accounts) {
 				proof
 			})
 			withdrawals.push(withdraw.toSolidityTuple())
-			// withdrawals.push([channel, amtPerAddress, stateRoot, vsig1, vsig2, proof])
 		}
 
 		const channelWithdrawTx = new Transaction({
