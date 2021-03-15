@@ -24,16 +24,6 @@ contract Guardian {
 		outpace = _outpace;
 	}
 
-	function setOwner(address newOwner) external {
-		require(msg.sender == owner, 'not owner');
-		owner = newOwner;
-	}
-
-	function setCourt(address newCourt) external {
-		require(msg.sender == owner, 'not owner');
-		court = newCourt;
-	}
-
 	function setInterest(uint newInterest) external {
 		require(msg.sender == owner, 'not owner');
 		require(newInterest > 1000 && newInterest < 2000, 'must be between 1 and 2');
@@ -49,15 +39,7 @@ contract Guardian {
 		require(poolForValidator[msg.sender] == address(0), 'staking pool already registered');
 		poolForValidator[msg.sender] = pool;
 	}
-
-	function getBlame(OUTPACE.Channel memory channel) internal pure returns (address) {
-		//if (court == address(0)) return channel.leader;
-		//else ICourt(court).getBlame(channel);
-		// @TODO court
-		return channel.leader;
-	}
 	
-	// @TODO: should we cache blame?
 	function getRefund(OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof) external {
 		require(channel.guardian == address(this), 'not guardian');
 		bytes32 channelId = keccak256(abi.encode(channel));
@@ -83,7 +65,8 @@ contract Guardian {
 		// @TODO consider not applying the interest multiplier if there is no lastStateRoot
 		// cause without it, some might open non-legit channels with real validators, let them expire and try to claim the interest
 		uint refundableDeposit = totalDeposited-spentAmount;
-		address poolAddr = poolForValidator[getBlame(channel)];
+		address blamed = channel.leader; // getBlame(channel);
+		address poolAddr = poolForValidator[blamed];
 		// Only apply the 10% interest if the channel has been used and there's a pool from which to get it
 		if (lastStateRoot != bytes32(0) && poolAddr != address(0)) {
 			refundableDeposit = refundableDeposit * interestPromilles / 1000;
@@ -97,8 +80,6 @@ contract Guardian {
 
 			remainingFunds = outpace.remaining(channelId);
 			outpace.close(channel);
-			// assign blame now
-			//blame[channel] = validator // call court if available
 		}
 
 		if (remainingFunds == 0) {

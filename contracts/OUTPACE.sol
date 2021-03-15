@@ -89,12 +89,15 @@ contract OUTPACE {
 		uint challengeExpirationTime = challenges[channelId];
 		require(challengeExpirationTime != CLOSED, 'CHANNEL_CLOSED');
 		// We only need to update this for challenged channels since it's needed on liquidation
+		// @TODO explain why this is OK even though it can be updated to an older state (it can then get updated to a newer)
 		if (challengeExpirationTime != 0) lastStateRoot[channelId] = withdrawal.stateRoot;
 
 		// Check the signatures
 		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'leader sig');
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
+		// adds like 8k gas for 10 withdrawals (2% increase)
+		// if (withdrawal.channel.leader != withdrawal.channel.follower) require(SignatureValidator.isValid(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'follower sig');
 
 		// Check the merkle proof
 		bytes32 balanceLeaf = keccak256(abi.encode(earner, withdrawal.balanceTreeAmount));

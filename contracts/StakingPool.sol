@@ -137,6 +137,7 @@ contract StakingPool {
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
+	event LogNewGuardian(address newGuardian);
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
@@ -184,6 +185,11 @@ contract StakingPool {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
 		require(time >= 1 days && time <= 30 days, 'BOUNDS');
 		TIME_TO_UNBOND = time;
+	}
+	function setGuardian(address newGuardian) external {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		guardian = newGuardian;
+		emit LogNewGuardian(newGuardian);
 	}
 
 	// Pool stuff
