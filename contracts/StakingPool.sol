@@ -137,6 +137,7 @@ contract StakingPool {
 	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
+	event LogNewGuardian(address newGuardian);
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
@@ -188,6 +189,7 @@ contract StakingPool {
 	function setGuardian(address newGuardian) external {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
 		guardian = newGuardian;
+		emit LogNewGuardian(newGuardian);
 	}
 
 	// Pool stuff
