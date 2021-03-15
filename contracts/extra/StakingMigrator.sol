@@ -42,8 +42,8 @@ contract StakingMigrator {
 		ILegacyStaking.BondState memory bondState = legacyStaking.bonds(id);
 		require(bondState.active, 'BOND_NOT_ACTIVE');
 
-		// @TODO willUnlock must be lower than 22 april (30 days after 23 march)
-		if (bondState.willUnlock > 0) {
+		// willUnlock must be lower than 23 april (30 days after 24 march)
+		if (bondState.willUnlock > 0 && bondState.willUnlock < 1619182800) {
 			ADXToken.supplyController().mint(address(ADXToken), recipient, bondAmount);
 		} else {
 			uint toMint = bondAmount * WITH_BONUS_PROMILLES / 1000;
