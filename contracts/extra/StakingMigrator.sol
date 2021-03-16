@@ -26,6 +26,8 @@ contract StakingMigrator {
 
 	mapping(bytes32 => bool) public migratedBonds;
 
+	event LogBondMigrated(bytes32 bondId);
+
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
 		ADXToken.approve(address(_newStaking), type(uint256).max);
@@ -55,5 +57,7 @@ contract StakingMigrator {
 			// in the same txn (by using Identity)
 			newStaking.enterTo(recipient, toMint + extraAmount);
 		}
+
+		emit LogBondMigrated(id);
 	}
 }
