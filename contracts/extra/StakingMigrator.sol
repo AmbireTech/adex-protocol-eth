@@ -24,7 +24,7 @@ contract StakingMigrator {
 	// must be 1000 + the bonus promilles
 	uint public constant WITH_BONUS_PROMILLES = 1097;
 
-	mapping(bytes32 => bool) migratedBonds;
+	mapping(bytes32 => bool) public migratedBonds;
 
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
