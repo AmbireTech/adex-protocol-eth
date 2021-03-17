@@ -172,7 +172,7 @@ contract StakingPool {
 	}
 	function setDailyPenaltyMax(uint max) external {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
-		require(max <= 500, 'DAILY_PENALTY_TOO_LARGE');
+		require(max <= 200, 'DAILY_PENALTY_TOO_LARGE');
 		MAX_DAILY_PENALTIES_PROMILLES = max;
 		resetLimits();
 	}
