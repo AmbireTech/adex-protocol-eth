@@ -10,34 +10,27 @@ interface IStakingPool {
 
 contract Guardian {
 	// variables
-	address public owner;
-	address public court;
 	mapping (address => address) public poolForValidator;
 	mapping (bytes32 => uint) public remaining;
 	// channelId => spender => isRefunded
 	mapping (bytes32 => mapping(address => bool)) refunds;
-	uint public refundPromilles = 1100;
+	// validator -> refundInterestPromilles
+	mapping (address => uint) public refundInterestPromilles;
 	OUTPACE outpace;
 
 	constructor(OUTPACE _outpace) {
-		owner = msg.sender;
 		outpace = _outpace;
 	}
 
-	function setRefundPromilles(uint newPromilles) external {
-		require(msg.sender == owner, 'NOT_OWNER');
-		require(newPromilles > 1000 && newPromilles < 2000, 'REFUND_PROMILLES_BOUNDS');
-		refundPromilles = newPromilles;
-	}
-
-	function challenge(OUTPACE.Channel calldata channel) external {
-		require(msg.sender == owner, 'NOT_OWNER');
-		outpace.challenge(channel);
-	}
-
-	function registerPool(address pool) external {
+	function registerPool(address pool, uint interestPromilles) external {
 		require(poolForValidator[msg.sender] == address(0), 'STAKING_ALREADY_REGISTERED');
 		poolForValidator[msg.sender] = pool;
+		refundInterestPromilles[msg.sender] = interestPromilles;
+	}
+
+	function setRefundPromilles(uint interestPromilles) external {
+		require(interestPromilles < 500, 'REFUND_PROMILLES_BOUNDS');
+		refundInterestPromilles[msg.sender] = interestPromilles;
 	}
 	
 	function getRefund(OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof) external {
@@ -65,7 +58,7 @@ contract Guardian {
 		// cause without it, it's possible to open non-legit channels with real validators, let them expire and try to claim the interest
 		// Only apply the 10% interest if the channel has been used and there's a pool from which to get it
 		if (lastStateRoot != bytes32(0) && poolAddr != address(0)) {
-			refundable = refundable * refundPromilles / 1000;
+			refundable = refundable * (refundInterestPromilles[blamed] + 1000) / 1000;
 		}
 
 		// Ensure the channel is closed (fail if it can't be closed yet)
@@ -73,8 +66,6 @@ contract Guardian {
 			//require(remaining == 0) // make sure our internal state makes sense
 			// @TODO also require that some additional time is passed (eg 1 week)
 			// this would make sure that people have time to withdraw their funds
-			//require(outpace.canBeClosed())
-
 			remainingFunds = outpace.remaining(channelId);
 			outpace.close(channel);
 		}
