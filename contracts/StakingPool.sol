@@ -116,6 +116,10 @@ contract StakingPool {
 	address public validator;
 	address public governance;
 
+	// claim token whitelist: normally claim tokens are stablecoins
+	// eg Tether (0xdAC17F958D2ee523a2206206994597C13D831ec7)
+	mapping (address => bool) public whitelistedClaimTokens;
+
 	// Commitment ID against the max amount of tokens it will pay out
 	mapping (bytes32 => uint) public commitments;
 	// How many of a user's shares are locked
@@ -141,13 +145,14 @@ contract StakingPool {
 	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
 	event LogPenalize(uint burnedADX);
 
-	constructor(IADXToken token, IUniswapSimple uni, IChainlink oracle, address guardianAddr, address validatorAddr, address governanceAddr) {
+	constructor(IADXToken token, IUniswapSimple uni, IChainlink oracle, address guardianAddr, address validatorAddr, address governanceAddr, address claimToken) {
 		ADXToken = token;
 		uniswap = uni;
 		ADXUSDOracle = oracle;
 		guardian = guardianAddr;
 		validator = validatorAddr;
 		governance = governanceAddr;
+		whitelistedClaimTokens[claimToken] = true;
 
 		// EIP 2612
 		uint chainId;
@@ -190,6 +195,10 @@ contract StakingPool {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
 		guardian = newGuardian;
 		emit LogNewGuardian(newGuardian);
+	}
+	function setWhitelistedClaimToken(address token, bool whitelisted) public {
+		require(governance == msg.sender, 'NOT_GOVERNANCE');
+		whitelistedClaimTokens[token] = whitelisted;
 	}
 
 	// Pool stuff
@@ -285,7 +294,9 @@ contract StakingPool {
 		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
 	}
 
-	// insurance
+	// Insurance mechanism
+	// In case something goes wrong, this can be used to recoup funds
+	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 
@@ -294,17 +305,15 @@ contract StakingPool {
 		// but it guarantees that claim() always works
 		uint totalADX = ADXToken.balanceOf(address(this));
 
-		// Note: whitelist of out tokens
-		//require(isWhitelistedOutToken(tokenOut), 'token not whitelisted')
-		// @TODO proper whitelist
-		require(tokenOut == address(0xdAC17F958D2ee523a2206206994597C13D831ec7), 'TOKEN_NOT_WHITELISTED');
+		// Note: whitelist of tokenOut tokens
+		require(whitelistedClaimTokens[tokenOut], 'TOKEN_NOT_WHITELISTED');
 
 		address[] memory path = new address[](3);
 		path[0] = address(ADXToken);
 		path[1] = uniswap.WETH();
 		path[2] = tokenOut;
 
-		// You may think the uinswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
+		// You may think the Uniswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
 		// there's no case in which we 'double-spend' a value
 		// Plus, ADX, USDT and uniswap are all trusted
 
