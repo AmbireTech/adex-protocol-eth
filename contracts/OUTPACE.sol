@@ -45,7 +45,6 @@ contract OUTPACE {
 	mapping (bytes32 => bytes32) public lastStateRoot;
 
 	// events
-	// @TODO should we emit the full channel? see gas costs
 	event LogChannelDeposit(bytes32 indexed channelId, uint amount);
 	event LogChannelWithdraw(bytes32 indexed channelId, uint amount);
 	event LogChannelChallenge(bytes32 indexed channelId, uint expires);
