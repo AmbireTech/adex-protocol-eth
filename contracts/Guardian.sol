@@ -16,7 +16,7 @@ contract Guardian {
 	mapping (bytes32 => uint) public remaining;
 	// channelId => spender => isRefunded
 	mapping (bytes32 => mapping(address => bool)) refunds;
-	uint public interestPromilles = 1100;
+	uint public refundPromilles = 1100;
 	OUTPACE outpace;
 
 	constructor(OUTPACE _outpace) {
@@ -24,27 +24,27 @@ contract Guardian {
 		outpace = _outpace;
 	}
 
-	function setInterest(uint newInterest) external {
-		require(msg.sender == owner, 'not owner');
-		require(newInterest > 1000 && newInterest < 2000, 'must be between 1 and 2');
-		interestPromilles = newInterest;
+	function setRefundPromilles(uint newPromilles) external {
+		require(msg.sender == owner, 'NOT_OWNER');
+		require(newPromilles > 1000 && newPromilles < 2000, 'REFUND_PROMILLES_BOUNDS');
+		refundPromilles = newPromilles;
 	}
 
 	function challenge(OUTPACE.Channel calldata channel) external {
-		require(msg.sender == owner, 'not owner');
+		require(msg.sender == owner, 'NOT_OWNER');
 		outpace.challenge(channel);
 	}
 
 	function registerPool(address pool) external {
-		require(poolForValidator[msg.sender] == address(0), 'staking pool already registered');
+		require(poolForValidator[msg.sender] == address(0), 'STAKING_ALREADY_REGISTERED');
 		poolForValidator[msg.sender] = pool;
 	}
 	
 	function getRefund(OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof) external {
-		require(channel.guardian == address(this), 'not guardian');
+		require(channel.guardian == address(this), 'NOT_GUARDIAN');
 		bytes32 channelId = keccak256(abi.encode(channel));
 
-		require(!refunds[channelId][spender], 'refund already received');
+		require(!refunds[channelId][spender], 'REFUND_ALREADY_RECEIVED');
 		refunds[channelId][spender] = true;
 
 		uint totalDeposited = outpace.deposits(channelId, spender);
@@ -55,17 +55,17 @@ contract Guardian {
 		// if lastStateRoot is 0, spentAmount can also be 0 without verification
 		if (!(spentAmount == 0 && lastStateRoot == bytes32(0))) {
 			bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
-			require(MerkleProof.isContained(balanceLeaf, proof, lastStateRoot), 'balance leaf not found');
+			require(MerkleProof.isContained(balanceLeaf, proof, lastStateRoot), 'BALANCELEAF_NOT_FOUND');
 		}
 
-		uint refundableDeposit = totalDeposited - spentAmount;
+		uint refundable = totalDeposited - spentAmount;
 		address blamed = channel.leader; // getBlame(channel);
 		address poolAddr = poolForValidator[blamed];
 		// Do not apply the interest multiplier if there is no lastStateRoot (channel has not been used)
 		// cause without it, it's possible to open non-legit channels with real validators, let them expire and try to claim the interest
 		// Only apply the 10% interest if the channel has been used and there's a pool from which to get it
 		if (lastStateRoot != bytes32(0) && poolAddr != address(0)) {
-			refundableDeposit = refundableDeposit * interestPromilles / 1000;
+			refundable = refundable * refundPromilles / 1000;
 		}
 
 		// Ensure the channel is closed (fail if it can't be closed yet)
@@ -81,19 +81,19 @@ contract Guardian {
 
 		if (remainingFunds == 0) {
 			// Optimizing the case in which remaining has ran out - then we just claim directly to the recipient (campaign.creator)
-			require(poolAddr != address(0), 'more funds needed but no pool');
-			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, refundableDeposit);
+			require(poolAddr != address(0), 'FUNDS_REQUIRED_NO_POOL');
+			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, refundable);
 		} else {
-			if (remainingFunds < refundableDeposit) {
+			if (remainingFunds < refundable) {
 				// Note the liquidation itself is a resposibility of the staking contract
 				// the rationale is that some staking pools might hold LP tokens, so the liquidation logic should be in the pool
-				require(poolAddr != address(0), 'more funds needed but no pool');
-				IStakingPool(poolAddr).claim(channel.tokenAddr, address(this), refundableDeposit - remainingFunds);
-				remainingFunds = refundableDeposit;
+				require(poolAddr != address(0), 'FUNDS_REQUIRED_NO_POOL');
+				IStakingPool(poolAddr).claim(channel.tokenAddr, address(this), refundable - remainingFunds);
+				remainingFunds = refundable;
 			}
 
-			remaining[channelId] = remainingFunds - refundableDeposit;
-			SafeERC20.transfer(channel.tokenAddr, spender, refundableDeposit);
+			remaining[channelId] = remainingFunds - refundable;
+			SafeERC20.transfer(channel.tokenAddr, spender, refundable);
 		}
 	}
 }
