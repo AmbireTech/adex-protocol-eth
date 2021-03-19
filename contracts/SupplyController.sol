@@ -40,8 +40,8 @@ contract ADXSupplyController {
 	}
 
 	function innerMint(IADXToken token, address owner, uint amount) internal {
-		uint totalSupplyAfter = token.totalSupply() - BURNED_MIN + amount;
-		require(totalSupplyAfter <= CAP, 'MINT_TOO_LARGE');
+		uint totalSupplyAfter = token.totalSupply() + amount;
+		require(totalSupplyAfter <= CAP + BURNED_MIN, 'MINT_TOO_LARGE');
 		token.mint(owner, amount);
 	}
 
