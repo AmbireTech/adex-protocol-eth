@@ -162,7 +162,7 @@ contract('OUTPACE', function(accounts) {
 			sigFollower: validSigs[1],
 			proof
 		})
-		await expectEVMError(core.withdraw(invalidLeaderSigWithdrawal.toSolidityTuple()), 'leader sig')
+		await expectEVMError(core.withdraw(invalidLeaderSigWithdrawal.toSolidityTuple()), 'LEADER_SIG')
 
 		// can't withdraw with invalid follower signature
 		const invalidFollowerSigWithdrawal = new Withdraw({
@@ -176,7 +176,7 @@ contract('OUTPACE', function(accounts) {
 
 		await expectEVMError(
 			core.withdraw(invalidFollowerSigWithdrawal.toSolidityTuple()),
-			'follower sig'
+			'FOLLOWER_SIG'
 		)
 
 		// Can't withdraw with invalid balance leaf
@@ -191,7 +191,7 @@ contract('OUTPACE', function(accounts) {
 
 		await expectEVMError(
 			core.withdraw(invalidBalanceLeafWithdrawal.toSolidityTuple()),
-			'balance leaf not found'
+			'BALANCERLEAF_NOT_FOUND'
 		)
 
 		// Can't withdraw with lesser amount
@@ -451,7 +451,7 @@ contract('OUTPACE', function(accounts) {
 		// must be called by guardian
 		await expectEVMError(
 			core.connect(web3Provider.getSigner(leader)).close(channel.toSolidityTuple()),
-			'must be called by guardian'
+			'NOT_GUARDIAN'
 		)
 
 		await expectEVMError(core.close(channel.toSolidityTuple()), 'CHANNEL_NOT_CHALLENGED')
