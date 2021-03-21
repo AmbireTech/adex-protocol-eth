@@ -25,6 +25,7 @@ contract Guardian {
 	function registerPool(address pool, uint interestPromilles) external {
 		require(poolForValidator[msg.sender] == address(0), 'STAKING_ALREADY_REGISTERED');
 		poolForValidator[msg.sender] = pool;
+		require(interestPromilles < 500, 'REFUND_PROMILLES_BOUNDS');
 		refundInterestPromilles[msg.sender] = interestPromilles;
 		// NOTE: later on, we can implement an 'initiation fee' here
 		// Which would be calling claim() here on some small amount, to ensure the claim process works for the given pool
