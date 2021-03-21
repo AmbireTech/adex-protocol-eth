@@ -47,7 +47,7 @@ contract Guardian {
 		bytes32 lastStateRoot = outpace.lastStateRoot(channelId);
 		// if lastStateRoot is 0, spentAmount can also be 0 without verification
 		if (!(spentAmount == 0 && lastStateRoot == bytes32(0))) {
-			bytes32 balanceLeaf = keccak256(abi.encode('spender', spender, spentAmount));
+			bytes32 balanceLeaf = keccak256(abi.encode(spender, 'spender', spentAmount));
 			require(MerkleProof.isContained(balanceLeaf, proof, lastStateRoot), 'BALANCELEAF_NOT_FOUND');
 		}
 
