@@ -24,14 +24,19 @@ contract('ADXToken', function(accounts) {
 
 		const tokenWeb3 = await MockToken.new()
 		prevToken = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
-		const adxSupplyControllerWeb3 = await ADXSupplyController.new({ from: governance })
+		const adxTokenWeb3 = await ADXToken.new(userAddr, prevToken.address)
+
+		const adxSupplyControllerWeb3 = await ADXSupplyController.new(adxTokenWeb3.address, {
+			from: governance
+		})
 		adxSupplyController = new Contract(
 			adxSupplyControllerWeb3.address,
 			ADXSupplyController._json.abi,
 			signerWithGovernance
 		)
-		const adxTokenWeb3 = await ADXToken.new(adxSupplyController.address, prevToken.address)
 		adxToken = new Contract(adxTokenWeb3.address, ADXToken._json.abi, signer)
+		// change supply controller to appropriate contract
+		await adxToken.changeSupplyController(adxSupplyController.address)
 	})
 
 	it('token meta', async function() {
