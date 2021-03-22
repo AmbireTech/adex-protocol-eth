@@ -138,7 +138,7 @@ contract StakingPool {
 
 	// Staking pool events
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
-	event LogLeave(address indexed owner, uint shares, uint unlocksAt, uint maxTokens);
+	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
 	event LogNewGuardian(address newGuardian);
@@ -208,7 +208,7 @@ contract StakingPool {
 			* 1e18
 			/ totalSupply;
 	}
-	event Testing(uint256 shares);
+
 	function innerEnter(address recipient, uint amount) internal {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
@@ -221,13 +221,7 @@ contract StakingPool {
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(recipient, amount);
 		} else {
-
 			uint256 newShares = amount * totalSupply / totalADX;
-			emit Testing(amount);
-			emit Testing(totalSupply);
-			emit Testing(totalADX);
-			emit Testing(newShares);
-			
 			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
@@ -330,7 +324,7 @@ contract StakingPool {
 		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
 		uint adxAmountMax = amount * multiplier / price;
-		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
+		require(adxAmountMax < totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
@@ -343,8 +337,8 @@ contract StakingPool {
 		if (toBurn > 0) innerBurn(validator, toBurn);
 
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
-		require(limitRemaining >= adxAmountUsed, 'LIMITS');
-		limitRemaining -= adxAmountUsed;
+		// require(limitRemaining >= adxAmountUsed, 'LIMITS');
+		// limitRemaining -= adxAmountUsed;
 
 		emit LogClaim(tokenOut, to, amount, toBurn, adxAmountUsed, totalADX, totalSupply);
 	}
@@ -352,8 +346,8 @@ contract StakingPool {
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
-		require(limitRemaining >= adxAmount, 'LIMITS');
-		limitRemaining -= adxAmount;
+		// require(limitRemaining >= adxAmount, 'LIMITS');
+		// limitRemaining -= adxAmount;
 		require(ADXToken.transfer(address(0), adxAmount));
 		emit LogPenalize(adxAmount);
 	}
