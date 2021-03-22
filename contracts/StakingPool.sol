@@ -213,7 +213,7 @@ contract StakingPool {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
-		ADXToken.supplyController().mintIncentive(address(this));
+		ADXToken.supplyController().mintIncentive(ADXToken, address(this));
 
 		uint totalADX = ADXToken.balanceOf(address(this));
 
@@ -247,7 +247,7 @@ contract StakingPool {
 	}
 
 	function leave(uint shares, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) ADXToken.supplyController().mintIncentive(ADXToken, address(this));
 
 		require(shares <= balances[msg.sender] - lockedShares[msg.sender], 'INSUFFICIENT_SHARES');
 		uint totalADX = ADXToken.balanceOf(address(this));
@@ -264,7 +264,7 @@ contract StakingPool {
 	}
 
 	function withdraw(uint shares, uint unlocksAt, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) ADXToken.supplyController().mintIncentive(ADXToken, address(this));
 
 		require(block.timestamp > unlocksAt, 'UNLOCK_TOO_EARLY');
 		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt })));
@@ -284,7 +284,7 @@ contract StakingPool {
 	}
 
 	function rageLeave(uint shares, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) ADXToken.supplyController().mintIncentive(ADXToken, address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = shares * totalADX / totalSupply;
 		uint receivedTokens = adxAmount * RAGE_RECEIVED_PROMILLES / 1000;
@@ -299,6 +299,8 @@ contract StakingPool {
 	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 
 		// NOTE: minting is intentionally skipped here
 		// This means that a validator may be punished a bit more when burning their shares,
@@ -345,6 +347,8 @@ contract StakingPool {
 
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, 'LIMITS');
 		limitRemaining -= adxAmount;
@@ -352,10 +356,10 @@ contract StakingPool {
 		emit LogPenalize(adxAmount);
 	}
 
-	// anyone can call this
-	function resetLimits() public {
-		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
-		limitLastReset = block.timestamp;
-		limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
+	function resetLimits() internal {
+		if (block.timestamp - limitLastReset > 24 hours) {
+			limitLastReset = block.timestamp;
+			limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
+		}
 	}
 }

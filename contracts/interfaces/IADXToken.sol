@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface ISupplyController {
-	function mintIncentive(address addr) external;
+	function mintIncentive(IADXToken ADXToken, address addr) external;
 	function mintableIncentive(address addr) external view returns (uint);
 	function mint(address token, address owner, uint amount) external;
 }
