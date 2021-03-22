@@ -8,6 +8,7 @@ interface IERCDecimals {
 }
 
 interface IChainlink {
+	// AUDIT: ensure this API is not deprecated
 	function latestAnswer() external view returns (uint);
 }
 
