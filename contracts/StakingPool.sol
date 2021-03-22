@@ -29,7 +29,7 @@ contract StakingPool {
 	// Constants
 	string public constant name = "AdEx Staking Token";
 	uint8 public constant decimals = 18;
-	string public symbol = "ADX-STAKING";
+	string public constant symbol = "ADX-STAKING";
 
 	// Mutable variables
 	uint public totalSupply;
