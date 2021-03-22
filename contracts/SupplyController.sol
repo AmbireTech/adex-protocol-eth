@@ -9,6 +9,7 @@ contract ADXSupplyController {
 	uint public immutable CAP = 150000000 * 1e18;
 	// This amount was burned on purpose when migrating from Tom pool 2 (Staking with token 0xade) to Tom pool 3 (StakingPool with token 0xade)
 	uint public immutable BURNED_MIN = 35000000 * 1e18;
+	IADXToken public immutable ADX;
 
 	mapping (address => uint8) public governance;
 	// Some addresses (eg StakingPools) are incentivized with a certain allowance of ADX per year
@@ -16,13 +17,14 @@ contract ADXSupplyController {
 	// Keep track of when incentive tokens were last minted for a given addr
 	mapping (address => uint) public incentiveLastMint;
 
-	constructor() {
+	constructor(IADXToken token) {
 		governance[msg.sender] = uint8(GovernanceLevel.All);
+		ADX = token;
 	}
 
-	function changeSupplyController(IADXToken token, address newSupplyController) external {
+	function changeSupplyController(address newSupplyController) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
-		token.changeSupplyController(newSupplyController);
+		ADX.changeSupplyController(newSupplyController);
 	}
 
 	function setGovernance(address addr, uint8 level) external {
@@ -55,9 +57,9 @@ contract ADXSupplyController {
 		return (block.timestamp - incentiveLastMint[addr]) * incentivePerSecond[addr];
 	}
 
-	function mintIncentive(IADXToken token, address addr) external {
+	function mintIncentive(address addr) external {
 		uint amount = mintableIncentive(addr);
 		incentiveLastMint[addr] = block.timestamp;
-		innerMint(token, addr, amount);
+		innerMint(ADX, addr, amount);
 	}
 }
