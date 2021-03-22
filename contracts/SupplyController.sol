@@ -23,9 +23,9 @@ contract ADXSupplyController {
 		ADX = token;
 	}
 
-	function changeSupplyController(address newSupplyController) external {
+	function changeSupplyController(IADXToken token, address newSupplyController) external {
 		require(governance[msg.sender] >= uint8(GovernanceLevel.All), 'NOT_GOVERNANCE');
-		ADX.changeSupplyController(newSupplyController);
+		token.changeSupplyController(newSupplyController);
 	}
 
 	function setGovernance(address addr, uint8 level) external {

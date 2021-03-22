@@ -299,6 +299,8 @@ contract StakingPool {
 	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 
 		// start by resetting claim/penalty limits
 		resetLimits();
@@ -326,11 +328,7 @@ contract StakingPool {
 		// for example, if the amount is in 1e6;
 		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
-<<<<<<< HEAD
 		uint adxAmountMax = (amount * multiplier) / price;
-=======
-		uint adxAmountMax = amount * multiplier / price;
->>>>>>> a3663a1... feat: add penalize test case TestStakingPool
 		require(adxAmountMax < totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
@@ -352,7 +350,11 @@ contract StakingPool {
 
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+<<<<<<< HEAD
 		// AUDIT: we can do getLimitRemaining() instead of resetLimits() that returns the remaining limit
+=======
+		// resets limit
+>>>>>>> 981e9dd... fix: add token param to mintIncentive function, change resetLimit() to internal function
 		resetLimits();
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		// require(limitRemaining >= adxAmount, 'LIMITS');
