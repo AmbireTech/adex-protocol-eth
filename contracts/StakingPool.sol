@@ -104,7 +104,6 @@ contract StakingPool {
 		emit Transfer(owner, address(0), amount);
 	}
 
-
 	// Pool functionality
 	uint public TIME_TO_UNBOND = 20 days;
 	uint public RAGE_RECEIVED_PROMILLES = 700;
@@ -112,7 +111,7 @@ contract StakingPool {
 	IUniswapSimple public uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 	IChainlink public ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
-	IADXToken public ADXToken;
+	IADXToken public immutable ADXToken;
 	address public guardian;
 	address public validator;
 	address public governance;
@@ -197,7 +196,7 @@ contract StakingPool {
 		guardian = newGuardian;
 		emit LogNewGuardian(newGuardian);
 	}
-	function setWhitelistedClaimToken(address token, bool whitelisted) public {
+	function setWhitelistedClaimToken(address token, bool whitelisted) external {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
 		whitelistedClaimTokens[token] = whitelisted;
 	}
