@@ -104,7 +104,6 @@ contract StakingPool {
 		emit Transfer(owner, address(0), amount);
 	}
 
-
 	// Pool functionality
 	uint public TIME_TO_UNBOND = 20 days;
 	uint public RAGE_RECEIVED_PROMILLES = 700;
@@ -112,7 +111,7 @@ contract StakingPool {
 	IUniswapSimple public uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 	IChainlink public ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
 
-	IADXToken public ADXToken;
+	IADXToken public immutable ADXToken;
 	address public guardian;
 	address public validator;
 	address public governance;
@@ -197,7 +196,7 @@ contract StakingPool {
 		guardian = newGuardian;
 		emit LogNewGuardian(newGuardian);
 	}
-	function setWhitelistedClaimToken(address token, bool whitelisted) public {
+	function setWhitelistedClaimToken(address token, bool whitelisted) external {
 		require(governance == msg.sender, 'NOT_GOVERNANCE');
 		whitelistedClaimTokens[token] = whitelisted;
 	}
@@ -300,6 +299,8 @@ contract StakingPool {
 	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 
 		// NOTE: minting is intentionally skipped here
 		// This means that a validator may be punished a bit more when burning their shares,
@@ -346,6 +347,8 @@ contract StakingPool {
 
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, 'LIMITS');
 		limitRemaining -= adxAmount;
@@ -353,10 +356,10 @@ contract StakingPool {
 		emit LogPenalize(adxAmount);
 	}
 
-	// anyone can call this
-	function resetLimits() public {
-		require(block.timestamp - limitLastReset > 24 hours, 'RESET_TOO_EARLY');
-		limitLastReset = block.timestamp;
-		limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
+	function resetLimits() internal {
+		if (block.timestamp - limitLastReset > 24 hours) {
+			limitLastReset = block.timestamp;
+			limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
+		}
 	}
 }
