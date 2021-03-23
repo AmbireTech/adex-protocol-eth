@@ -8,6 +8,7 @@ interface IERCDecimals {
 }
 
 interface IChainlink {
+	// AUDIT: ensure this API is not deprecated
 	function latestAnswer() external view returns (uint);
 }
 
@@ -28,7 +29,7 @@ contract StakingPool {
 	// Constants
 	string public constant name = "AdEx Staking Token";
 	uint8 public constant decimals = 18;
-	string public symbol = "ADX-STAKING";
+	string public constant symbol = "ADX-STAKING";
 
 	// Mutable variables
 	uint public totalSupply;
@@ -326,7 +327,7 @@ contract StakingPool {
 		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
 		uint adxAmountMax = amount * multiplier / price;
-		require(adxAmountMax > totalADX, 'INSUFFICIENT_ADX');
+		require(adxAmountMax < totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
 		// calculate the total ADX amount used in the swap
