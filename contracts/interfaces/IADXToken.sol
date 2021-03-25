@@ -2,11 +2,7 @@
 pragma solidity ^0.8.0;
 
 interface ISupplyController {
-<<<<<<< HEAD
-	function mintIncentive(IADXToken token, address addr) external;
-=======
 	function mintIncentive(address addr) external;
->>>>>>> 485e320... change: add ADX state var to SupplyController and modify appropriate tests
 	function mintableIncentive(address addr) external view returns (uint);
 	function mint(address token, address owner, uint amount) external;
 	function changeSupplyController(IADXToken token, address newSupplyController) external;
