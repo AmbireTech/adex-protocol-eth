@@ -204,8 +204,8 @@ contract StakingPool {
 	// Pool stuff
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
-		return (ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this)))
-			* 1e18
+		return ((ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this)))
+			* 1e18)
 			/ totalSupply;
 	}
 
@@ -221,7 +221,7 @@ contract StakingPool {
 		if (totalSupply == 0 || totalADX == 0) {
 			innerMint(recipient, amount);
 		} else {
-			uint256 newShares = amount * totalSupply / totalADX;
+			uint256 newShares = (amount * totalSupply) / totalADX;
 			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
@@ -242,7 +242,7 @@ contract StakingPool {
 		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shares: shares, unlocksAt: unlocksAt })));
 		uint maxTokens = commitments[commitmentId];
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint currentTokens = shares * totalADX / totalSupply;
+		uint currentTokens = (shares * totalADX) / totalSupply;
 		return currentTokens > maxTokens ? maxTokens : currentTokens;
 	}
 
@@ -251,7 +251,7 @@ contract StakingPool {
 
 		require(shares <= balances[msg.sender] - lockedShares[msg.sender], 'INSUFFICIENT_SHARES');
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint maxTokens = shares * totalADX / totalSupply;
+		uint maxTokens = (shares * totalADX) / totalSupply;
 		uint unlocksAt = block.timestamp + TIME_TO_UNBOND;
 		UnbondCommitment memory commitment = UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt });
 		bytes32 commitmentId = keccak256(abi.encode(commitment));
@@ -271,7 +271,7 @@ contract StakingPool {
 		uint maxTokens = commitments[commitmentId];
 		require(maxTokens > 0, 'NO_COMMITMENT');
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint currentTokens = shares * totalADX / totalSupply;
+		uint currentTokens = (shares * totalADX) / totalSupply;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
 		commitments[commitmentId] = 0;
@@ -286,8 +286,8 @@ contract StakingPool {
 	function rageLeave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint adxAmount = shares * totalADX / totalSupply;
-		uint receivedTokens = adxAmount * RAGE_RECEIVED_PROMILLES / 1000;
+		uint adxAmount = (shares * totalADX) / totalSupply;
+		uint receivedTokens = (adxAmount * RAGE_RECEIVED_PROMILLES) / 1000;
 		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
@@ -299,7 +299,8 @@ contract StakingPool {
 	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
-		// resets limit
+
+		// start by resetting claim/penalty limits
 		resetLimits();
 
 		// NOTE: minting is intentionally skipped here
@@ -325,7 +326,7 @@ contract StakingPool {
 		// for example, if the amount is in 1e6;
 		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
-		uint adxAmountMax = amount * multiplier / price;
+		uint adxAmountMax = (amount * multiplier) / price;
 		require(adxAmountMax < totalADX, 'INSUFFICIENT_ADX');
 		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
 
@@ -334,7 +335,7 @@ contract StakingPool {
 
 		// burn the validator shares so that they pay for it first, before dilluting other holders
 		// calculate the worth in ADX of the validator's shares
-		uint sharesNeeded = adxAmountUsed * totalSupply / totalADX;
+		uint sharesNeeded = (adxAmountUsed * totalSupply) / totalADX;
 		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
 		if (toBurn > 0) innerBurn(validator, toBurn);
 
@@ -347,7 +348,7 @@ contract StakingPool {
 
 	function penalize(uint adxAmount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
-		// resets limit
+		// AUDIT: we can do getLimitRemaining() instead of resetLimits() that returns the remaining limit
 		resetLimits();
 		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, 'LIMITS');
@@ -359,7 +360,7 @@ contract StakingPool {
 	function resetLimits() internal {
 		if (block.timestamp - limitLastReset > 24 hours) {
 			limitLastReset = block.timestamp;
-			limitRemaining = ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES / 1000;
+			limitRemaining = (ADXToken.balanceOf(address(this)) * MAX_DAILY_PENALTIES_PROMILLES) / 1000;
 		}
 	}
 }
