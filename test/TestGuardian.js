@@ -10,6 +10,9 @@ const MockToken = artifacts.require('Token')
 const Outpace = artifacts.require('OUTPACE')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
+const { moveTime, sampleChannel, takeSnapshot, revertToSnapshot } = require('./')
+const { splitSig, Transaction, Withdraw } = require('../js')
+const { zeroFeeTx, ethSign, getWithdrawData } = require('./lib')
 
 contract('Guardian', function(accounts) {
 	let token
@@ -34,6 +37,10 @@ contract('Guardian', function(accounts) {
 		guardian = new Contract(guardianWeb3.address, Guardian._json.abi, signer)
 	})
 
+	beforeEach(async function() {
+		await token.setBalanceTo(userAcc, defaultTokenAmount)
+	})
+
 	it('registerPool', async function() {
 		expectEVMError(guardian.registerPool(pool, 1000), 'REFUND_PROMILLES_BOUNDS')
 		await guardian.registerPool(pool, 100)
@@ -48,6 +55,35 @@ contract('Guardian', function(accounts) {
 	})
 
 	it('getRefund', async function() {
+		const channel = sampleChannel(leader, follower, userAcc, token.address, 0)
+
+		await (await core.deposit(channel.toSolidityTuple(), userAcc, defaultTokenAmount)).wait()
+
+		// Prepare the tree and sign the state root
+		const userLeafAmnt = defaultTokenAmount / 2
+		const [stateRoot, vsig1, vsig2, proof] = await getWithdrawData(
+			channel,
+			userAcc,
+			[userAcc],
+			userLeafAmnt,
+			core.address
+		)
+
+		// valid withdraw
+		const validWithdrawal = new Withdraw({
+			channel,
+			balanceTreeAmount: userLeafAmnt,
+			stateRoot,
+			sigLeader: vsig1,
+			sigFollower: vsig2,
+			proof
+		})
+
+		const validWithdrawReceipt = await (await core.withdraw(
+			validWithdrawal.toSolidityTuple()
+		)).wait()
+
         
-    })
+
+	})
 })
