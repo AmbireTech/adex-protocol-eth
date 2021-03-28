@@ -50,7 +50,7 @@ contract StakingMigrator {
 		if (bondState.willUnlock > 0 && bondState.willUnlock < 1619182800) {
 			ADXToken.supplyController().mint(address(ADXToken), recipient, bondAmount);
 		} else {
-			uint toMint = bondAmount * WITH_BONUS_PROMILLES / 1000;
+			uint toMint = (bondAmount * WITH_BONUS_PROMILLES) / 1000;
 			ADXToken.supplyController().mint(address(ADXToken), address(this), toMint);
 
 			// if there is an extraAmount, we expect that the staker will send it to this contract before calling this,

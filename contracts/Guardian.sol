@@ -71,7 +71,7 @@ contract Guardian {
 		// cause without it, it's possible to open non-legit channels with real validators, let them expire and try to claim the interest
 		// Only apply the interest if the channel has been used and there's a pool from which to get it, and there's no opt out
 		if (lastStateRoot != bytes32(0) && poolAddr != address(0) && !skipInterest) {
-			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, refundablePrincipal * refundInterestPromilles[blamed] / 1000);
+			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, (refundablePrincipal * refundInterestPromilles[blamed]) / 1000);
 		}
 	}
 }
