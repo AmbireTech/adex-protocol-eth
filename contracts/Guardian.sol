@@ -14,7 +14,7 @@ contract Guardian {
 	// validator -> refundInterestPromilles
 	mapping (address => uint) public refundInterestPromilles;
 	// channelId => spender => isRefunded
-	mapping (bytes32 => mapping(address => bool)) refunds;
+	mapping (bytes32 => mapping(address => bool)) public refunds;
 	// The OUTPACE contract that this Guardian will work with
 	OUTPACE outpace;
 
@@ -70,8 +70,9 @@ contract Guardian {
 		// Do not send interest if there is no lastStateRoot (channel has not been used)
 		// cause without it, it's possible to open non-legit channels with real validators, let them expire and try to claim the interest
 		// Only apply the interest if the channel has been used and there's a pool from which to get it, and there's no opt out
-		if (lastStateRoot != bytes32(0) && poolAddr != address(0) && !skipInterest) {
-			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, (refundablePrincipal * refundInterestPromilles[blamed]) / 1000);
+		uint interest = refundInterestPromilles[blamed];
+		if (!skipInterest && poolAddr != address(0) && interest != 0 && lastStateRoot != bytes32(0)) {
+			IStakingPool(poolAddr).claim(channel.tokenAddr, spender, (refundablePrincipal * interest) / 1000);
 		}
 	}
 }
