@@ -14,7 +14,7 @@ contract Guardian {
 	// validator -> refundInterestPromilles
 	mapping (address => uint) public refundInterestPromilles;
 	// channelId => spender => isRefunded
-	mapping (bytes32 => mapping(address => bool)) refunds;
+	mapping (bytes32 => mapping(address => bool)) public refunds;
 	// The OUTPACE contract that this Guardian will work with
 	OUTPACE outpace;
 
