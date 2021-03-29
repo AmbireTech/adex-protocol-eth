@@ -26,7 +26,7 @@ contract StakingMigrator {
 
 	mapping(bytes32 => bool) public migratedBonds;
 
-	event LogBondMigrated(bytes32 bondId);
+	event LogBondMigrated(address indexed bondOwner, bytes32 bondId);
 
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
@@ -58,6 +58,6 @@ contract StakingMigrator {
 			newStaking.enterTo(recipient, toMint + extraAmount);
 		}
 
-		emit LogBondMigrated(id);
+		emit LogBondMigrated(msg.sender, id);
 	}
 }
