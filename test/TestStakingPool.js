@@ -1,9 +1,10 @@
 /** globals afterEach */
 const { providers, Contract } = require('ethers')
-const { bigNumberify, parseUnits } = require('ethers').utils
+const { bigNumberify } = require('ethers').utils
 
 const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
 const { UnbondCommitment } = require('../js')
+const { parseADX } = require('./lib')
 
 const StakingPoolArtifact = artifacts.require('StakingPool')
 const MockChainlink = artifacts.require('MockChainlink')
@@ -14,7 +15,6 @@ const ADXToken = artifacts.require('ADXToken')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
-const parseADX = v => parseUnits(v, 18)
 const DAY_SECONDS = 24 * 60 * 60
 
 contract('StakingPool', function(accounts) {

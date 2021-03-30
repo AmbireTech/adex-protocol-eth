@@ -8,24 +8,9 @@ contract ADXSupplyController {
 
 	uint public constant CAP = 150000000 * 1e18;
 	// This amount was burned on purpose when migrating from Tom pool 2 (Staking with token 0xade) to Tom pool 3 (StakingPool with token 0xade)
-<<<<<<< HEAD
-<<<<<<< HEAD
 
 	uint public constant BURNED_MIN = 35000000 * 1e18;
 	IADXToken public immutable ADX;
-=======
-<<<<<<< HEAD
-	uint public constant BURNED_MIN = 35000000 * 1e18;
-	IADXToken public constant ADX = IADXToken(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
-=======
-	uint public immutable BURNED_MIN = 35000000 * 1e18;
-	IADXToken public immutable ADX;
->>>>>>> 485e320... change: add ADX state var to SupplyController and modify appropriate tests
->>>>>>> 0d1c4ef... change: add ADX state var to SupplyController and modify appropriate tests
-=======
-	uint public immutable BURNED_MIN = 35000000 * 1e18;
-	IADXToken public immutable ADX;
->>>>>>> 35b9d1f... update: TestStakingPool.js test case
 
 	mapping (address => uint8) public governance;
 	// Some addresses (eg StakingPools) are incentivized with a certain allowance of ADX per year

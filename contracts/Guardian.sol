@@ -36,7 +36,12 @@ contract Guardian {
 		refundInterestPromilles[msg.sender] = interestPromilles;
 	}
 	
-	function getRefund(OUTPACE.Channel calldata channel, address spender, uint spentAmount, bytes32[] calldata proof, bool skipInterest) external {
+	function getRefund(
+		OUTPACE.Channel calldata channel,
+		address spender, uint spentAmount,
+		bytes32[] calldata proof,
+		bool skipInterest
+	) external {
 		require(channel.guardian == address(this), 'NOT_GUARDIAN');
 		bytes32 channelId = keccak256(abi.encode(channel));
 
