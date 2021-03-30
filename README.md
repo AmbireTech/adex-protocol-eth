@@ -103,6 +103,12 @@ The `SupplyController` contract:
 * Mainnet: https://mainnet.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
 * Goerli: https://goerli.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
 
+New V5 `SupplyController` (increased cap to account for the to-be burned staking migration ADX):
+
+* Mainnet: https://etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
+* Goerli: https://goerli.etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
+
+
 ### Deployment strategy
 
 The full deploy processis as follows
