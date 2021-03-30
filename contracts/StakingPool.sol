@@ -138,7 +138,7 @@ contract StakingPool {
 
 	// Staking pool events
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
-	event LogLeave(address indexed owner, uint shares, uint unlockAt, uint maxTokens);
+	event LogLeave(address indexed owner, uint shares, uint unlocksAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
 	event LogNewGuardian(address newGuardian);
@@ -350,7 +350,7 @@ contract StakingPool {
 		require(msg.sender == guardian, "NOT_GUARDIAN");
 		// AUDIT: we can do getLimitRemaining() instead of resetLimits() that returns the remaining limit
 		resetLimits();
-		// Technically redundant cause we"ll fail on the subtraction, but we"re doing this for better err msgs
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, "LIMITS");
 		limitRemaining -= adxAmount;
 		require(ADXToken.transfer(address(0), adxAmount));
