@@ -299,6 +299,8 @@ contract StakingPool {
 	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
 	function claim(address tokenOut, address to, uint amount) external {
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
+		// resets limit
+		resetLimits();
 
 		// start by resetting claim/penalty limits
 		resetLimits();
