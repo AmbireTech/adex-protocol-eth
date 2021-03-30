@@ -1,8 +1,9 @@
 /** globals afterEach */
 const { providers, Contract, ethers } = require('ethers')
 const { bigNumberify } = require('ethers').utils
+const { ecsign } = require('ethereumjs-util')
 const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
-const { UnbondCommitment } = require('../js')
+const { UnbondCommitment, getApprovalDigest } = require('../js')
 const { parseADX } = require('./lib')
 
 const StakingPoolArtifact = artifacts.require('StakingPool')
@@ -15,6 +16,7 @@ const ADXToken = artifacts.require('ADXToken')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
+const wallet = ethers.Wallet.createRandom()
 
 contract('StakingPool', function(accounts) {
 	let stakingPool
@@ -178,12 +180,12 @@ contract('StakingPool', function(accounts) {
 		await enterStakingPool(userAcc, amountToEnter)
 		const amountToApprove = 10
 		const receipt = await (await stakingPool.approve(anotherUser, amountToApprove)).wait()
-		const approveEv = receipt.events.find(x => x.event === 'Approve')
+		const approveEv = receipt.events.find(x => x.event === 'Approval')
 		assert.ok(approveEv, 'has an approve event')
 
 		// check allowance
 		assert.equal(
-			(await stakingPool.allowance(anotherUser)).toNumber(),
+			(await stakingPool.allowance(userAcc, anotherUser)).toNumber(),
 			amountToApprove,
 			'has correct approve amount'
 		)
@@ -191,66 +193,36 @@ contract('StakingPool', function(accounts) {
 
 	it('permit', async function() {
 		const chainId = (await ethers.getDefaultProvider().getNetwork()).chainId
-		const owner = governanceAddr
+		const owner = wallet.address
 		const spender = anotherUser
 		const value = 10
 		const deadline = (await (await governanceSigner.provider.getBlock('latest')).timestamp) + 50000
-		const domain = {
-			name: 'AdEx Staking Token',
-			version: '1',
-			chainId,
-			verifyingContract: stakingPool.address
-		}
-		const types = {
-			Permit: [
-				{ name: 'owner', type: 'address' },
-				{ name: 'spender', type: 'address' },
-				{ name: 'value', type: 'uint256' },
-				{ name: 'nonce', type: 'uint256' },
-				{ name: 'deadline', type: 'uint256' }
-			]
-		}
-		const typedData = {
-			owner,
-			spender,
-			value,
-			nonce: 0,
+
+		const data = getApprovalDigest(
+			{
+				name: 'AdEx Staking Token',
+				address: stakingPool.address,
+				chainId
+			},
+			{
+				owner,
+				spender,
+				value
+			},
+			0,
 			deadline
-		}
-		// const signature = await governanceSigner.provider
-		// 	.send('eth_sign', [
-		// 		governanceAddr,
-		// 		ethers.utils._TypedDataEncoder.hash(domain, types, typedData)
-		// 	])
-
-		const signature = await governanceSigner.signMessage(
-			ethers.utils.arrayify(ethers.utils._TypedDataEncoder.hash(domain, types, typedData))
+		)
+		const { v, r, s } = ecsign(
+			Buffer.from(data.slice(2), 'hex'),
+			Buffer.from(wallet.privateKey.slice(2), 'hex')
 		)
 
-		const hashdomain = ethers.utils._TypedDataEncoder.hashDomain(domain)
-		const hashStruct = ethers.utils._TypedDataEncoder.hashStruct('Permit', types, typedData)
-		const hashEncoded = ethers.utils.solidityKeccak256(
-			['string', 'bytes32', 'bytes32'],
-			[`\x19\x01`, hashdomain, hashStruct]
+		await stakingPool.permit(wallet.address, anotherUser, value, deadline, v, r, s)
+		assert.equal(
+			(await stakingPool.allowance(wallet.address, anotherUser)).toNumber(),
+			value,
+			'has correct permit amount'
 		)
-
-		// console.log('hashEncoded ', hashEncoded)
-		// console.log(ethers.utils._TypedDataEncoder.hash(domain, types, typedData))
-
-		const { v, r, s } = ethers.utils.splitSignature(signature)
-		// console.log({ governanceAddr })
-		// console.log({ userAcc })
-		// console.log({ v })
-		// console.log({ r })
-		// console.log({ s })
-		// console.log(`domain`, ethers.utils._TypedDataEncoder.hashDomain(domain).toString('hex'))
-		// console.log(
-		// 	`struct `,
-		// 	ethers.utils._TypedDataEncoder.hashStruct('Permit', types, typedData).toString('hex')
-		// )
-		// console.log(ethers.utils._TypedDataEncoder.encode(domain, types, typedData).toString('hex'))
-
-		await stakingPool.permit(governanceAddr, anotherUser, value, deadline, v, r, s)
 	})
 
 	it('setTimeToUnbond', async function() {
