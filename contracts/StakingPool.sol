@@ -246,6 +246,7 @@ contract StakingPool {
 		return currentTokens > maxTokens ? maxTokens : currentTokens;
 	}
 
+	// AUDIT: when someone unbonds (leaves), their incurred reward won't go to others until they withdraw their ADX
 	function leave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -282,6 +283,8 @@ contract StakingPool {
 		emit LogWithdraw(msg.sender, shares, unlocksAt, maxTokens, receivedTokens);
 	}
 
+	// AUDIT: if there is one single staker and they rage quit, the next one who stakes gets the remaining ADX
+	// ...which means it's possible for a single staker to unbond 70% of their tokens free of charge
 	function rageLeave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
@@ -320,11 +323,12 @@ contract StakingPool {
 		// there"s no case in which we "double-spend" a value
 		// Plus, ADX, USDT and uniswap are all trusted
 
-		// Slippage protection; 5% slippage allowed
+		// Slippage protection
 		uint price = ADXUSDOracle.latestAnswer();
 		// chainlink price is in 1e8
 		// for example, if the amount is in 1e6;
 		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
+		// 5% slippage allowed
 		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
 		uint adxAmountMax = (amount * multiplier) / price;
 		require(adxAmountMax < totalADX, "INSUFFICIENT_ADX");
