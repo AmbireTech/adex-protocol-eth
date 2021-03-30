@@ -122,7 +122,7 @@ contract StakingPool {
 
 	// Commitment ID against the max amount of tokens it will pay out
 	mapping (bytes32 => uint) public commitments;
-	// How many of a user"s shares are locked
+	// How many of a user's shares are locked
 	mapping (address => uint) public lockedShares;
 	// Unbonding commitment from a staker
 	struct UnbondCommitment {
@@ -183,6 +183,7 @@ contract StakingPool {
 	}
 	function setRageReceived(uint rageReceived) external {
 		require(governance == msg.sender, "NOT_GOVERNANCE");
+		// AUDIT: should there be a minimum here?
 		require(rageReceived <= 1000, "TOO_LARGE");
 		rageReceivedPromilles = rageReceived;
 	}
@@ -252,8 +253,7 @@ contract StakingPool {
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint maxTokens = (shares * totalADX) / totalSupply;
 		uint unlocksAt = block.timestamp + timeToUnbond;
-		UnbondCommitment memory commitment = UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt });
-		bytes32 commitmentId = keccak256(abi.encode(commitment));
+		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt })));
 		require(commitments[commitmentId] == 0, "COMMITMENT_EXISTS");
 
 		commitments[commitmentId] = maxTokens;
@@ -284,6 +284,7 @@ contract StakingPool {
 
 	function rageLeave(uint shares, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint adxAmount = (shares * totalADX) / totalSupply;
 		uint receivedTokens = (adxAmount * rageReceivedPromilles) / 1000;
