@@ -180,10 +180,7 @@ contract('StakingPool', function(accounts) {
 		await moveTime(web3, DAY_SECONDS * 10)
 		await (await stakingPool.enter(parseADX('10'))).wait()
 
-		assert.ok(
-			(await stakingPool.balanceOf(userAcc)).gt(prevBal),
-			'should mint additional shares'
-		)
+		assert.ok((await stakingPool.balanceOf(userAcc)).gt(prevBal), 'should mint additional shares')
 	})
 
 	it('enterTo', async function() {
