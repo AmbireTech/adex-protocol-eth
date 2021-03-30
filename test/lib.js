@@ -31,7 +31,7 @@ async function getWithdrawData(
 	const proof = tree.proof(idElem)
 
 	let spenderProof = []
-	if (spender) {
+	if (spender && spenderProofId) {
 		const spenderElem = Channel.getSpenderBalanceLeaf(spenderProofId, spender[spenderProofId])
 		spenderProof = tree.proof(spenderElem)
 	}
