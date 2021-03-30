@@ -5,7 +5,7 @@ interface ISupplyController {
 	function mintIncentive(address addr) external;
 	function mintableIncentive(address addr) external view returns (uint);
 	function mint(address token, address owner, uint amount) external;
-	function changeSupplyController(IADXToken token, address newSupplyController) external;
+	function changeSupplyController(address newSupplyController) external;
 }
 
 interface IADXToken {
