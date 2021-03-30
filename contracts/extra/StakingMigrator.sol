@@ -2,7 +2,10 @@
 pragma solidity 0.8.1;
 
 import "../interfaces/IADXToken.sol";
-import "../StakingPool.sol";
+
+interface IStakingPool {
+	function enterTo(address recipient, uint amount) external;
+}
 
 interface ILegacyStaking {
 	struct BondState {
@@ -19,7 +22,7 @@ contract StakingMigrator {
 	ILegacyStaking public constant legacyStaking = ILegacyStaking(0x4846C6837ec670Bbd1f5b485471c8f64ECB9c534);
 	IADXToken public constant ADXToken = IADXToken(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
 	bytes32 public constant poolId = 0x2ce0c96383fb229d9776f33846e983a956a7d95844fac57b180ed0071d93bb28;
-	StakingPool public newStaking;
+	IStakingPool public newStaking;
 
 	// must be 1000 + the bonus promilles
 	uint public constant WITH_BONUS_PROMILLES = 1048;
@@ -28,7 +31,7 @@ contract StakingMigrator {
 
 	event LogBondMigrated(address indexed bondOwner, bytes32 bondId);
 
-	constructor(StakingPool _newStaking) {
+	constructor(IStakingPool _newStaking) {
 		newStaking = _newStaking;
 		ADXToken.approve(address(_newStaking), type(uint256).max);
 	}
