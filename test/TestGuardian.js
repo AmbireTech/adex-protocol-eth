@@ -1,7 +1,6 @@
 // const promisify = require('util').promisify
 // const { providers, Contract } = require('ethers')
 const { providers, Contract } = require('ethers')
-const { bigNumberify } = require('ethers').utils
 
 const { expectEVMError } = require('./')
 
@@ -12,15 +11,9 @@ const Outpace = artifacts.require('OUTPACE')
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('Guardian', function(accounts) {
-	let token
-	let core
 	let guardian
 
-	const defaultTokenAmount = 2000
 	const userAcc = accounts[0]
-	const leader = accounts[1]
-	const follower = accounts[2]
-	const user2 = accounts[3]
 	const pool = accounts[4]
 
 	before(async function() {
@@ -47,7 +40,6 @@ contract('Guardian', function(accounts) {
 		await guardian.setRefundPromilles(50)
 	})
 
-	it('getRefund', async function() {
-        
-    })
+	// it('getRefund', async function() {
+        // })
 })
