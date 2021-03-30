@@ -229,7 +229,6 @@ contract('StakingPool', function(accounts) {
 
 		const hashdomain = ethers.utils._TypedDataEncoder.hashDomain(domain)
 		const hashStruct = ethers.utils._TypedDataEncoder.hashStruct('Permit', types, typedData)
-
 		const hashEncoded = ethers.utils.solidityKeccak256(
 			['string', 'bytes32', 'bytes32'],
 			[`\x19\x01`, hashdomain, hashStruct]
@@ -238,7 +237,7 @@ contract('StakingPool', function(accounts) {
 		// console.log('hashEncoded ', hashEncoded)
 		// console.log(ethers.utils._TypedDataEncoder.hash(domain, types, typedData))
 
-		// const { v, r, s } = ethers.utils.splitSignature(signature)
+		const { v, r, s } = ethers.utils.splitSignature(signature)
 		// console.log({ governanceAddr })
 		// console.log({ userAcc })
 		// console.log({ v })
