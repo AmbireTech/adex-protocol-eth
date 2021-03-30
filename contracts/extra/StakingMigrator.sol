@@ -26,7 +26,7 @@ contract StakingMigrator {
 
 	mapping(bytes32 => bool) public migratedBonds;
 
-	event LogBondMigrated(bytes32 bondId);
+	event LogBondMigrated(address indexed bondOwner, bytes32 bondId);
 
 	constructor(StakingPool _newStaking) {
 		newStaking = _newStaking;
@@ -36,15 +36,15 @@ contract StakingMigrator {
 	// NOTE: this works by minting the full bondAmount, which is correct if the pool never had any slashing prior
 	// to the migration, which is the case for the Tom pool
 	function migrate(uint bondAmount, uint nonce, address recipient, uint extraAmount) external {
-		require(legacyStaking.slashPoints(poolId) == 1e18, 'POOL_NOT_SLASHED');
+		require(legacyStaking.slashPoints(poolId) == 1e18, "POOL_NOT_SLASHED");
 
 		bytes32 id = keccak256(abi.encode(address(legacyStaking), msg.sender, bondAmount, poolId, nonce));
 
-		require(!migratedBonds[id], 'BOND_MIGRATED');
+		require(!migratedBonds[id], "BOND_MIGRATED");
 		migratedBonds[id] = true;
 
 		ILegacyStaking.BondState memory bondState = legacyStaking.bonds(id);
-		require(bondState.active, 'BOND_NOT_ACTIVE');
+		require(bondState.active, "BOND_NOT_ACTIVE");
 
 		// willUnlock must be lower than 23 april (30 days after 24 march)
 		if (bondState.willUnlock > 0 && bondState.willUnlock < 1619182800) {
@@ -58,6 +58,6 @@ contract StakingMigrator {
 			newStaking.enterTo(recipient, toMint + extraAmount);
 		}
 
-		emit LogBondMigrated(id);
+		emit LogBondMigrated(msg.sender, id);
 	}
 }
