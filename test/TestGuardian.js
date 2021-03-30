@@ -12,6 +12,8 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 contract('Guardian', function(accounts) {
 	let guardian
+	let core
+	let token
 
 	const userAcc = accounts[0]
 	const pool = accounts[4]
