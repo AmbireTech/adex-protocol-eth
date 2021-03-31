@@ -26,6 +26,7 @@ contract StakingMigrator {
 
 	// must be 1000 + the bonus promilles
 	uint public constant WITH_BONUS_PROMILLES = 1048;
+	uint public constant WHALE_BOND = 4000000e18;
 
 	mapping(bytes32 => bool) public migratedBonds;
 
@@ -53,7 +54,9 @@ contract StakingMigrator {
 		if (bondState.willUnlock > 0 && bondState.willUnlock < 1619182800) {
 			ADXToken.supplyController().mint(address(ADXToken), recipient, bondAmount);
 		} else {
-			uint toMint = (bondAmount * WITH_BONUS_PROMILLES) / 1000;
+			uint toMint = (bondAmount > WHALE_BOND)
+				? bondAmount
+				: ((bondAmount * WITH_BONUS_PROMILLES) / 1000);
 			ADXToken.supplyController().mint(address(ADXToken), address(this), toMint);
 
 			// if there is an extraAmount, we expect that the staker will send it to this contract before calling this,
