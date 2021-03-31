@@ -114,8 +114,8 @@ StakingPool:
 * Goerli: https://goerli.etherscan.io/address/0xb6456b57f03352be48bf101b46c1752a0813491a
 
 StakingMigrator:
-* Mainnet: https://etherscan.io/address/0x8ef560918fe15e76b0791d5d5220ee69bf69dce9
-* Goerli: https://goerli.etherscan.io/address/0x8ef560918fe15e76b0791d5d5220ee69bf69dce9
+* Mainnet: https://etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
+* Goerli: https://goerli.etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
 
 ### Deployment strategy
 
