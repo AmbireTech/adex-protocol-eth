@@ -19,7 +19,7 @@ contract GaslessSweeper {
 }
 
 contract GaslessDepositor {
-	constructor(address token,IStakingPool pool, address depositor) {
+	constructor(address token, IStakingPool pool, address depositor) {
 		uint amount = IERC20(token).balanceOf(address(this));
 		SafeERC20.approve(token, address(pool), amount);
 		pool.enterTo(depositor, amount);
