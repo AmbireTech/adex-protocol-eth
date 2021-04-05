@@ -1,7 +1,7 @@
-const Migrations = artifacts.require('./Migrations.sol')
-const AdExCore = artifacts.require('./AdExCore.sol')
+const Migrations = artifacts.require('Migrations')
+const OUTPACE = artifacts.require('OUTPACE')
 
 module.exports = function(deployer) {
-	deployer.deploy(AdExCore)
+	deployer.deploy(OUTPACE)
 	deployer.deploy(Migrations)
 }

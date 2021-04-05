@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.6.12;
+pragma solidity ^0.8.0;
 
 // NOTE: this interface lacks return values for transfer/transferFrom/approve on purpose,
 // as we use the SafeERC20 library to check the return value
@@ -46,16 +46,16 @@ library SafeERC20 {
 
 	function transfer(address token, address to, uint256 amount) internal {
 		GeneralERC20(token).transfer(to, amount);
-		require(checkSuccess());
+		require(checkSuccess(), "SafeERC20: transfer failed");
 	}
 
 	function transferFrom(address token, address from, address to, uint256 amount) internal {
 		GeneralERC20(token).transferFrom(from, to, amount);
-		require(checkSuccess());
+		require(checkSuccess(), "SafeERC20: transferFrom failed");
 	}
 
 	function approve(address token, address spender, uint256 amount) internal {
 		GeneralERC20(token).approve(spender, amount);
-		require(checkSuccess());
+		require(checkSuccess(), "SafeERC20: approve failed");
 	}
 }
