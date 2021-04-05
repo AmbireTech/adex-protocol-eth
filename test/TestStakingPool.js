@@ -134,7 +134,7 @@ contract('StakingPool', function(accounts) {
 		await stakingPool.connect(governanceSigner).setDailyPenaltyMax(newDailyPenalty)
 
 		assert.equal(
-			await stakingPool.MAX_DAILY_PENALTIES_PROMILLES(),
+			await stakingPool.maxDailyPenaltiesPromilles(),
 			newDailyPenalty,
 			'change penalty max value'
 		)
@@ -148,7 +148,7 @@ contract('StakingPool', function(accounts) {
 		await stakingPool.connect(governanceSigner).setRageReceived(newRageReceived)
 
 		assert.equal(
-			await stakingPool.RAGE_RECEIVED_PROMILLES(),
+			await stakingPool.rageReceivedPromilles(),
 			newRageReceived,
 			'change rage received value'
 		)
@@ -233,7 +233,7 @@ contract('StakingPool', function(accounts) {
 		await stakingPool.connect(governanceSigner).setTimeToUnbond(threeDaysInSeconds)
 
 		assert.equal(
-			await stakingPool.TIME_TO_UNBOND(),
+			await stakingPool.timeToUnbond(),
 			threeDaysInSeconds,
 			'change time to unbond value'
 		)
@@ -310,7 +310,7 @@ contract('StakingPool', function(accounts) {
 		const logLeaveEv = receipt.events.find(ev => ev.event === 'LogLeave')
 		assert.ok(logLeaveEv, 'should have LogLeave event')
 		assert.ok(
-			currentBlockTimestamp + (await stakingPool.TIME_TO_UNBOND()).toNumber(),
+			currentBlockTimestamp + (await stakingPool.timeToUnbond()).toNumber(),
 			logLeaveEv.args.unlocksAt.toNumber(),
 			'should have correct unlocksAt'
 		)
