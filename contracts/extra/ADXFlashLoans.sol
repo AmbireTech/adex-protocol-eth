@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "./libs/SafeERC20.sol";
-import "./Identity.sol";
+import "../libs/SafeERC20.sol";
+import "../Identity.sol";
 
 contract ADXFlashLoans {
 	// Note: we need to get funds back via transferFrom, rather than performing a balance check,

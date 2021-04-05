@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.6.12;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./Identity.sol";
 
@@ -8,7 +7,7 @@ contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
 
 	address public creator;
-	constructor() public {
+	constructor() {
 		creator = msg.sender;
 	}
 
@@ -27,16 +26,6 @@ contract IdentityFactory {
 		Identity(addr).execute(txns, signatures);
 	}
 
-	// When the relayer needs to do routines, it'll either call executeRoutines on the Identity directly
-	// if it's already deployed, or call `deployAndRoutines` if the account is still counterfactual
-	function deployAndRoutines(
-		bytes memory code, uint256 salt,
-		Identity.RoutineAuthorization memory auth, Identity.RoutineOperation[] memory operations
-	) public {
-		address addr = deploySafe(code, salt);
-		Identity(addr).executeRoutines(auth, operations);
-	}
-
 	// Withdraw the earnings from various fees (deploy fees and execute fees earned cause of `deployAndExecute`)
 	function withdraw(address tokenAddr, address to, uint256 tokenAmount) public {
 		require(msg.sender == creator, 'ONLY_CREATOR');
@@ -48,7 +37,7 @@ contract IdentityFactory {
 	// The way we mitigate that is by checking if the contract is already deployed and if so, we continue execution
 	function deploySafe(bytes memory code, uint256 salt) internal returns (address) {
 		address expectedAddr = address(uint160(uint256(
-			keccak256(abi.encodePacked(byte(0xff), address(this), salt, keccak256(code)))
+			keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, keccak256(code)))
 		)));
 		uint size;
 		assembly { size := extcodesize(expectedAddr) }

@@ -1,5 +1,8 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
+import "../interfaces/IERC20.sol";
+
+// SPDX-License-Identifier: UNLICENSED
 /**
  * @dev Contract module which provides a basic access control mechanism, where
  * there is an account (an owner) that can be granted exclusive access to
@@ -20,7 +23,7 @@ contract Ownable {
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      */
-    constructor () internal {
+    constructor () {
         address msgSender = msg.sender;
         _owner = msgSender;
         emit OwnershipTransferred(address(0), msgSender);
@@ -64,18 +67,6 @@ contract Ownable {
     }
 }
 
-
-interface IERC20 {
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-    function transfer(address recipient, uint256 amount) external returns (bool);
-    function allowance(address owner, address spender) external view returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-}
-
 interface ILoyaltyPool {
 	function enter(uint256 amount) external;
 	function leave(uint256 shares) external;
@@ -97,11 +88,11 @@ contract ADXLoyaltyArb is Ownable {
 	IERC20 public constant ADX = IERC20(0xADE00C28244d5CE17D72E40330B1c318cD12B7c3);
 	IERC20 public constant ADXL = IERC20(0xd9A4cB9dc9296e111c66dFACAb8Be034EE2E1c2C);
 
-	constructor() public {
-		ADX.approve(address(uniswap), uint(-1));
-		ADX.approve(address(ADXL), uint(-1));
-		ADXL.approve(address(uniswap), uint(-1));
-		ADXL.approve(address(ADXL), uint(-1));
+	constructor() {
+		ADX.approve(address(uniswap), type(uint256).max);
+		ADX.approve(address(ADXL), type(uint256).max);
+		ADXL.approve(address(uniswap), type(uint256).max);
+		ADXL.approve(address(ADXL), type(uint256).max);
 	}
 
 	// No need to check success here, no safeerc20

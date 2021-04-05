@@ -1,7 +1,7 @@
 const { providers, Contract } = require('ethers')
 const { bigNumberify } = require('ethers').utils
 
-const { expectEVMError, setTime } = require('./')
+const { expectEVMError } = require('./')
 
 const MockToken = artifacts.require('./mocks/Token')
 const ADXToken = artifacts.require('ADXToken')
@@ -24,14 +24,19 @@ contract('ADXToken', function(accounts) {
 
 		const tokenWeb3 = await MockToken.new()
 		prevToken = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
-		const adxSupplyControllerWeb3 = await ADXSupplyController.new({ from: governance })
+		const adxTokenWeb3 = await ADXToken.new(userAddr, prevToken.address)
+
+		const adxSupplyControllerWeb3 = await ADXSupplyController.new(adxTokenWeb3.address, {
+			from: governance
+		})
 		adxSupplyController = new Contract(
 			adxSupplyControllerWeb3.address,
 			ADXSupplyController._json.abi,
 			signerWithGovernance
 		)
-		const adxTokenWeb3 = await ADXToken.new(adxSupplyController.address, prevToken.address)
 		adxToken = new Contract(adxTokenWeb3.address, ADXToken._json.abi, signer)
+		// change supply controller to appropriate contract
+		await adxToken.changeSupplyController(adxSupplyController.address)
 	})
 
 	it('token meta', async function() {
@@ -56,7 +61,7 @@ contract('ADXToken', function(accounts) {
 			'prev token amount is 5000'
 		)
 		assert.equal(receipt.events.length, 2, '2 Transfer events')
-		assert.ok(receipt.gasUsed.toNumber() < 100000, 'gas usage is OK')
+		assert.ok(receipt.gasUsed.toNumber() < 105000, 'gas usage is OK')
 
 		assert.deepEqual(await adxToken.totalSupply(), expectedAmnt, 'total supply is reflected')
 
@@ -89,15 +94,9 @@ contract('ADXToken', function(accounts) {
 			adxToken.balanceOf(userAddr)
 		])
 
-		// After Aug 10
-		await setTime(web3, 1597018600)
 		const largeAmnt = bigNumberify('60000000000000000000000000')
-		await expectEVMError(
-			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt),
-			'EARLY_MINT_TOO_LARGE'
-		)
-		// After Sep 10
-		await setTime(web3, 1599697000)
+		const totalSupply = (await adxToken.totalSupply()).toString()
+		console.log({ totalSupply })
 		await expectEVMError(
 			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)),
 			'MINT_TOO_LARGE'
