@@ -117,6 +117,10 @@ StakingMigrator:
 * Mainnet: https://etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
 * Goerli: https://goerli.etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
 
+GaslessSweeper:
+* Mainnet: https://etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
+* Goerli: https://goerli.etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
+
 ### Deployment strategy
 
 The full deploy processis as follows
