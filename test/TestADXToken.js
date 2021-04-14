@@ -95,6 +95,8 @@ contract('ADXToken', function(accounts) {
 		])
 
 		const largeAmnt = bigNumberify('60000000000000000000000000')
+		const totalSupply = (await adxToken.totalSupply()).toString()
+		console.log({ totalSupply })
 		await expectEVMError(
 			adxSupplyController.mint(tokenAddr, userAddr, largeAmnt.mul(5)),
 			'MINT_TOO_LARGE'

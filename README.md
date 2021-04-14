@@ -103,6 +103,24 @@ The `SupplyController` contract:
 * Mainnet: https://mainnet.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
 * Goerli: https://goerli.etherscan.io/address/0x617e6f354d288fcb33e148b1bb6d2cc9be1f7695
 
+New V5 `SupplyController` (increased cap to account for the to-be burned staking migration ADX):
+
+* Mainnet: https://etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
+* Goerli: https://goerli.etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
+
+StakingPool:
+
+* Mainnet: https://etherscan.io/address/0xb6456b57f03352be48bf101b46c1752a0813491a
+* Goerli: https://goerli.etherscan.io/address/0xb6456b57f03352be48bf101b46c1752a0813491a
+
+StakingMigrator:
+* Mainnet: https://etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
+* Goerli: https://goerli.etherscan.io/address/0x27851df171c419a8e05cac7d7b45a9fa72b0a07c
+
+GaslessSweeper:
+* Mainnet: https://etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
+* Goerli: https://goerli.etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
+
 ### Deployment strategy
 
 The full deploy processis as follows

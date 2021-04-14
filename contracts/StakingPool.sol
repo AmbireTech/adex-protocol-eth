@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.1;
 
 import "./interfaces/IADXToken.sol";
 
@@ -350,7 +350,7 @@ contract StakingPool {
 		require(msg.sender == guardian, "NOT_GUARDIAN");
 		// AUDIT: we can do getLimitRemaining() instead of resetLimits() that returns the remaining limit
 		resetLimits();
-		// Technically redundant cause we"ll fail on the subtraction, but we"re doing this for better err msgs
+		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
 		require(limitRemaining >= adxAmount, "LIMITS");
 		limitRemaining -= adxAmount;
 		require(ADXToken.transfer(address(0), adxAmount));

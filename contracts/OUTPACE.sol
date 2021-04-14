@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.1;
 
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
