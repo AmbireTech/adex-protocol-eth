@@ -119,4 +119,5 @@ contract('Guardian', function(accounts) {
 			'REFUND_ALREADY_RECEIVED'
 		)
 	})
+
 })

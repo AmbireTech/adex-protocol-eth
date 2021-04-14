@@ -5,6 +5,11 @@ const { ecsign } = require('ethereumjs-util')
 const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
 const { UnbondCommitment, getApprovalDigest } = require('../js')
 const { parseADX } = require('./lib')
+const { providers, Contract } = require('ethers')
+const { bigNumberify, parseUnits } = require('ethers').utils
+
+const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
+const { UnbondCommitment } = require('../js')
 
 const StakingPoolArtifact = artifacts.require('StakingPool')
 const MockChainlink = artifacts.require('MockChainlink')
@@ -17,6 +22,7 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 const wallet = ethers.Wallet.createRandom()
+
 
 contract('StakingPool', function(accounts) {
 	let stakingPool
@@ -251,8 +257,9 @@ contract('StakingPool', function(accounts) {
 		const receipt = await (await stakingPool.enter(parseADX('10'))).wait()
 		assert.equal(receipt.events.length, 3, 'should emit event')
 
+		const prevBal = await stakingPool.balanceOf(userAcc)
 		assert.equal(
-			(await stakingPool.balanceOf(userAcc)).toString(),
+			prevBal.toString(),
 			parseADX('10').toString(),
 			'should mint equivalent pool tokens'
 		)
@@ -268,6 +275,7 @@ contract('StakingPool', function(accounts) {
 			'10001157273463719476',
 			'should mint additional shares'
 		)
+		assert.ok((await stakingPool.balanceOf(userAcc)).gt(prevBal), 'should mint additional shares')
 	})
 
 	it('enterTo', async function() {
@@ -373,7 +381,6 @@ contract('StakingPool', function(accounts) {
 		assert.equal((await stakingPool.commitments(unbondCommitment.hashHex())).toString(), '0')
 
 		assert.equal((await stakingPool.lockedShares(logLeaveEv.args.owner)).toString(), '0')
-		// @TODO check shares amount
 	})
 
 	it('rageLeave', async function() {
@@ -387,8 +394,6 @@ contract('StakingPool', function(accounts) {
 		const currentBalance = await adxToken.balanceOf(userAcc)
 		const leaveReceipt = await (await stakingPool.rageLeave(parseADX('10'), false)).wait()
 		const logRageLeaveEv = leaveReceipt.events.find(ev => ev.event === 'LogRageLeave')
-
-		// @TODO confirm received Tokens
 		assert.equal(
 			(await adxToken.balanceOf(userAcc)).toString(),
 			currentBalance.add(logRageLeaveEv.args.receivedTokens).toString(),

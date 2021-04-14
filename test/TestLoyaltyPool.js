@@ -98,7 +98,7 @@ contract('LoyaltyPool', function(accounts) {
 		await adxToken.approve(loyaltyPool.address, amountToTest)
 		// console.log('new share', formatADX(await loyaltyPool.shareValue()))
 		// console.log('to mint', formatADX(await loyaltyPool.toMint()))
-		await loyaltyPool.leave(shares)
+		await loyaltyPool.leave(shares, { gasLimit: 200000 })
 		const currentBal = await adxToken.balanceOf(userAddr)
 		// console.log('current bal', formatADX(currentBal))
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
