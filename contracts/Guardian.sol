@@ -3,10 +3,7 @@ pragma solidity 0.8.1;
 
 import "./OUTPACE.sol";
 import "./libs/SafeERC20.sol";
-
-interface IStakingPool {
-	function claim(address tokenOut, address to, uint amount) external;
-}
+import "./interfaces/IStakingPool.sol";
 
 contract Guardian {
 	// validator => pool contract
