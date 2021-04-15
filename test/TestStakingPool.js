@@ -5,11 +5,6 @@ const { ecsign } = require('ethereumjs-util')
 const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
 const { UnbondCommitment, getApprovalDigest } = require('../js')
 const { parseADX } = require('./lib')
-const { providers, Contract } = require('ethers')
-const { bigNumberify, parseUnits } = require('ethers').utils
-
-const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
-const { UnbondCommitment } = require('../js')
 
 const StakingPoolArtifact = artifacts.require('StakingPool')
 const MockChainlink = artifacts.require('MockChainlink')
@@ -22,7 +17,6 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
 const DAY_SECONDS = 24 * 60 * 60
 const wallet = ethers.Wallet.createRandom()
-
 
 contract('StakingPool', function(accounts) {
 	let stakingPool
