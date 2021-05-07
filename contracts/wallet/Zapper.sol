@@ -31,8 +31,14 @@ interface IUniswapSimple {
 
 
 contract WalletZapper {
-	// @TODO: constructor
-
+	// @TODO: is it only one lending pool?
+	IAaveLendingPool public lendingPool;
+	uint16 refCode;
+	constructor(IAaveLendingPool _lendingPool, uint16 _refCode) {
+		lendingPool = _lendingPool;
+		refCode = _refCode;
+		// @TODO approvals
+	}
 
 	struct Trade {
 		IUniswapSimple router;
@@ -44,6 +50,8 @@ contract WalletZapper {
 	}
 
 	function exchange(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
+		//for (uint i=0; i!=assetsToUnwrap.length; i++) {
+		//}
 		// @TODO: unwrap
 		// @TODO: should those be vars
 		address to = msg.sender;
@@ -54,8 +62,9 @@ contract WalletZapper {
 			if (!trade.wrap) {
 				trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, to, deadline);
 			} else {
-				trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, address(this), deadline);
-				// @TODO aaveLendingPool.deposit(trade.path[last], outAmount, to, refCode);
+				uint[] memory amounts = trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, address(this), deadline);
+				uint lastIdx = trade.path.length - 1;
+				lendingPool.deposit(trade.path[lastIdx], amounts[lastIdx], to, refCode);
 			}
 		}
 		// @TODO: wrapping
