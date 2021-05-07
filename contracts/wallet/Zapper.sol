@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.8.1;
 
+import "../interfaces/IERC20.sol";
+
 interface IAaveLendingPool {
   function deposit(
     address asset,
@@ -8,6 +10,11 @@ interface IAaveLendingPool {
     address onBehalfOf,
     uint16 referralCode
   ) external;
+  function withdraw(
+    address asset,
+    uint256 amount,
+    address to
+  ) external returns (uint256);
 }
 
 // Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
@@ -50,8 +57,9 @@ contract WalletZapper {
 	}
 
 	function exchange(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
-		//for (uint i=0; i!=assetsToUnwrap.length; i++) {
-		//}
+		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
+		}
 		// @TODO: unwrap
 		// @TODO: should those be vars
 		address to = msg.sender;
@@ -67,10 +75,18 @@ contract WalletZapper {
 				lendingPool.deposit(trade.path[lastIdx], amounts[lastIdx], to, refCode);
 			}
 		}
-		// @TODO: wrapping
+		// @TODO are there ways to ensure there are no leftover funds?
 
 	}
 
-	function wrapLending() external {
+	function wrapLending(address[] calldata assetsToWrap) external {
+		for (uint i=0; i!=assetsToWrap.length; i++) {
+			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, refCode);
+		}
+	}
+	function unwrapLending(address[] calldata assetsToUnwrap) external {
+		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, msg.sender);
+		}
 	}
 }
