@@ -36,7 +36,8 @@ interface IUniswapSimple {
 	) external returns (uint[] memory amounts);
 }
 
-
+// Decisions: will start with aave over compound (easier API - has `onBehalfOf`, referrals), compound can be added later if needed
+// uni v3 needs to be supported since it's proving that it's efficient and the router is different
 contract WalletZapper {
 	// @TODO: is it only one lending pool?
 	IAaveLendingPool public lendingPool;
@@ -56,6 +57,13 @@ contract WalletZapper {
 		bool wrap;
 	}
 
+	// @TODO an additional approve router function (onlyOwner)
+	function approve(address token, address spender) public {
+		// require onlyOwner
+		IERC20(token).approve(spender, type(uint256).max);
+	}
+
+	// @TODO: return all the outputs from this?
 	function exchange(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
 		for (uint i=0; i!=assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
