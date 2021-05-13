@@ -2,6 +2,7 @@
 pragma solidity 0.8.1;
 
 import "../interfaces/IERC20.sol";
+import "../interfaces/IUniV3SwapRouter.sol";
 
 interface IAaveLendingPool {
   function deposit(
@@ -108,10 +109,15 @@ contract WalletZapper {
 		}
 	}
 
+	// wrpap WETH
+	function wrapETH() payable external {
+		payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).transfer(msg.value);
+	}
+
 	// V3
 	function tradeV3(address uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external {
-		ISwapRouter().exactInputSingle(
-		    ISwapRouter(uniV3Router).ExactInputSingleParams (
+		ISwapRouter(uniV3Router).exactInputSingle(
+		    ISwapRouter.ExactInputSingleParams (
 			tokenIn,
 			tokenOut,
 			3000, // @TODO
