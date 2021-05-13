@@ -39,15 +39,6 @@ interface IUniswapSimple {
 // Decisions: will start with aave over compound (easier API - has `onBehalfOf`, referrals), compound can be added later if needed
 // uni v3 needs to be supported since it's proving that it's efficient and the router is different
 contract WalletZapper {
-	// @TODO: is it only one lending pool?
-	IAaveLendingPool public lendingPool;
-	uint16 refCode;
-	constructor(IAaveLendingPool _lendingPool, uint16 _refCode) {
-		lendingPool = _lendingPool;
-		refCode = _refCode;
-		// @TODO approvals
-	}
-
 	struct Trade {
 		IUniswapSimple router;
 		// @TODO should there be a trade type
@@ -57,9 +48,30 @@ contract WalletZapper {
 		bool wrap;
 	}
 
+	address admin;
+
+	// @TODO: perhaps hardcode the routers too, and do not pass them in on the struct
+	// or not, since we might want to perform different trades using different v2 routers
+	// but then we will need an array of allowed spenders in constructor
+	
+	// @TODO: is it only one lending pool?
+	mapping (address => bool) allowedSpenders;
+	IAaveLendingPool public lendingPool;
+	uint16 aaveRefCode;
+	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address uniV2Router, address uniV3Router) {
+		admin = msg.sender;
+		lendingPool = _lendingPool;
+		aaveRefCode = _aaveRefCode;
+		allowedSpenders[address(_lendingPool)] = true;
+		allowedSpenders[uniV2Router] = true;
+		allowedSpenders[uniV3Router] = true;
+		// @TODO approvals
+	}
+
 	// @TODO an additional approve router function (onlyOwner)
-	function approve(address token, address spender) public {
-		// require onlyOwner
+	function approve(address token, address spender) external {
+		require(msg.sender == admin, "NOT_ADMIN");
+		require(allowedSpenders[spender], "NOT_ALLOWED");
 		IERC20(token).approve(spender, type(uint256).max);
 	}
 
@@ -80,7 +92,7 @@ contract WalletZapper {
 			} else {
 				uint[] memory amounts = trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, address(this), deadline);
 				uint lastIdx = trade.path.length - 1;
-				lendingPool.deposit(trade.path[lastIdx], amounts[lastIdx], to, refCode);
+				lendingPool.deposit(trade.path[lastIdx], amounts[lastIdx], to, aaveRefCode);
 			}
 		}
 		// @TODO are there ways to ensure there are no leftover funds?
@@ -89,7 +101,7 @@ contract WalletZapper {
 
 	function wrapLending(address[] calldata assetsToWrap) external {
 		for (uint i=0; i!=assetsToWrap.length; i++) {
-			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, refCode);
+			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, aaveRefCode);
 		}
 	}
 	function unwrapLending(address[] calldata assetsToUnwrap) external {
