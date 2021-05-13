@@ -80,8 +80,6 @@ contract WalletZapper {
 		for (uint i=0; i!=assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
-		// @TODO: unwrap
-		// @TODO: should those be vars
 		address to = msg.sender;
 		uint deadline = block.timestamp;
 		// @TODO: should trades.length be assigned to a local var? if so, should this be applied to other places in v5 as well?
@@ -108,5 +106,21 @@ contract WalletZapper {
 		for (uint i=0; i!=assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, msg.sender);
 		}
+	}
+
+	// V3
+	function tradeV3(address uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external {
+		ISwapRouter().exactInputSingle(
+		    ISwapRouter(uniV3Router).ExactInputSingleParams (
+			tokenIn,
+			tokenOut,
+			3000, // @TODO
+			msg.sender,
+			block.timestamp,
+			amount,
+			minOut,
+			0
+		    )
+		);
 	}
 }
