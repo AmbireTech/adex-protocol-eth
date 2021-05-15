@@ -48,6 +48,14 @@ contract WalletZapper {
 		address[] path;
 		bool wrap;
 	}
+	struct DiversificationTrade {
+		address tokenOut;
+		uint allocPts;
+		uint amountOutMin;
+		bool wrap;
+	}
+
+	address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
 	address admin;
 
@@ -69,8 +77,7 @@ contract WalletZapper {
 		// @TODO approvals
 	}
 
-	// @TODO an additional approve router function (onlyOwner)
-	function approve(address token, address spender) external {
+	function approveMax(address token, address spender) external {
 		require(msg.sender == admin, "NOT_ADMIN");
 		require(allowedSpenders[spender], "NOT_ALLOWED");
 		IERC20(token).approve(spender, type(uint256).max);
@@ -111,12 +118,13 @@ contract WalletZapper {
 
 	// wrpap WETH
 	function wrapETH() payable external {
-		payable(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2).transfer(msg.value);
+		// TODO: it may be slightly cheaper to call deposit() directly
+		payable(WETH).transfer(msg.value);
 	}
 
 	// V3
-	function tradeV3(address uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external {
-		ISwapRouter(uniV3Router).exactInputSingle(
+	function tradeV3(ISwapRouter uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external {
+		uniV3Router.exactInputSingle(
 		    ISwapRouter.ExactInputSingleParams (
 			tokenIn,
 			tokenOut,
@@ -128,5 +136,62 @@ contract WalletZapper {
 			0
 		    )
 		);
+	}
+
+	function diversifyV3(ISwapRouter uniV3Router, address inputAsset, DiversificationTrade[] memory trades) external {
+		uint inputAmount;
+		if (inputAsset != address(0)) {
+			inputAmount = uniV3Router.exactInputSingle(
+			    ISwapRouter.ExactInputSingleParams (
+				inputAsset,
+				WETH,
+				3000, // @TODO
+				address(this),
+				block.timestamp,
+				IERC20(inputAsset).balanceOf(address(this)),
+				0, // @TODO minOut
+				0
+			    )
+			);
+		} else {
+			inputAmount = IERC20(WETH).balanceOf(address(this));
+		}
+
+		uint totalAllocPts;
+		for (uint i=0; i!=trades.length; i++) {
+			DiversificationTrade memory trade = trades[i];
+			totalAllocPts += trade.allocPts;
+			if (!trade.wrap) {
+				uniV3Router.exactInputSingle(
+				    ISwapRouter.ExactInputSingleParams (
+					WETH,
+					trade.tokenOut,
+					3000, // @TODO
+					msg.sender,
+					block.timestamp,
+					inputAmount * trade.allocPts / 1000,
+					trade.amountOutMin,
+					0
+				    )
+				);
+			} else {
+				uint amountToDeposit = uniV3Router.exactInputSingle(
+				    ISwapRouter.ExactInputSingleParams (
+					WETH,
+					trade.tokenOut,
+					3000, // @TODO
+					address(this),
+					block.timestamp,
+					inputAmount * trade.allocPts / 1000,
+					trade.amountOutMin,
+					0
+				    )
+				);
+				lendingPool.deposit(trade.tokenOut, amountToDeposit, msg.sender, aaveRefCode);
+			}
+		}
+
+		require(totalAllocPts == 1000, "ALLOC_PTS");
+
 	}
 }
