@@ -67,13 +67,13 @@ contract WalletZapper {
 	mapping (address => bool) allowedSpenders;
 	IAaveLendingPool public lendingPool;
 	uint16 aaveRefCode;
-	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] allowedSpenders) {
+	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] memory spenders) {
 		admin = msg.sender;
 		lendingPool = _lendingPool;
 		aaveRefCode = _aaveRefCode;
 		allowedSpenders[address(_lendingPool)] = true;
-		for (uint i=0; i!=allowedSpenders.length; i++) {
-			allowedSpenders[allowedSpenders[i]] = true;
+		for (uint i=0; i!=spenders.length; i++) {
+			allowedSpenders[spenders[i]] = true;
 		}
 	}
 
@@ -124,21 +124,11 @@ contract WalletZapper {
 	}
 
 	// Uniswap V3
-	// @TODO: multi-path trade
-	// @TODO: perhaps simplify this by just making it a proxy to uniV3Router and passing in the whole struct
-	function tradeV3(ISwapRouter uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external returns (uint) {
-		return uniV3Router.exactInputSingle(
-		    ISwapRouter.ExactInputSingleParams (
-			tokenIn,
-			tokenOut,
-			3000, // @TODO
-			msg.sender,
-			block.timestamp,
-			amount,
-			minOut,
-			0
-		    )
-		);
+	function tradeV3(ISwapRouter uniV3Router, ISwapRouter.ExactInputParams calldata params) external returns (uint) {
+		return uniV3Router.exactInput(params);
+	}
+	function tradeV3Single(ISwapRouter uniV3Router, ISwapRouter.ExactInputSingleParams calldata params) external returns (uint) {
+		return uniV3Router.exactInputSingle(params);
 	}
 
 	// @TODO logs/return output amounts?
