@@ -67,14 +67,14 @@ contract WalletZapper {
 	mapping (address => bool) allowedSpenders;
 	IAaveLendingPool public lendingPool;
 	uint16 aaveRefCode;
-	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address uniV2Router, address uniV3Router) {
+	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] allowedSpenders) {
 		admin = msg.sender;
 		lendingPool = _lendingPool;
 		aaveRefCode = _aaveRefCode;
 		allowedSpenders[address(_lendingPool)] = true;
-		allowedSpenders[uniV2Router] = true;
-		allowedSpenders[uniV3Router] = true;
-		// @TODO approvals
+		for (uint i=0; i!=allowedSpenders.length; i++) {
+			allowedSpenders[allowedSpenders[i]] = true;
+		}
 	}
 
 	function approveMax(address token, address spender) external {
@@ -84,7 +84,7 @@ contract WalletZapper {
 	}
 
 	// @TODO: return all the outputs from this?
-	function exchange(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
+	function exchangeV2(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
 		for (uint i=0; i!=assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
@@ -105,6 +105,7 @@ contract WalletZapper {
 
 	}
 
+	// go in/out of lending assets
 	function wrapLending(address[] calldata assetsToWrap) external {
 		for (uint i=0; i!=assetsToWrap.length; i++) {
 			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, aaveRefCode);
@@ -116,15 +117,17 @@ contract WalletZapper {
 		}
 	}
 
-	// wrpap WETH
+	// wrap WETH
 	function wrapETH() payable external {
 		// TODO: it may be slightly cheaper to call deposit() directly
 		payable(WETH).transfer(msg.value);
 	}
 
-	// V3
-	function tradeV3(ISwapRouter uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external {
-		uniV3Router.exactInputSingle(
+	// Uniswap V3
+	// @TODO: multi-path trade
+	// @TODO: perhaps simplify this by just making it a proxy to uniV3Router and passing in the whole struct
+	function tradeV3(ISwapRouter uniV3Router, address tokenIn, address tokenOut, uint amount, uint minOut) external returns (uint) {
+		return uniV3Router.exactInputSingle(
 		    ISwapRouter.ExactInputSingleParams (
 			tokenIn,
 			tokenOut,
@@ -138,6 +141,7 @@ contract WalletZapper {
 		);
 	}
 
+	// @TODO logs/return output amounts?
 	function diversifyV3(ISwapRouter uniV3Router, address inputAsset, DiversificationTrade[] memory trades) external {
 		uint inputAmount;
 		if (inputAsset != address(0)) {
