@@ -42,7 +42,6 @@ interface IUniswapSimple {
 contract WalletZapper {
 	struct Trade {
 		IUniswapSimple router;
-		// @TODO should there be a trade type
 		uint amountIn;
 		uint amountOutMin;
 		address[] path;
@@ -58,12 +57,6 @@ contract WalletZapper {
 	address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
 	address admin;
-
-	// @TODO: perhaps hardcode the routers too, and do not pass them in on the struct
-	// or not, since we might want to perform different trades using different v2 routers
-	// but then we will need an array of allowed spenders in constructor
-	
-	// @TODO: is it only one lending pool?
 	mapping (address => bool) allowedSpenders;
 	IAaveLendingPool public lendingPool;
 	uint16 aaveRefCode;
@@ -83,15 +76,19 @@ contract WalletZapper {
 		IERC20(token).approve(spender, type(uint256).max);
 	}
 
-	// @TODO: return all the outputs from this?
+	// Uniswap V2
+	// We're choosing not to implement a special function for performing a single trade since it's not that much of a gas saving compared to this
+	// We're also choosing not to implement a method like diversifyV3 which first trades the input asset to WETH and then WETH to whatever,
+	//  because we expect diversifyV3 to be enough
+	// We can very easily deploy a new Zapper and upgrade to it since it's just a UI change
 	function exchangeV2(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
 		for (uint i=0; i!=assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
 		address to = msg.sender;
 		uint deadline = block.timestamp;
-		// @TODO: should trades.length be assigned to a local var? if so, should this be applied to other places in v5 as well?
-		for (uint i=0; i!=trades.length; i++) {
+		uint len = trades.length;
+		for (uint i=0; i!=len; i++) {
 			Trade memory trade = trades[i];
 			if (!trade.wrap) {
 				trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, to, deadline);
@@ -152,7 +149,8 @@ contract WalletZapper {
 		}
 
 		uint totalAllocPts;
-		for (uint i=0; i!=trades.length; i++) {
+		uint len = trades.length;
+		for (uint i=0; i!=len; i++) {
 			DiversificationTrade memory trade = trades[i];
 			totalAllocPts += trade.allocPts;
 			if (!trade.wrap) {
