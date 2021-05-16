@@ -184,6 +184,10 @@ contract WalletZapper {
 		}
 
 		require(totalAllocPts == 1000, "ALLOC_PTS");
+	}
 
+	function recoverFunds(IERC20 token, uint amount) external {
+		require(msg.sender == admin, "NOT_ADMIN");
+		token.transfer(admin, amount);
 	}
 }
