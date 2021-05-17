@@ -49,6 +49,7 @@ contract WalletZapper {
 	}
 	struct DiversificationTrade {
 		address tokenOut;
+		uint24 fee;
 		uint allocPts;
 		uint amountOutMin;
 		bool wrap;
@@ -128,19 +129,19 @@ contract WalletZapper {
 		return uniV3Router.exactInputSingle(params);
 	}
 
-	// @TODO logs/return output amounts?
-	function diversifyV3(ISwapRouter uniV3Router, address inputAsset, DiversificationTrade[] memory trades) external {
+	// @TODO: unwrap input
+	function diversifyV3(ISwapRouter uniV3Router, address inputAsset, uint24 inputFee, uint inputMinOut, DiversificationTrade[] memory trades) external {
 		uint inputAmount;
 		if (inputAsset != address(0)) {
 			inputAmount = uniV3Router.exactInputSingle(
 			    ISwapRouter.ExactInputSingleParams (
 				inputAsset,
 				WETH,
-				3000, // @TODO
+				inputFee,
 				address(this),
 				block.timestamp,
 				IERC20(inputAsset).balanceOf(address(this)),
-				0, // @TODO minOut
+				inputMinOut,
 				0
 			    )
 			);
@@ -158,7 +159,7 @@ contract WalletZapper {
 				    ISwapRouter.ExactInputSingleParams (
 					WETH,
 					trade.tokenOut,
-					3000, // @TODO
+					trade.fee,
 					msg.sender,
 					block.timestamp,
 					inputAmount * trade.allocPts / 1000,
@@ -171,7 +172,7 @@ contract WalletZapper {
 				    ISwapRouter.ExactInputSingleParams (
 					WETH,
 					trade.tokenOut,
-					3000, // @TODO
+					trade.fee,
 					address(this),
 					block.timestamp,
 					inputAmount * trade.allocPts / 1000,
