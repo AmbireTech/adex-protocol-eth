@@ -57,8 +57,8 @@ contract WalletZapper {
 
 	address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-	address admin;
-	mapping (address => bool) allowedSpenders;
+	address public admin;
+	mapping (address => bool) public allowedSpenders;
 	IAaveLendingPool public lendingPool;
 	uint16 aaveRefCode;
 	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] memory spenders) {
@@ -129,7 +129,7 @@ contract WalletZapper {
 		return uniV3Router.exactInputSingle(params);
 	}
 
-	// @TODO: unwrap input
+	// @TODO: unwrap input from aToken?
 	function diversifyV3(ISwapRouter uniV3Router, address inputAsset, uint24 inputFee, uint inputMinOut, DiversificationTrade[] memory trades) external {
 		uint inputAmount;
 		if (inputAsset != address(0)) {
