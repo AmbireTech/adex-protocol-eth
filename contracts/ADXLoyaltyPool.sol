@@ -236,21 +236,23 @@ contract ADXLoyaltyPoolIncentiveController {
 		uint price = ADXUSDOracle.latestAnswer();
 		require(price > 0, 'INVALID_ANSWER');
 		if (price < 0.05*10**8) {
-			loyaltyPool.setIncentive(uint(0.10*10**18));
+			loyaltyPool.setIncentive(uint(0.05*10**18));
 		} else if (price < 0.10*10**8) {
-			loyaltyPool.setIncentive(uint(0.15*10**18));
+			loyaltyPool.setIncentive(uint(0.10*10**18));
 		} else if (price < 0.20*10**8) {
+			loyaltyPool.setIncentive(uint(0.20*10**18));
+		} else if (price < 0.35*10**8) {
 			loyaltyPool.setIncentive(uint(0.25*10**18));
-		} else if (price < 0.30*10**8) {
-			loyaltyPool.setIncentive(uint(0.30*10**18));
 		} else if (price < 0.50*10**8) {
-			loyaltyPool.setIncentive(uint(0.35*10**18));
+			loyaltyPool.setIncentive(uint(0.30*10**18));
 		} else if (price < 1.00*10**8) {
-			loyaltyPool.setIncentive(uint(0.40*10**18));
+			loyaltyPool.setIncentive(uint(0.35*10**18));
 		} else if (price < 2.00*10**8) {
-			loyaltyPool.setIncentive(uint(0.45*10**18));
+			loyaltyPool.setIncentive(uint(0.38*10**18));
+		} else if (price < 2.50*10**8) {
+			loyaltyPool.setIncentive(uint(0.40*10**18));
 		} else {
-			loyaltyPool.setIncentive(uint(0.50*10**18));
+			loyaltyPool.setIncentive(uint(0.45*10**18));
 		}
 	}
 }
