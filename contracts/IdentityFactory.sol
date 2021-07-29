@@ -22,7 +22,7 @@ contract IdentityFactory {
 		bytes memory code, uint256 salt,
 		Identity.Transaction[] memory txns, bytes32[3][] memory signatures
 	) public {
-		address addr = deploySafe(code, salt);
+		address payable addr = payable(deploySafe(code, salt));
 		Identity(addr).execute(txns, signatures);
 	}
 
