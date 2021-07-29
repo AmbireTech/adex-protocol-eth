@@ -56,7 +56,8 @@ contract IdentityProxy {
 		${feeCode}
 	}
 
-	function () external
+	// Can accept ETH
+	function () external payable
 	{
 		address to = address(${proxiedAddr});
 		assembly {
