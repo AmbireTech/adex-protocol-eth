@@ -127,9 +127,15 @@ contract WalletZapper {
 	}
 	
 	function tradeV3Single(ISwapRouter uniV3Router, ISwapRouter.ExactInputSingleParams calldata params, bool wrapOutputToLending) external returns (uint) {
-		uint amountOut = uniV3Router.exactInputSingle(params);
+		ISwapRouter.ExactInputSingleParams memory tradeParams = params;
+		address recipient = params.recipient;
 		if(wrapOutputToLending) {
-			lendingPool.deposit(params.tokenOut, amountOut, msg.sender, aaveRefCode);
+			tradeParams.recipient = address(this);
+		}
+
+		uint amountOut = uniV3Router.exactInputSingle(tradeParams);
+		if(wrapOutputToLending) {
+			lendingPool.deposit(params.tokenOut, amountOut, recipient, aaveRefCode);
 		}
 		return amountOut;
 	}
