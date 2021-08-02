@@ -102,7 +102,13 @@ module.exports = {
 			provider: () => new HDWalletProvider(mnemonic, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
 			network_id: 1,
 			gasPrice: 41e9, // in gwei
-		}
+		},
+
+		goerli: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://goerli.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
+			network_id: 5,
+			gasPrice: 5e9,
+		},
 	},
 
 	// Set default mocha options here, use special reporters etc.
