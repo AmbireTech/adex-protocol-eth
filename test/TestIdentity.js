@@ -264,18 +264,6 @@ contract('Identity', function(accounts) {
 			gasLimit
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
-
-		const initialNonce = parseInt(relayerTx.nonce, 10)
-		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
-
-		const invalidNonceTx = new Transaction({
-			...relayerTx,
-			nonce: initialNonce
-		})
-		await expectEVMError(
-			idWithUser.executeBySender([invalidNonceTx.toSolidityTuple()]),
-			'WRONG_NONCE'
-		)
 	})
 
 	it('actions: channel deposit, withdraw', async function() {
