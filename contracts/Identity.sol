@@ -19,6 +19,8 @@ contract Identity {
 	struct Transaction {
 		// replay protection
 		address identityContract;
+		// The nonce is also part of the replay protection, when signing Transaction objects we need to ensure they can be ran only once
+		// this means it doesn't apply to executeBySender
 		uint nonce;
 		// tx fee, in tokens
 		address feeTokenAddr;
@@ -103,10 +105,6 @@ contract Identity {
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
-			require(txn.nonce == nonce, 'WRONG_NONCE');
-
-			nonce = nonce + 1;
-
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// The actual anti-bricking mechanism - do not allow the sender to drop his own priviledges
