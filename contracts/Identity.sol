@@ -134,6 +134,7 @@ contract Identity {
 	}
 
 	// EIP 1271 implementation
+	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
 		if (privileges[SignatureValidator.recoverAddrBytes(hash, signature)]) {
 			// bytes4(keccak256("isValidSignature(bytes32,bytes)")

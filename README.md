@@ -125,9 +125,13 @@ GaslessSweeper:
 
 `IdentityFactory` contract:
 * Mainnet: https://etherscan.io/address/0x50484176F62bc7B5c5F24Db12ce0508c514D0C07
+* Goerli: https://goerli.etherscan.io/address/0x50484176F62bc7B5c5F24Db12ce0508c514D0C07
+* Polygon: https://polygonscan.com/address/0x50484176F62bc7B5c5F24Db12ce0508c514D0C07
 
 `Identity` contract:
 * Mainnet: https://etherscan.io/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
+* Goerli: https://goerli.etherscan.io/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
+* Polygon: https://polygonscan.com/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
 
 
 ### Deployment strategy

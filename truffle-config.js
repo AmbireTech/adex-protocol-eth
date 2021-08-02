@@ -109,6 +109,18 @@ module.exports = {
 			network_id: 5,
 			gasPrice: 5e9,
 		},
+
+		polygon: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://matic-mainnet-archive-ws.bwarelabs.com'),
+			network_id: 137,
+			gasPrice: 2e9,
+		},
+
+		bsc: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://bsc-ws-node.nariox.org:443'),
+			network_id: 56,
+			gasPrice: 5e9,
+		},
 	},
 
 	// Set default mocha options here, use special reporters etc.
