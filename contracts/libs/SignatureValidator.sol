@@ -78,34 +78,4 @@ library SignatureValidator {
 		require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
 		return ecrecover(hash, v, r, s);
 	}
-
-	/// @notice Recover the signer of hash, assuming it's an EOA account
-	/// @dev adds the "Ethereum signed message" prefix
-	/// @param _hash       Hash of message that was signed
-	/// @param _signature  Signature encoded as (bytes32 r, bytes32 s, uint8 v)
-	/// @return Returns an address of the user who signed
-	function recoverAddrBytesWithPrefix(bytes data, bytes signature) internal pure returns (address) {
-		bytes32 messageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n", uint2str(data.length), data));
-		return recoverAddrBytesNoPrefix(messageHash, signature);
-	}
-
-	function uint2str(uint num) internal pure returns (string memory uintAsString) {
-		if (_num == 0) {
-			return "0";
-		}
-		uint i = _num;
-		uint j = _num;
-		uint len;
-		while (j != 0) {
-			len++;
-			j /= 10;
-		}
-		bytes memory bstr = new bytes(len);
-		uint k = len - 1;
-		while (i != 0) {
-			bstr[k--] = byte(uint8(48 + i % 10));
-			i /= 10;
-		}
-		return string(bstr);
-	}
 }
