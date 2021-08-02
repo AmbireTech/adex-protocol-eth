@@ -121,6 +121,15 @@ GaslessSweeper:
 * Mainnet: https://etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
 * Goerli: https://goerli.etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
 
+### Wallet
+
+`IdentityFactory` contract:
+* Mainnet: https://etherscan.io/address/0x50484176F62bc7B5c5F24Db12ce0508c514D0C07
+
+`Identity` contract:
+* Mainnet: https://etherscan.io/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
+
+
 ### Deployment strategy
 
 The full deploy processis as follows

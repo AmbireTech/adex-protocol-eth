@@ -28,6 +28,12 @@
 // const fs = require('fs');
 // const mnemonic = fs.readFileSync(".secret").toString().trim();
 
+const HDWalletProvider = require('@truffle/hdwallet-provider')
+const fs = require('fs')
+// 0x0f3df49b4ee51fa47ae3c66b365c33e018cdd557
+const mnemonic = fs.readFileSync('.deployKey').toString().trim()
+
+
 module.exports = {
 	/**
 	 * Networks define how you connect to your ethereum client and let you set the
@@ -85,6 +91,12 @@ module.exports = {
 			// provider: () => new HDWalletProvider(mnemonic, `https://network.io`),
 			// network_id: 2111,   // This network is yours, in the cloud.
 			// production: true    // Treats this network as if it was a public net. (default: false)
+		},
+
+		mainnet: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
+			network_id: 1,
+			gasPrice: 31e9, // in gwei
 		}
 	},
 
