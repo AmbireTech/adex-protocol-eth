@@ -41,10 +41,10 @@ library SignatureValidator {
 
 	/// @notice Recover the signer of hash, assuming it's an EOA account
 	/// @dev Only for EthSign signatures
-	/// @param _hash       Hash of message that was signed
-	/// @param _signature  Signature encoded as (bytes32 r, bytes32 s, uint8 v)
+	/// @param hash       Hash of message that was signed
+	/// @param signature  Signature encoded as (bytes32 r, bytes32 s, uint8 v)
 	/// @return Returns an address of the user who signed
-	function recoverAddrBytesNoPrefix(bytes32 hash, bytes signature) internal pure returns (address) {
+	function recoverAddrBytesNoPrefix(bytes32 hash, bytes memory signature) internal pure returns (address) {
 		// only implements case 65: r,s,v signature (standard)
 		// see https://github.com/OpenZeppelin/openzeppelin-contracts/blob/d3c5bdf4def690228b08e0ac431437288a50e64a/contracts/utils/cryptography/ECDSA.sol#L32
 		require(signature.length == 65, "SignatureValidator: invalid signature length");
@@ -57,7 +57,6 @@ library SignatureValidator {
 			s := mload(add(signature, 0x40))
 			v := byte(0, mload(add(signature, 0x60)))
 		}
-
 
 		// EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature
 		// unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines
@@ -73,9 +72,9 @@ library SignatureValidator {
 		// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/cryptography/ECDSA.sol
 		require(
 			uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0,
-			"ECDSA: invalid signature 's' value"
+			"SignatureValidator: invalid signature 's' value"
 		);
-		require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
+		require(v == 27 || v == 28, "SignatureValidator: invalid signature 'v' value");
 		return ecrecover(hash, v, r, s);
 	}
 }

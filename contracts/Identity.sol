@@ -134,4 +134,15 @@ contract Identity {
 			default {}
 		}
 	}
+
+	// EIP 1271 implementation
+	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+		hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+		if (privileges[SignatureValidator.recoverAddrBytesNoPrefix(hash, signature)]) {
+			// bytes4(keccak256("isValidSignature(bytes32,bytes)")
+			return 0x1626ba7e;
+		} else {
+			return 0xffffffff;
+		}
+	}
 }
