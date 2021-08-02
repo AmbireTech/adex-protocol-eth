@@ -9,9 +9,9 @@ change_bytecode_to_json_and_move () {
 
 mkdir -p temp
 
-solc --overwrite --abi --bin contracts/OUTPACE.sol -o temp
-solc --overwrite --allow-paths . --abi --bin contracts/deposits/Depositor.sol -o temp
-solc --overwrite --allow-paths . --abi --bin contracts/deposits/Sweeper.sol -o temp
+solc --overwrite --optimize --abi --bin contracts/OUTPACE.sol -o temp
+solc --overwrite --optimize --allow-paths . --abi --bin contracts/deposits/Depositor.sol -o temp
+solc --overwrite --optimize --allow-paths . --abi --bin contracts/deposits/Sweeper.sol -o temp
 solc --overwrite --abi contracts/Identity.sol -o temp 
 solc --overwrite --abi contracts/IdentityFactory.sol -o temp 
 solc --overwrite --abi contracts/StakingPool.sol -o temp 
