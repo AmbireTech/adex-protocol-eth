@@ -51,6 +51,15 @@ contract Identity {
 		emit LogPrivilegeChanged(addr, priv);
 	}
 
+	function tipMiner(uint amount)
+		external
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		// See https://docs.flashbots.net/flashbots-auction/searchers/advanced/coinbase-payment/#managing-payments-to-coinbaseaddress-when-it-is-a-contract
+		// generally this contract is reentrancy proof cause of the nonce
+		executeCall(block.coinbase, amount, new bytes(0));
+	}
+
 	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
 		public
 	{
