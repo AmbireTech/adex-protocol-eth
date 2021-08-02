@@ -31,7 +31,12 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider')
 const fs = require('fs')
 // 0x0f3df49b4ee51fa47ae3c66b365c33e018cdd557
-const mnemonic = fs.readFileSync('.deployKey').toString().trim()
+let mnemonic
+try {
+	mnemonic = fs.readFileSync('.deployKey').toString().trim()
+} catch(e) {
+	console.error('WARNING: unable to read .deploykey, mainnet wont work', e)
+}
 
 
 module.exports = {
@@ -96,8 +101,26 @@ module.exports = {
 		mainnet: {
 			provider: () => new HDWalletProvider(mnemonic, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
 			network_id: 1,
-			gasPrice: 31e9, // in gwei
-		}
+			gasPrice: 41e9, // in gwei
+		},
+
+		goerli: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://goerli.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
+			network_id: 5,
+			gasPrice: 5e9,
+		},
+
+		polygon: {
+			provider: () => new HDWalletProvider(mnemonic, 'wss://matic-mainnet-archive-ws.bwarelabs.com'),
+			network_id: 137,
+			gasPrice: 4e9,
+		},
+
+		bsc: {
+			provider: () => new HDWalletProvider(mnemonic, 'https://bsc-dataseed1.binance.org'),
+			network_id: 56,
+			gasPrice: 5e9,
+		},
 	},
 
 	// Set default mocha options here, use special reporters etc.
