@@ -113,11 +113,11 @@ module.exports = {
 		polygon: {
 			provider: () => new HDWalletProvider(mnemonic, 'wss://matic-mainnet-archive-ws.bwarelabs.com'),
 			network_id: 137,
-			gasPrice: 2e9,
+			gasPrice: 4e9,
 		},
 
 		bsc: {
-			provider: () => new HDWalletProvider(mnemonic, 'wss://bsc-ws-node.nariox.org:443'),
+			provider: () => new HDWalletProvider(mnemonic, 'https://bsc-dataseed1.binance.org'),
 			network_id: 56,
 			gasPrice: 5e9,
 		},
