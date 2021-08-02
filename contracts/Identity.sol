@@ -90,7 +90,7 @@ contract Identity {
 	function executeBySender(Transaction[] memory txns)
 		public
 	{
-		require(privileges[msg.sender] == true, 'INSUFFICIENT_PRIVILEGE_SENDER');
+		require(privileges[msg.sender] == true || msg.sender == address(this), 'INSUFFICIENT_PRIVILEGE_SENDER');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
