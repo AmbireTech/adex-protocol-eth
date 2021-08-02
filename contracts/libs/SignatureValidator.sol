@@ -44,7 +44,7 @@ library SignatureValidator {
 	/// @param _hash       Hash of message that was signed
 	/// @param _signature  Signature encoded as (bytes32 r, bytes32 s, uint8 v)
 	/// @return Returns an address of the user who signed
-	function recoverAddrBytes(bytes32 hash, bytes signature) internal pure returns (address) {
+	function recoverAddrBytesNoPrefix(bytes32 hash, bytes signature) internal pure returns (address) {
 		// only implements case 65: r,s,v signature (standard)
 		// see https://github.com/OpenZeppelin/openzeppelin-contracts/blob/d3c5bdf4def690228b08e0ac431437288a50e64a/contracts/utils/cryptography/ECDSA.sol#L32
 		require(signature.length == 65, "SignatureValidator: invalid signature length");
@@ -76,8 +76,6 @@ library SignatureValidator {
 			"ECDSA: invalid signature 's' value"
 		);
 		require(v == 27 || v == 28, "ECDSA: invalid signature 'v' value");
-
-		hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
 		return ecrecover(hash, v, r, s);
 	}
 }
