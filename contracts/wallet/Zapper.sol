@@ -3,6 +3,7 @@ pragma solidity 0.8.1;
 
 import "../interfaces/IERC20.sol";
 import "../interfaces/IUniV3SwapRouter.sol";
+import "../libs/SafeERC20.sol";
 
 interface IAaveLendingPool {
   function deposit(
@@ -71,10 +72,18 @@ contract WalletZapper {
 		}
 	}
 
-	function approveMax(address token, address spender) external {
+	function approveMaxMany(address spender, address[] calldata tokens) external {
 		require(msg.sender == admin, "NOT_ADMIN");
 		require(allowedSpenders[spender], "NOT_ALLOWED");
-		IERC20(token).approve(spender, type(uint256).max);
+		for (uint i=0; i!=tokens.length; i++) {
+			SafeERC20.approve(tokens[i], spender, type(uint256).max);
+		}
+	}
+
+	function approve(address token, address spender, uint amount) external {
+		require(msg.sender == admin, "NOT_ADMIN");
+		require(allowedSpenders[spender], "NOT_ALLOWED");
+		SafeERC20.approve(token, spender, amount);
 	}
 
 	// Uniswap V2
