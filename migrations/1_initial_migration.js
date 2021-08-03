@@ -7,7 +7,6 @@ module.exports = async function(deployer) {
 	await deployer.deploy(IdentityFactory)
 	await deployer.deploy(Identity, [])
 	// ethereum mainnet: https://docs.aave.com/developers/v/2.0/deployed-contracts/deployed-contracts
-	/*
 	await deployer.deploy(Zapper, '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', 0, [
 		// uni v2
 		'0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
@@ -16,9 +15,7 @@ module.exports = async function(deployer) {
 		// sushi
 		'0xd9e1ce17f2641f24ae83637ab66a2cca9c378b9f'
 	])
-	*/
 
-	/*
 	const zapper = await Zapper.deployed()
 	const tokens = [
 		'0xdac17f958d2ee523a2206206994597c13d831ec7', // usdt
@@ -31,14 +28,12 @@ module.exports = async function(deployer) {
 	]
 	for (let spender of [
 		// uni v2
-		//'0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
+		'0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
 		// uni v3
 		'0xE592427A0AEce92De3Edee1F18E0157C05861564',
 	]) {
-		for (let token of tokens) {
-			console.log(token, spender)
-			await zapper.approveMax(token, spender)
-		}
+		console.log(`Approving tokens for ${spender} on zapper ${zapper.address}`, tokens)
+		await zapper.approveMaxMany(spender, tokens)
 	}
-	*/
+
 }
