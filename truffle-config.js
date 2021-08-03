@@ -101,7 +101,7 @@ module.exports = {
 		mainnet: {
 			provider: () => new HDWalletProvider(mnemonic, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
 			network_id: 1,
-			gasPrice: 41e9, // in gwei
+			gasPrice: 46e9, // in gwei
 		},
 
 		goerli: {
