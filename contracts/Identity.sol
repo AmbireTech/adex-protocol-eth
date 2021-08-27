@@ -144,3 +144,26 @@ contract Identity {
 		}
 	}
 }
+
+contract MultiSig {
+	// @TODO logs
+	mapping (address => mapping (bytes32 => bool)) public multisigs;
+	function setMultisig(bytes32 id, bool on) public {
+		multisigs[msg.sender][id] = on;
+	}
+	function execMultsig(Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
+		// we allow an array passed in so we can easily give it to executeBySender, but this should only look at one txn
+		require(txns.length == 1, "MULTISIG_ONLY_ONE_TXN");
+		Identity.Transaction memory txn = txns[0];
+		bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeAmount, txn.to, txn.value, txn.data));
+		uint len = signatures.length;
+		bytes32 id;
+		for (uint i=0; i<len; i++) {
+			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
+			if (i==0) id = keccak256(abi.encode(signer));
+			else id = keccak256(abi.encode(id, signer));
+		}
+		require(multisigs[txn.identityContract][id], "MULTISIG_UNAUTHORIZED");
+		Identity(payable(txn.identityContract)).executeBySender(txns);
+	}
+}
