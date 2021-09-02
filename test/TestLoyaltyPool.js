@@ -74,7 +74,7 @@ contract('LoyaltyPool', function(accounts) {
 
 		// enter the pool
 		await adxToken.approve(loyaltyPool.address, amountToTest)
-		await loyaltyPool.enter(amountToTest)
+		await loyaltyPool.enter(amountToTest, { gasLimit: 150000 })
 
 		// leave and test bal
 		const preLeave = await adxToken.balanceOf(userAddr)
@@ -88,7 +88,7 @@ contract('LoyaltyPool', function(accounts) {
 
 		// We need to re-enter first
 		await adxToken.approve(loyaltyPool.address, amountToTest)
-		await loyaltyPool.enter(amountToTest)
+		await loyaltyPool.enter(amountToTest, { gasLimit: 150000 })
 		const shares = await loyaltyPool.balanceOf(userAddr)
 		// console.log('share val', formatADX(await loyaltyPool.shareValue()))
 		// console.log('shares', formatADX(shares.toString(10)))
@@ -98,7 +98,7 @@ contract('LoyaltyPool', function(accounts) {
 		await adxToken.approve(loyaltyPool.address, amountToTest)
 		// console.log('new share', formatADX(await loyaltyPool.shareValue()))
 		// console.log('to mint', formatADX(await loyaltyPool.toMint()))
-		await loyaltyPool.leave(shares, { gasLimit: 200000 })
+		await loyaltyPool.leave(shares, { gasLimit: 250000 })
 		const currentBal = await adxToken.balanceOf(userAddr)
 		// console.log('current bal', formatADX(currentBal))
 		assert.ok(currentBal.gt(postLeave.add(incentive)), 'incurred more than the annual incentive')
