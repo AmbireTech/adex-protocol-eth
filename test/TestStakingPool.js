@@ -301,11 +301,11 @@ contract('StakingPool', function(accounts) {
 		await (await adxToken.approve(stakingPool.address, parseADX('1000'))).wait()
 		// enter staking pool
 		const sharesToMint = parseADX('10')
-		await (await stakingPool.enter(sharesToMint)).wait()
+		await (await stakingPool.enter(sharesToMint, { gasLimit: 200000 })).wait()
 
 		await expectEVMError(stakingPool.leave(parseADX('10000'), false), 'INSUFFICIENT_SHARES')
 
-		const receipt = await (await stakingPool.leave(sharesToMint, false)).wait()
+		const receipt = await (await stakingPool.leave(sharesToMint, false, { gasLimit: 150000 })).wait()
 		const currentBlockTimestamp = (await web3.eth.getBlock('latest')).timestamp
 		assert.equal(receipt.events.length, 2, 'should emit LogLeave event')
 
