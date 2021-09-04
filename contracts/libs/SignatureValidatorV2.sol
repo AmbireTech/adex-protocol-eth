@@ -90,8 +90,9 @@ library SignatureValidator {
 			require(sig.length == 66, "sig len");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
-			// @TODO: is there a gas savign to be had here?
+			// @TODO: is there a gas saving to be had here by using assembly?
 			uint8 v = uint8(sig[64]);
+			require(v == 27 || v == 28, "invalid v");
 			if (mode == SignatureMode.EIP712) return ecrecover(hash, v, r, s);
 			else return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)), v, r, s);
 		}
