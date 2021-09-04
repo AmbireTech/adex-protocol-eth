@@ -98,7 +98,7 @@ library SignatureValidator {
 		if (mode == SignatureMode.Wallet) {
 			// @TODO: sig len check
 			require(sig.length > 33, "sig len");
-			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 32)))));
+			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
 			sig.trimToSize(sig.length - 33); // 32 bytes for the addr, 1 byte for the type
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
 			return address(wallet);
