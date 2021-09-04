@@ -74,6 +74,8 @@ library SignatureValidator {
 
 	function recoverAddr(bytes32 hash, bytes memory sig) internal view returns (address) {
 		// @TODO sig len check
+		// @TODO err messages
+		require(sig.length >= 1, "sig len");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
 		require(modeRaw < uint8(SignatureMode.UNSUPPORTED), "unsupported sig mode");
 		SignatureMode mode = SignatureMode(modeRaw);
@@ -85,19 +87,26 @@ library SignatureValidator {
 		if (mode == SignatureMode.CALLER) return msg.sender;
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.ETHSIGN) {
 			// @TODO sig len check
+			require(sig.length == 66, "sig len");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
+			// @TODO: is there a gas savign to be had here?
 			uint8 v = uint8(sig[64]);
 			if (mode == SignatureMode.EIP712) return ecrecover(hash, v, r, s);
 			else return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)), v, r, s);
 		}
 		if (mode == SignatureMode.WALLET) {
 			// @TODO: sig len check
+			require(sig.length > 33, "sig len");
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 32)))));
 			sig.trimToSize(sig.length - 33); // 32 bytes for the addr, 1 byte for the type
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
 			return address(wallet);
 		}
 		// @TODO: return 0?
+	}
+
+	function isValid(bytes32 hash, address signer, bytes memory sig) internal view returns (bool) {
+		return recoverAddr(hash, sig) == signer;
 	}
 }
