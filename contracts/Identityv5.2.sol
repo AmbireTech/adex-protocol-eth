@@ -78,9 +78,9 @@ contract Identity {
 			currentNonce = currentNonce + 1;
 
 			executeCall(txn.to, txn.value, txn.data);
-			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
-			require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 		}
+		// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
+		require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
