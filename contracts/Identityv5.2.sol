@@ -57,8 +57,8 @@ contract Identity {
 		executeCall(block.coinbase, amount, new bytes(0));
 	}
 
-	function execute(Transaction[] memory txns, bytes memory signature)
-		public
+	function execute(Transaction[] calldata txns, bytes calldata signature)
+		external
 	{
 		require(txns.length > 0, 'MUST_PASS_TX');
 		// If we use the naive abi.encode(txn) and have a field of type `bytes`,
