@@ -60,13 +60,13 @@ library SignatureValidator {
 	using LibBytes for bytes;
 
 	enum SignatureMode {
-		NO_SIG,
-		CALLER,
+		NoSig,
+		Caller,
 		EIP712,
-		ETHSIGN,
-		WALLET,
+		EthSign,
+		Wallet,
 		// must be at the end
-		UNSUPPORTED
+		Unsupported
 	}
 
 	// bytes4(keccak256("isValidSignature(bytes32,bytes)"))
@@ -77,15 +77,15 @@ library SignatureValidator {
 		// @TODO err messages
 		require(sig.length >= 1, "sig len");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
-		require(modeRaw < uint8(SignatureMode.UNSUPPORTED), "unsupported sig mode");
+		require(modeRaw < uint8(SignatureMode.Unsupported), "unsupported sig mode");
 		SignatureMode mode = SignatureMode(modeRaw);
 
-		if (mode == SignatureMode.NO_SIG) {
+		if (mode == SignatureMode.NoSig) {
 			return address(0x0);
 		}
 
-		if (mode == SignatureMode.CALLER) return msg.sender;
-		if (mode == SignatureMode.EIP712 || mode == SignatureMode.ETHSIGN) {
+		if (mode == SignatureMode.Caller) return msg.sender;
+		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
 			// @TODO sig len check
 			require(sig.length == 66, "sig len");
 			bytes32 r = sig.readBytes32(0);
@@ -95,7 +95,7 @@ library SignatureValidator {
 			if (mode == SignatureMode.EIP712) return ecrecover(hash, v, r, s);
 			else return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)), v, r, s);
 		}
-		if (mode == SignatureMode.WALLET) {
+		if (mode == SignatureMode.Wallet) {
 			// @TODO: sig len check
 			require(sig.length > 33, "sig len");
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 32)))));
