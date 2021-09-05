@@ -4,12 +4,12 @@ pragma solidity ^0.8.1;
 import "./libs/SignatureValidatorV2.sol";
 
 contract Identity {
-	mapping (address => bool) public privileges;
+	mapping (address => bytes32) public privileges;
 	// The next allowed nonce
 	uint public nonce = 0;
 
 	// Events
-	event LogPrivilegeChanged(address indexed addr, bool priv);
+	event LogPrivilegeChanged(address indexed addr, bytes32 priv);
 
 	// Transaction structure
 	// we handle replay protection separately by requiring (address(this), chainID, nonce) as part of the sig
@@ -22,8 +22,9 @@ contract Identity {
 	constructor(address[] memory addrs) {
 		uint len = addrs.length;
 		for (uint i=0; i<len; i++) {
-			privileges[addrs[i]] = true;
-			emit LogPrivilegeChanged(addrs[i], true);
+			// @TODO should we allow setting to any arb value here?
+			privileges[addrs[i]] = bytes32(uint(1));
+			emit LogPrivilegeChanged(addrs[i], bytes32(uint(1)));
 		}
 	}
 
@@ -55,7 +56,7 @@ contract Identity {
 		}
 	}
 
-	function setAddrPrivilege(address addr, bool priv)
+	function setAddrPrivilege(address addr, bytes32 priv)
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
@@ -86,27 +87,27 @@ contract Identity {
 		nonce = currentNonce + 1;
 
 		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer], 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[signer] != bytes32(0x00), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// The actual anti-bricking mechanism - do not allow a signer to drop their own priviledges
-		require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[signer] != bytes32(0x00), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// no need for nonce management here cause we're not dealing with sigs
 	function executeBySender(Transaction[] calldata txns) external {
 		require(txns.length > 0, 'MUST_PASS_TX');
-		require(privileges[msg.sender], 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[msg.sender] != bytes32(0x00), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// again, anti-bricking
-		require(privileges[msg.sender] == true, 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[msg.sender] != bytes32(0x00), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
@@ -134,7 +135,7 @@ contract Identity {
 	// EIP 1271 implementation
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		if (privileges[SignatureValidator.recoverAddr(hash, signature)]) {
+		if (privileges[SignatureValidator.recoverAddr(hash, signature)] != bytes32(0x00)) {
 			// bytes4(keccak256("isValidSignature(bytes32,bytes)")
 			return 0x1626ba7e;
 		} else {
