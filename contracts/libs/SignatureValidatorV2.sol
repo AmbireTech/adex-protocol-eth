@@ -93,12 +93,13 @@ library SignatureValidator {
 			// @TODO: is there a gas saving to be had here by using assembly?
 			uint8 v = uint8(sig[64]);
 			require(v == 27 || v == 28, "invalid v");
-			if (mode == SignatureMode.EIP712) return ecrecover(hash, v, r, s);
-			else return ecrecover(keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)), v, r, s);
+			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
+			return ecrecover(hash, v, r, s);
 		}
 		if (mode == SignatureMode.Wallet) {
 			// @TODO: sig len check
 			require(sig.length > 33, "sig len");
+			// @TODO: can we pack the addr tigher into 20 bytes? should we?
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
 			sig.trimToSize(sig.length - 33); // 32 bytes for the addr, 1 byte for the type
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
