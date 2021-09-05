@@ -166,54 +166,33 @@ contract MagicAccManager {
 		// @TODO allow one to just skip the sig?
 	}
 
-	enum Action {
-		ExecNow,
-		Queue,
-		Cancel
-	}
-
 	function send(Identity identity, MagicAccount calldata acc, Action action, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
+		// @TODO: Security: we must also hash in the hash of the MagicAccount, otherwise the sig of one key can be reused across multiple
+
+		// we still need to use an incrementing nonce for Queue, Cancel cause otherwise some can grief attack and cancel the same txn if it was cancelled in the past
 		bytes32 hash = keccak256(abi.encode(
-			action,
 			address(this),
 			block.chainid,
-			nonces[address(identity)],
+			nonces[address(identity)]++,
 			txns
 		));
-		// @TODO can we use the nonce as a method of avoiding Action, and should we?
-		if (action == Action.ExecNow) {
-			nonces[address(identity)]++;
-			require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_A');
-			require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_B');
+		bool validOne = acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_A');
+		bool validTwo = acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_B');
+		if (validOne && validTwo) {
 			identity.executeBySender(txns);
-		}
-		if (action == Action.Queue) {
-			// w/o this, an attacker can simply keep enqueuing it, delaying it forever
-			require(enqueued[hash] == 0, 'ALREADY_ENQUEUED');
-
-			address signer = SignatureValidator.recoverAddr(hash, sigOne);
-			require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
-
-			enqueued[hash] = block.timestamp + timelock;
-		}
-		if (action == Action.Cancel) {
-			require(enqueued[hash] != 0, 'NOT_ENQUEUED');
-			address signer = SignatureValidator.recoverAddr(hash, sigOne);
-			require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
-			delete enqueued[hash];
+		} else {
+			require(validOne || validTwo, 'NO_VALID');
+			if (enqueued[hash]) {
+				delete enqueued[hash];
+			} else {
+				enqueued[hash] = block.timestamp + timelock;
+			}
 		}
 	}
 
-	function execEnqueued(Identity identity, MagicAccount calldata acc, Identity.Transaction[] calldata txns) external {
-		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
-		bytes32 hash = keccak256(abi.encode(
-			Action.Queue,
-			address(this),
-			block.chainid,
-			nonces[address(identity)],
-			txns
-		));
+	function execEnqueued(Identity identity, uint nonce, Identity.Transaction[] calldata txns) external {
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, nonce, txns));
 		require(enqueued[hash] != 0 && block.timestamp > enqueued[hash], 'NOT_TIME');
 		identity.executeBySender(txns);
 	}
