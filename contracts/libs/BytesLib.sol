@@ -1,3 +1,5 @@
+pragma solidity ^0.8.1;
+
 // @TODO: Formatting
 library LibBytes {
   using LibBytes for bytes;

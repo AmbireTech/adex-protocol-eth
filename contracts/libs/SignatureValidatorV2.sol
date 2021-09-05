@@ -55,7 +55,7 @@ library SignatureValidator {
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
 			return address(wallet);
 		}
-		// @TODO: return 0?
+		return address(0x00);
 	}
 
 	function isValid(bytes32 hash, address signer, bytes memory sig) internal view returns (bool) {
