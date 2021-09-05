@@ -13,13 +13,8 @@ contract Identity {
 	event LogPrivilegeChanged(address indexed addr, bool priv);
 
 	// Transaction structure
-	// Those can be executed by keys with >= PrivilegeLevel.Transactions
-	// Even though the contract cannot receive ETH, we are able to send ETH (.value), cause ETH might've been sent to the contract address before it's deployed
+	// we handle replay protection separately by requiring (address(this), chainID, nonce) as part of the sig
 	struct Transaction {
-		// The nonce is also part of the replay protection, when signing Transaction objects we need to ensure they can be ran only once
-		// this means it doesn't apply to executeBySender
-		uint nonce;
-		// all the regular txn data
 		address to;
 		uint value;
 		bytes data;
@@ -64,20 +59,16 @@ contract Identity {
 		// If we use the naive abi.encode(txn) and have a field of type `bytes`,
 		// there is a discrepancy between ethereumjs-abi and solidity
 		// @TODO check if this is resolved1
-		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, txns));
+		uint currentNonce = nonce;
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, currentNonce, txns));
+		// We have to increment before execution cause it protects from reentrancies
+		nonce = currentNonce + 1;
+
 		address signer = SignatureValidator.recoverAddr(hash, signature);
 		require(privileges[signer], 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 		uint len = txns.length;
-		uint currentNonce = nonce;
-		// Incrementing before executing: the tradeoff here is that anyone who is reading nonce within a txn will read a wrong value
-		// but, it's good from a security perspective as it protects from reentrancies, and also it's gas efficient as it doesn't SSTORE for every txn
-		nonce = nonce + txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
-
-			require(txn.nonce == currentNonce, 'WRONG_NONCE');
-			currentNonce = currentNonce + 1;
-
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
