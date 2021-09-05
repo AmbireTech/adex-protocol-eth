@@ -56,8 +56,4 @@ library SignatureValidator {
 		}
 		return address(0x00);
 	}
-
-	function isValid(bytes32 hash, address signer, bytes memory sig) internal view returns (bool) {
-		return recoverAddr(hash, sig) == signer;
-	}
 }
