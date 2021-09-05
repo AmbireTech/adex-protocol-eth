@@ -69,12 +69,13 @@ contract Identity {
 		require(privileges[signer], 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
 		uint len = txns.length;
 		uint currentNonce = nonce;
+		// Incrementing before executing: the tradeoff here is that anyone who is reading nonce within a txn will read a wrong value
+		// but, it's good from a security perspective as it protects from reentrancies, and also it's gas efficient as it doesn't SSTORE for every txn
 		nonce = nonce + txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
-			require(txn.nonce == currentNonce, 'WRONG_NONCE');
 
-			// tradeoff here is that anyone who is reading nonce within a txn will read a wrong value
+			require(txn.nonce == currentNonce, 'WRONG_NONCE');
 			currentNonce = currentNonce + 1;
 
 			executeCall(txn.to, txn.value, txn.data);
