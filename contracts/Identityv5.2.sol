@@ -169,8 +169,6 @@ contract MagicAccManager {
 	function send(Identity identity, MagicAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 		// @TODO: Security: we must also hash in the hash of the MagicAccount, otherwise the sig of one key can be reused across multiple
-
-		// we still need to use an incrementing nonce for Queue, Cancel cause otherwise some can grief attack and cancel the same txn if it was cancelled in the past
 		bytes32 hash = keccak256(abi.encode(
 			address(this),
 			block.chainid,
