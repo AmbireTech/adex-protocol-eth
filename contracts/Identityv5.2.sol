@@ -196,6 +196,7 @@ contract MagicAccManager {
 	function execEnqueued(Identity identity, bytes32 acc, uint nonce, Identity.Transaction[] calldata txns) external {
 		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, acc, nonce, txns));
 		require(enqueued[hash] != 0 && block.timestamp > enqueued[hash], 'NOT_TIME');
+		delete enqueued[hash];
 		identity.executeBySender(txns);
 	}
 }
