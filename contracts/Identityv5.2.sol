@@ -166,57 +166,49 @@ contract MagicAccManager {
 		// @TODO allow one to just skip the sig?
 	}
 
-	function exec(Identity identity, MagicAccount calldata acc, bytes calldata sigA, bytes calldata sigB, Identity.Transaction[] calldata txns) external {
-		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
-		bytes32 hash = keccak256(abi.encode(
-			address(this),
-			block.chainid,
-			nonces[address(identity)]++,
-			txns
-		));
-		require(acc.one == SignatureValidator.recoverAddr(hash, sigA), 'SIG_A');
-		require(acc.two == SignatureValidator.recoverAddr(hash, sigB), 'SIG_B');
-		identity.executeBySender(txns);
+	enum Action {
+		ExecNow,
+		Queue,
+		Cancel
 	}
 
-	// NOTE: if the nonce is changed (exec has happened) then txns get cancelled by definition as the hash can never match
-	function enqueue(Identity identity, MagicAccount calldata acc, bytes calldata sig, Identity.Transaction[] calldata txns) external {
+	function send(Identity identity, MagicAccount calldata acc, Action action, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 		bytes32 hash = keccak256(abi.encode(
-			'queue',
+			action,
 			address(this),
 			block.chainid,
 			nonces[address(identity)],
 			txns
 		));
-		// w/o this, an attacker can simply keep enqueuing it, delaying it forever
-		require(enqueued[hash] == 0, 'ALREADY_ENQUEUED');
+		// @TODO can we use the nonce as a method of avoiding Action, and should we?
+		if (action == Action.ExecNow) {
+			nonces[address(identity)]++;
+			require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_A');
+			require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_B');
+			identity.executeBySender(txns);
+		}
+		if (action == Action.Queue) {
+			// w/o this, an attacker can simply keep enqueuing it, delaying it forever
+			require(enqueued[hash] == 0, 'ALREADY_ENQUEUED');
 
-		address signer = SignatureValidator.recoverAddr(hash, sig);
-		require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
+			address signer = SignatureValidator.recoverAddr(hash, sigOne);
+			require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
 
-		enqueued[hash] = block.timestamp + timelock;
+			enqueued[hash] = block.timestamp + timelock;
+		}
+		if (action == Action.Cancel) {
+			require(enqueued[hash] != 0, 'NOT_ENQUEUED');
+			address signer = SignatureValidator.recoverAddr(hash, sigOne);
+			require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
+			delete enqueued[hash];
+		}
 	}
 
-	function cancel(Identity identity, MagicAccount calldata acc, bytes calldata sig, Identity.Transaction[] calldata txns) external {
+	function execEnqueued(Identity identity, MagicAccount calldata acc, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 		bytes32 hash = keccak256(abi.encode(
-			'cancel',
-			address(this),
-			block.chainid,
-			nonces[address(identity)],
-			txns
-		));
-		require(enqueued[hash] != 0, 'NOT_ENQUEUED');
-		address signer = SignatureValidator.recoverAddr(hash, sig);
-		require(signer == acc.one || signer == acc.two, 'NOT_SIGNED');
-		delete enqueued[hash];
-	}
-
-	function exec(Identity identity, MagicAccount calldata acc, Identity.Transaction[] calldata txns) external {
-		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
-		bytes32 hash = keccak256(abi.encode(
-			'queue',
+			Action.Queue,
 			address(this),
 			block.chainid,
 			nonces[address(identity)],
