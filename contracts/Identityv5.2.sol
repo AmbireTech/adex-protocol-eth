@@ -166,7 +166,7 @@ contract MagicAccManager {
 		// @TODO allow one to just skip the sig?
 	}
 
-	function send(Identity identity, MagicAccount calldata acc, Action action, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
+	function send(Identity identity, MagicAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 		// @TODO: Security: we must also hash in the hash of the MagicAccount, otherwise the sig of one key can be reused across multiple
 
@@ -177,13 +177,13 @@ contract MagicAccManager {
 			nonces[address(identity)]++,
 			txns
 		));
-		bool validOne = acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_A');
-		bool validTwo = acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_B');
+		bool validOne = acc.one == SignatureValidator.recoverAddr(hash, sigOne);
+		bool validTwo = acc.two == SignatureValidator.recoverAddr(hash, sigTwo);
 		if (validOne && validTwo) {
 			identity.executeBySender(txns);
 		} else {
 			require(validOne || validTwo, 'NO_VALID');
-			if (enqueued[hash]) {
+			if (enqueued[hash] != 0) {
 				delete enqueued[hash];
 			} else {
 				enqueued[hash] = block.timestamp + timelock;
