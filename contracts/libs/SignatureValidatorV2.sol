@@ -11,10 +11,9 @@ library SignatureValidator {
 
 	enum SignatureMode {
 		NoSig,
-		Caller,
 		EIP712,
 		EthSign,
-		Wallet,
+		SmartWallet,
 		// must be at the end
 		Unsupported
 	}
@@ -34,7 +33,6 @@ library SignatureValidator {
 			return address(0x0);
 		}
 
-		if (mode == SignatureMode.Caller) return msg.sender;
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
 			// @TODO sig len check
 			require(sig.length == 66, "sig len");
@@ -46,12 +44,13 @@ library SignatureValidator {
 			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
 			return ecrecover(hash, v, r, s);
 		}
-		if (mode == SignatureMode.Wallet) {
+		if (mode == SignatureMode.SmartWallet) {
 			// @TODO: sig len check
+			// 32 bytes for the addr, 1 byte for the type = 33
 			require(sig.length > 33, "sig len");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
-			sig.trimToSize(sig.length - 33); // 32 bytes for the addr, 1 byte for the type
+			sig.trimToSize(sig.length - 33);
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
 			return address(wallet);
 		}
