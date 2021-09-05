@@ -65,14 +65,26 @@ contract Identity {
 		nonce = currentNonce + 1;
 
 		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer], 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
+		require(privileges[signer], 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
-		// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
+		// The actual anti-bricking mechanism - do not allow a signer to drop their own priviledges
 		require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
+	}
+
+	// no need for nonce management here cause we're not dealing with sigs
+	function executeBySender(Transaction[] calldata txns) external {
+		require(privileges[msg.sender], 'INSUFFICIENT_PRIVILEGE');
+		uint len = txns.length;
+		for (uint i=0; i<len; i++) {
+			Transaction memory txn = txns[i];
+			executeCall(txn.to, txn.value, txn.data);
+		}
+		// again, anti-bricking
+		require(privileges[msg.sender] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
