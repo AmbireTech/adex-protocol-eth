@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.1;
 
-import "./libs/SafeERC20.sol";
 import "./libs/SignatureValidatorV2.sol";
 
 contract Identity {
@@ -32,7 +31,15 @@ contract Identity {
 	receive() external payable {}
 
 	// This contract can accept ETH with calldata
-	fallback() external payable {}
+	fallback() external payable {
+		/*
+		if (msg.data.length >= 4) {
+			// solium-disable-next-line security/no-inline-assembly
+			assembly {
+				prefix := mload(add(_data, 0x20))
+			}
+		}*/
+	}
 
 	function setAddrPrivilege(address addr, bool priv)
 		external
@@ -77,6 +84,7 @@ contract Identity {
 
 	// no need for nonce management here cause we're not dealing with sigs
 	function executeBySender(Transaction[] calldata txns) external {
+		require(txns.length > 0, 'MUST_PASS_TX');
 		require(privileges[msg.sender], 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
