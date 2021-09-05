@@ -167,11 +167,13 @@ contract MagicAccManager {
 	}
 
 	function send(Identity identity, MagicAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
-		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
-		// @TODO: Security: we must also hash in the hash of the MagicAccount, otherwise the sig of one key can be reused across multiple
+		bytes32 accHash = keccak256(abi.encode(acc));
+		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+		// Security: we must also hash in the hash of the MagicAccount, otherwise the sig of one key can be reused across multiple accs
 		bytes32 hash = keccak256(abi.encode(
 			address(this),
 			block.chainid,
+			accHash,
 			nonces[address(identity)]++,
 			txns
 		));
@@ -183,14 +185,16 @@ contract MagicAccManager {
 			require(validOne || validTwo, 'NO_VALID');
 			if (enqueued[hash] != 0) {
 				delete enqueued[hash];
+				// @TODO log
 			} else {
 				enqueued[hash] = block.timestamp + timelock;
+				// @TODO log
 			}
 		}
 	}
 
-	function execEnqueued(Identity identity, uint nonce, Identity.Transaction[] calldata txns) external {
-		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, nonce, txns));
+	function execEnqueued(Identity identity, bytes32 acc, uint nonce, Identity.Transaction[] calldata txns) external {
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, acc, nonce, txns));
 		require(enqueued[hash] != 0 && block.timestamp > enqueued[hash], 'NOT_TIME');
 		identity.executeBySender(txns);
 	}
