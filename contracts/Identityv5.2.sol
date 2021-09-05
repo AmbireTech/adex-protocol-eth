@@ -31,14 +31,28 @@ contract Identity {
 	receive() external payable {}
 
 	// This contract can accept ETH with calldata
+	// However, to support EIP 721 and EIP 1155, we need to respond to those methods with their own method signature
 	fallback() external payable {
-		/*
 		if (msg.data.length >= 4) {
+			bytes4 method;
 			// solium-disable-next-line security/no-inline-assembly
 			assembly {
-				prefix := mload(add(_data, 0x20))
+				// can also do shl(224, shr(224, calldataload(0)))
+				method := and(calldataload(0), 0xffffffff00000000000000000000000000000000000000000000000000000000)
 			}
-		}*/
+			if (
+				method == 0x150b7a02 // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
+					|| method == 0xf23a6e61 // bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"))
+					|| method == 0xbc197c81 // bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
+			) {
+				// Copy back the method
+				// solhint-disable-next-line no-inline-assembly
+				assembly {
+					calldatacopy(0, 0, 0x04)
+					return (0, 0x20)
+				}
+			}
+		}
 	}
 
 	function setAddrPrivilege(address addr, bool priv)
@@ -126,5 +140,13 @@ contract Identity {
 		} else {
 			return 0xffffffff;
 		}
+	}
+
+	// EIP 1155 implementation
+	// we pretty much only need to signal that we support the interface and i
+	function supportsInterface(bytes4 interfaceID) external view returns (bool) {
+		return
+			interfaceID == 0x01ffc9a7 ||    // ERC-165 support (i.e. `bytes4(keccak256('supportsInterface(bytes4)'))`).
+			interfaceID == 0x4e2312e0;      // ERC-1155 `ERC1155TokenReceiver` support (i.e. `bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))`).
 	}
 }
