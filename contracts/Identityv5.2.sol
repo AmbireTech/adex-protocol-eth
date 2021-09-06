@@ -60,6 +60,10 @@ contract Identity {
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		// Anti-bricking measure: if the privileges slot is used for special data (not 0x01),
+		// don't allow to set it to true
+		if (privileges[addr] != bytes32(0) && privileges[addr] != bytes32(uint(1)))
+			require(priv != bytes32(uint(1)), 'UNSETTING_SPECIAL_DATA');
 		privileges[addr] = priv;
 		emit LogPrivilegeChanged(addr, priv);
 	}
@@ -88,27 +92,27 @@ contract Identity {
 		nonce = currentNonce + 1;
 
 		address signer = SignatureValidator.recoverAddr(hash, signature);
-		require(privileges[signer] != bytes32(0x00), 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[signer] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// The actual anti-bricking mechanism - do not allow a signer to drop their own priviledges
-		require(privileges[signer] != bytes32(0x00), 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[signer] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// no need for nonce management here cause we're not dealing with sigs
 	function executeBySender(Transaction[] calldata txns) external {
 		require(txns.length > 0, 'MUST_PASS_TX');
-		require(privileges[msg.sender] != bytes32(0x00), 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[msg.sender] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// again, anti-bricking
-		require(privileges[msg.sender] != bytes32(0x00), 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[msg.sender] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
@@ -136,7 +140,7 @@ contract Identity {
 	// EIP 1271 implementation
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		if (privileges[SignatureValidator.recoverAddr(hash, signature)] != bytes32(0x00)) {
+		if (privileges[SignatureValidator.recoverAddr(hash, signature)] != bytes32(0)) {
 			// bytes4(keccak256("isValidSignature(bytes32,bytes)")
 			return 0x1626ba7e;
 		} else {
