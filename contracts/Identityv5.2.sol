@@ -161,12 +161,15 @@ contract MagicAccManager {
 	mapping (address => uint) nonces;
 	mapping (bytes32 => uint) enqueued;
 
+	// @TODO consider replacing this with a tuple if we do not need anything else
 	struct MagicAccount {
 		address one;
 		address two;
 		// @TODO allow one to just skip the sig?
 	}
 
+	// @TODO security possible grieving vector
+	// front-run this tx with only one of the valid signatures...
 	function send(Identity identity, MagicAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
@@ -210,5 +213,21 @@ contract MagicAccManager {
 		require(enqueued[hash] != 0 && block.timestamp >= enqueued[hash], 'NOT_TIME');
 		delete enqueued[hash];
 		identity.executeBySender(txns);
+	}
+
+	// EIP 1271 implementation
+	// see https://eips.ethereum.org/EIPS/eip-1271
+	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+		(address payable id, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, bytes, bytes));
+		bytes32 accHash = keccak256(abi.encode(MagicAccount({
+			one: SignatureValidator.recoverAddr(hash, sig1),
+			two: SignatureValidator.recoverAddr(hash, sig2)
+		})));
+		if (Identity(id).privileges(address(this)) == accHash) {
+			// bytes4(keccak256("isValidSignature(bytes32,bytes)")
+			return 0x1626ba7e;
+		} else {
+			return 0xffffffff;
+		}
 	}
 }
