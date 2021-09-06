@@ -38,7 +38,7 @@ function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlo
 		initial,
 		evmPush(Buffer.from(offset.toString(16), 'hex')) // NOTE: can this be more elegant?
 	])
-	return `0x${initialCode.toString(16)}3d3981f3363d3d373d3d3d363d73${masterContractAddr.slice(2)}5af43d82803e903d91602b57fd5bf3`
+	return `0x${initialCode.toString('hex')}3d3981f3363d3d373d3d3d363d73${masterContractAddr.slice(2)}5af43d82803e903d91602b57fd5bf3`
 }
 
 module.exports = { evmPush, sstoreCode, getProxyDeployBytecode }
