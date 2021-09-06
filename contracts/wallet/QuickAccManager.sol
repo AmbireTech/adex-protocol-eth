@@ -18,9 +18,9 @@ contract QuickAccManager {
 		// @TODO allow one to just skip the sig?
 	}
 
-	// @TODO security possible grieving vector
-	// front-run this tx with only one of the valid signatures...
-	function send(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
+	// isSingleSig arg is hashed in so that we don't allow signatures from two-sig txns to be reused for single sig txns,
+	// potentially frontrunning a normal two-sig transaction and making it wait
+	function send(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, bool isBothSigned, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 		// Security: we must also hash in the hash of the QuickAccount, otherwise the sig of one key can be reused across multiple accs
@@ -28,14 +28,17 @@ contract QuickAccManager {
 			address(this),
 			block.chainid,
 			accHash,
+			isBothSigned,
 			nonces[address(identity)]++,
 			txns
 		));
 		bool validOne = acc.one == SignatureValidator.recoverAddr(hash, sigOne);
 		bool validTwo = acc.two == SignatureValidator.recoverAddr(hash, sigTwo);
 		if (validOne && validTwo) {
+			require(isBothSigned, 'TWO_VALID_BUT_NOT_ISBOTHSIGNED');
 			identity.executeBySender(txns);
 		} else {
+			require(!isBothSigned, 'ONE_VALID_BUT_ISBOTHSIGNED');
 			require(validOne || validTwo, 'NO_VALID');
 			// no need to check whether `hash` is already set here cause of the incrementing nonce
 			enqueued[hash] = block.timestamp + timelock;
@@ -47,7 +50,7 @@ contract QuickAccManager {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 
-		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, nonce, txns));
+		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, false, nonce, txns));
 		address signer = SignatureValidator.recoverAddr(hash, sig);
 		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
 
@@ -59,7 +62,7 @@ contract QuickAccManager {
 	}
 
 	function execEnqueued(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
-		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns));
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, false, nonce, txns));
 		require(enqueued[hash] != 0 && block.timestamp >= enqueued[hash], 'NOT_TIME');
 		delete enqueued[hash];
 		identity.executeBySender(txns);
