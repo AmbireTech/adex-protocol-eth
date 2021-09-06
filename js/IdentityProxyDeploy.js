@@ -104,4 +104,4 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 	return { privSlot }
 }
 
-module.exports = { getProxyDeployBytecode, getStorageSlotsFromArtifact }
+module.exports = { getProxyDeployBytecode, getStorageSlotsFromArtifact, getMappingSstore }

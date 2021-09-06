@@ -81,4 +81,6 @@ contract QuickAccManager {
 			return 0xffffffff;
 		}
 	}
+
+	// EIP 712
 }
