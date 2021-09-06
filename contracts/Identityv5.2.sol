@@ -156,7 +156,8 @@ contract Identity {
 contract MagicAccManager {
 	// @TODO mutable?
 	// @TODO logs
-	uint timelock = 4 days;
+	bytes4 immutable CANCEL_PREFIX = 0xc47c3100;
+	uint immutable timelock = 4 days;
 	mapping (address => uint) nonces;
 	mapping (bytes32 => uint) enqueued;
 
@@ -183,19 +184,30 @@ contract MagicAccManager {
 			identity.executeBySender(txns);
 		} else {
 			require(validOne || validTwo, 'NO_VALID');
-			if (enqueued[hash] != 0) {
-				delete enqueued[hash];
-				// @TODO log
-			} else {
-				enqueued[hash] = block.timestamp + timelock;
-				// @TODO log
-			}
+			// no need to check whether `hash` is already set here cause of the incrementing nonce
+			enqueued[hash] = block.timestamp + timelock;
+			// @TODO log, also log who the validSigner was
 		}
 	}
 
-	function execEnqueued(Identity identity, bytes32 acc, uint nonce, Identity.Transaction[] calldata txns) external {
-		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, acc, nonce, txns));
-		require(enqueued[hash] != 0 && block.timestamp > enqueued[hash], 'NOT_TIME');
+	function cancel(Identity identity, MagicAccount calldata acc, uint nonce, Identity.Transaction[] calldata txns, bytes calldata sig) external {
+		bytes32 accHash = keccak256(abi.encode(acc));
+		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+
+		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, nonce, txns));
+		address signer = SignatureValidator.recoverAddr(hash, sig);
+		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
+
+		// @NOTE: should we allow cancelling even when it's matured?
+		bytes32 hashTx = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns));
+		require(enqueued[hashTx] != 0 && block.timestamp < enqueued[hashTx], 'TOO_LATE');
+		delete enqueued[hashTx];
+		// @TODO: log
+	}
+
+	function execEnqueued(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns));
+		require(enqueued[hash] != 0 && block.timestamp >= enqueued[hash], 'NOT_TIME');
 		delete enqueued[hash];
 		identity.executeBySender(txns);
 	}
