@@ -24,6 +24,7 @@ function sstoreCode(slotNumber, keyType, key, valueType, valueBuf) {
 
 function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlot: 0 }) {
 	const { privSlot = 0 } = opts
+	if (privLevels.length > 3) throw new Error('getProxyDeployBytecode: max 3 privLevels')
 	const storage = Buffer.concat(privLevels
 		.map(([addr, data]) => {
 			return data ?
@@ -32,7 +33,10 @@ function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlo
 		})
 	)
 	const initial = Buffer.from('3d602d80', 'hex')
+	// NOTE: this means we can't support offset>256
+	// @TODO solve this case; this will remove the "max 3 privLevels" restriction
 	const offset = storage.length + initial.length + 6 // 6 more bytes including the push added later on
+	if (offset > 256) throw new Error('getProxyDeployBytecode: internal: offset>256')
 	const initialCode = Buffer.concat([
 		storage,
 		initial,
