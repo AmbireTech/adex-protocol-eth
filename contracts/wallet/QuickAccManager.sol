@@ -5,8 +5,6 @@ import "../Identityv5.2.sol";
 import "../interfaces/IERC20.sol";
 
 contract QuickAccManager {
-	// NOTE: timelock currently immutable
-	uint immutable timelock = 4 days;
 	mapping (address => uint) nonces;
 	mapping (bytes32 => uint) scheduled;
 
@@ -33,9 +31,10 @@ contract QuickAccManager {
 	}
 
 	struct QuickAccount {
+		uint timelock;
 		address one;
 		address two;
-		// We decided to not allow options here such as ability to skip the second sig for send(), but leaving this a struct rather than a tuple
+		// We decided to not allow certain options here such as ability to skip the second sig for send(), but leaving this a struct rather than a tuple
 		// for clarity and to ensure it's future proof
 	}
 	struct DualSig {
@@ -69,7 +68,7 @@ contract QuickAccManager {
 			address signer = SignatureValidator.recoverAddr(hash, sigs.one);
 			require(acc.one == signer || acc.two == signer, 'SIG');
 			// no need to check whether `scheduled[hash]` is already set here cause of the incrementing nonce
-			scheduled[hash] = block.timestamp + timelock;
+			scheduled[hash] = block.timestamp + acc.timelock;
 			emit LogScheduled(hash, accHash, signer, nonces[address(identity)], block.timestamp, txns);
 		}
 	}
@@ -103,8 +102,9 @@ contract QuickAccManager {
 	// EIP 1271 implementation
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		(address payable id, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, bytes, bytes));
+		(address payable id, uint timelock, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, uint, bytes, bytes));
 		bytes32 accHash = keccak256(abi.encode(QuickAccount({
+			timelock: timelock,
 			one: SignatureValidator.recoverAddr(hash, sig1),
 			two: SignatureValidator.recoverAddr(hash, sig2)
 		})));
