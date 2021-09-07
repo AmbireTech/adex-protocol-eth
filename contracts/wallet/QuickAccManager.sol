@@ -14,9 +14,9 @@ contract QuickAccManager {
 
 	// Events
 	// we only need those for timelocked stuff so we can show scheduled txns to the user; the oens that get executed immediately do not need logs
-	event LogScheduled(bytes32 hash, address signer, uint nonce, uint time, Identity.Transaction[] txns);
-	event LogCancelled(bytes32 hash, uint time);
-	event LogExecScheduled(bytes32 hash, uint time);
+	event LogScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, address indexed signer, uint nonce, uint time, Identity.Transaction[] txns);
+	event LogCancelled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
+	event LogExecScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
 
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
@@ -38,10 +38,18 @@ contract QuickAccManager {
 		// We decided to not allow options here such as ability to skip the second sig for send(), but leaving this a struct rather than a tuple
 		// for clarity and to ensure it's future proof
 	}
+	struct DualSig {
+		bool isBothSigned;
+		bytes one;
+		bytes two;
+	}
+
+	// NOTE: a single accHash can control multiple identities, as long as those identities set it's hash in privileges[address(this)]
+	// this is by design
 
 	// isBothSigned is hashed in so that we don't allow signatures from two-sig txns to be reused for single sig txns,
 	// ...potentially frontrunning a normal two-sig transaction and making it wait
-	function send(Identity identity, QuickAccount calldata acc, bool isBothSigned, bytes calldata sigOne, bytes calldata sigTwo, Identity.Transaction[] calldata txns) external {
+	function send(Identity identity, QuickAccount calldata acc, DualSig calldata sigs, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 		// Security: we must also hash in the hash of the QuickAccount, otherwise the sig of one key can be reused across multiple accs
@@ -51,17 +59,18 @@ contract QuickAccManager {
 			accHash,
 			nonces[address(identity)]++,
 			txns,
-			isBothSigned
+			sigs.isBothSigned
 		));
-		if (isBothSigned) {
-			require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
-			require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
+		if (sigs.isBothSigned) {
+			require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
+			require(acc.two == SignatureValidator.recoverAddr(hash, sigs.two), 'SIG_TWO');
 			identity.executeBySender(txns);
 		} else {
-			require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG');
+			address signer = SignatureValidator.recoverAddr(hash, sigs.one);
+			require(acc.one == signer || acc.two == signer, 'SIG');
 			// no need to check whether `scheduled[hash]` is already set here cause of the incrementing nonce
 			scheduled[hash] = block.timestamp + timelock;
-			emit LogScheduled(hash, acc.one, nonces[address(identity)], block.timestamp, txns);
+			emit LogScheduled(hash, accHash, signer, nonces[address(identity)], block.timestamp, txns);
 		}
 	}
 
@@ -73,12 +82,13 @@ contract QuickAccManager {
 		address signer = SignatureValidator.recoverAddr(hash, sig);
 		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
 
-		// @NOTE: should we allow cancelling even when it's matured?
+		// @NOTE: should we allow cancelling even when it's matured? probably not, otherwise there's a minor grief
+		// opportunity: someone wants to cancel post-maturity, and you front them with execScheduled
 		bytes32 hashTx = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns));
 		require(scheduled[hashTx] != 0 && block.timestamp < scheduled[hashTx], 'TOO_LATE');
 		delete scheduled[hashTx];
 
-		emit LogCancelled(hashTx, block.timestamp);
+		emit LogCancelled(hashTx, accHash, block.timestamp);
 	}
 
 	function execScheduled(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
@@ -87,7 +97,7 @@ contract QuickAccManager {
 		delete scheduled[hash];
 		identity.executeBySender(txns);
 
-		emit LogExecScheduled(hash, block.timestamp);
+		emit LogExecScheduled(hash, accHash, block.timestamp);
 	}
 
 	// EIP 1271 implementation
