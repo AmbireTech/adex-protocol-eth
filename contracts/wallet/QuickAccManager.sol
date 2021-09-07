@@ -136,15 +136,4 @@ contract QuickAccManager {
 		txns[0].data = abi.encodeWithSelector(IERC20.transfer.selector, t.to, t.amount);
 		identity.executeBySender(txns);
 	}
-
-
-	// EIP 1155 implementation
-	// We can use this to signal support for various EIP712 methods (eg sendTransfer), cause when this contract
-	// is upgraded we need a way of knowing which accounts support which methods
-	/*
-	function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
-		return
-			interfaceID == 0x01ffc9a7    // ERC-165 support (i.e. `bytes4(keccak256('supportsInterface(bytes4)'))`).
-	}
-	*/
 }
