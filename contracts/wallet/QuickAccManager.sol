@@ -2,6 +2,7 @@
 pragma solidity ^0.8.1;
 
 import "../Identityv5.2.sol";
+import "../interfaces/IERC20.sol";
 
 contract QuickAccManager {
 	// @TODO logs
@@ -16,6 +17,20 @@ contract QuickAccManager {
 		address one;
 		address two;
 		// @TODO allow one to just skip the sig?
+	}
+
+	// EIP 2612
+	bytes32 public DOMAIN_SEPARATOR;
+	constructor() {
+		DOMAIN_SEPARATOR = keccak256(
+			abi.encode(
+				keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+				keccak256(bytes('QuickAccManager')),
+				keccak256(bytes('1')),
+				block.chainid,
+				address(this)
+			)
+		);
 	}
 
 	// isBothSigned is hashed in so that we don't allow signatures from two-sig txns to be reused for single sig txns,
@@ -82,5 +97,25 @@ contract QuickAccManager {
 		}
 	}
 
-	// EIP 712
+	// EIP 712 methods
+	// all of the following are 2/2 only
+	bytes32 public TRANSFER_TYPEHASH = keccak256("Transfer(address tokenAddr,address to,uint256 value,uint256 nonce)");
+	struct Transfer { address token; address to; uint amount; }
+	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
+		bytes32 accHash = keccak256(abi.encode(acc));
+		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+
+		bytes32 hash = keccak256(abi.encodePacked(
+			'\x19\x01',
+			DOMAIN_SEPARATOR,
+			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, nonces[address(identity)]++))
+		));
+		require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
+		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
+		Identity.Transaction[] memory txns = new Identity.Transaction[](1);
+		txns[0].to = t.token;
+		txns[0].data = abi.encodeWithSelector(IERC20.transfer.selector, t.to, t.amount);
+		identity.executeBySender(txns);
+	}
+
 }
