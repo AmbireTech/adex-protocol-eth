@@ -8,9 +8,15 @@ contract QuickAccManager {
 	// NOTE: timelock currently immutable
 	uint immutable timelock = 4 days;
 	mapping (address => uint) nonces;
-	mapping (bytes32 => uint) enqueued;
+	mapping (bytes32 => uint) scheduled;
 
 	bytes4 immutable CANCEL_PREFIX = 0xc47c3100;
+
+	// Events
+	// we only need those for timelocked stuff so we can show scheduled txns to the user; the oens that get executed immediately do not need logs
+	event LogScheduled(bytes32 hash, address signer, uint nonce, uint time, Identity.Transaction[] txns);
+	event LogCancelled(bytes32 hash, uint time);
+	event LogExecScheduled(bytes32 hash, uint time);
 
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
@@ -53,9 +59,9 @@ contract QuickAccManager {
 			identity.executeBySender(txns);
 		} else {
 			require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG');
-			// no need to check whether `enqueued[hash]` is already set here cause of the incrementing nonce
-			enqueued[hash] = block.timestamp + timelock;
-			// @TODO log, also log who the validSigner was
+			// no need to check whether `scheduled[hash]` is already set here cause of the incrementing nonce
+			scheduled[hash] = block.timestamp + timelock;
+			emit LogScheduled(hash, acc.one, nonces[address(identity)], block.timestamp, txns);
 		}
 	}
 
@@ -69,16 +75,19 @@ contract QuickAccManager {
 
 		// @NOTE: should we allow cancelling even when it's matured?
 		bytes32 hashTx = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns));
-		require(enqueued[hashTx] != 0 && block.timestamp < enqueued[hashTx], 'TOO_LATE');
-		delete enqueued[hashTx];
-		// @TODO: log
+		require(scheduled[hashTx] != 0 && block.timestamp < scheduled[hashTx], 'TOO_LATE');
+		delete scheduled[hashTx];
+
+		emit LogCancelled(hashTx, block.timestamp);
 	}
 
-	function execEnqueued(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
+	function execScheduled(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
 		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns, false));
-		require(enqueued[hash] != 0 && block.timestamp >= enqueued[hash], 'NOT_TIME');
-		delete enqueued[hash];
+		require(scheduled[hash] != 0 && block.timestamp >= scheduled[hash], 'NOT_TIME');
+		delete scheduled[hash];
 		identity.executeBySender(txns);
+
+		emit LogExecScheduled(hash, block.timestamp);
 	}
 
 	// EIP 1271 implementation
