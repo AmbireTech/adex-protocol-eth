@@ -5,19 +5,12 @@ import "../Identityv5.2.sol";
 import "../interfaces/IERC20.sol";
 
 contract QuickAccManager {
-	// @TODO logs
-	bytes4 immutable CANCEL_PREFIX = 0xc47c3100;
-	// @TODO mutable timelock?
+	// NOTE: timelock currently immutable
 	uint immutable timelock = 4 days;
 	mapping (address => uint) nonces;
 	mapping (bytes32 => uint) enqueued;
 
-	// @TODO consider replacing this with a tuple if we do not need anything else
-	struct QuickAccount {
-		address one;
-		address two;
-		// @TODO allow one to just skip the sig?
-	}
+	bytes4 immutable CANCEL_PREFIX = 0xc47c3100;
 
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
@@ -31,6 +24,13 @@ contract QuickAccManager {
 				address(this)
 			)
 		);
+	}
+
+	struct QuickAccount {
+		address one;
+		address two;
+		// We decided to not allow options here such as ability to skip the second sig for send(), but leaving this a struct rather than a tuple
+		// for clarity and to ensure it's future proof
 	}
 
 	// isBothSigned is hashed in so that we don't allow signatures from two-sig txns to be reused for single sig txns,
