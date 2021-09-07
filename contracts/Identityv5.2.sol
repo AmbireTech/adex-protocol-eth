@@ -149,7 +149,7 @@ contract Identity {
 	}
 
 	// EIP 1155 implementation
-	// we pretty much only need to signal that we support the interface and i
+	// we pretty much only need to signal that we support the interface for 165, but for 1155 we also need the fallback function
 	function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
 		return
 			interfaceID == 0x01ffc9a7 ||    // ERC-165 support (i.e. `bytes4(keccak256('supportsInterface(bytes4)'))`).
