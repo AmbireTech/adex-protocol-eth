@@ -52,6 +52,7 @@ contract QuickAccManager {
 	function send(Identity identity, QuickAccount calldata acc, DualSig calldata sigs, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+		uint initialNonce = nonces[address(identity)];
 		// Security: we must also hash in the hash of the QuickAccount, otherwise the sig of one key can be reused across multiple accs
 		bytes32 hash = keccak256(abi.encode(
 			address(this),
@@ -70,7 +71,7 @@ contract QuickAccManager {
 			require(acc.one == signer || acc.two == signer, 'SIG');
 			// no need to check whether `scheduled[hash]` is already set here cause of the incrementing nonce
 			scheduled[hash] = block.timestamp + acc.timelock;
-			emit LogScheduled(hash, accHash, signer, nonces[address(identity)], block.timestamp, txns);
+			emit LogScheduled(hash, accHash, signer, initialNonce, block.timestamp, txns);
 		}
 	}
 
@@ -142,7 +143,7 @@ contract QuickAccManager {
 	// and for signTypedData_v4: https://gist.github.com/danfinlay/750ce1e165a75e1c3387ec38cf452b71
 	struct Txn { string description; address to; uint value; bytes data; }
 	bytes32 private TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
-	bytes32 private BUNDLE_TYPEHASH = keccak256('Bundle(uint nonce,Txn[] transactions)');
+	bytes32 private BUNDLE_TYPEHASH = keccak256('Bundle(uint256 nonce,Txn[] transactions)');
 	function sendTxns(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Txn[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
@@ -165,4 +166,5 @@ contract QuickAccManager {
 		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
 		identity.executeBySender(identityTxns);
 	}
+
 }
