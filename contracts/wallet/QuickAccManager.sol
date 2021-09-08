@@ -22,6 +22,7 @@ contract QuickAccManager {
 		DOMAIN_SEPARATOR = keccak256(
 			abi.encode(
 				keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+				// @TODO: maybe we should use a more user friendly name here?
 				keccak256(bytes('QuickAccManager')),
 				keccak256(bytes('1')),
 				block.chainid,
@@ -118,11 +119,10 @@ contract QuickAccManager {
 
 	// EIP 712 methods
 	// all of the following are 2/2 only
-	bytes32 public TRANSFER_TYPEHASH = keccak256("Transfer(address tokenAddr,address to,uint256 value,uint256 nonce)");
+	bytes32 private TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 nonce)');
 	struct Transfer { address token; address to; uint amount; }
 	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
-		bytes32 accHash = keccak256(abi.encode(acc));
-		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
@@ -135,5 +135,34 @@ contract QuickAccManager {
 		txns[0].to = t.token;
 		txns[0].data = abi.encodeWithSelector(IERC20.transfer.selector, t.to, t.amount);
 		identity.executeBySender(txns);
+	}
+
+	// Reference for arrays: https://github.com/sportx-bet/smart-contracts/blob/e36965a0c4748bf73ae15ed3cab5660c9cf722e1/contracts/impl/trading/EIP712FillHasher.sol
+	// and https://eips.ethereum.org/EIPS/eip-712
+	// and for signTypedData_v4: https://gist.github.com/danfinlay/750ce1e165a75e1c3387ec38cf452b71
+	struct Txn { string description; address to; uint value; bytes data; }
+	bytes32 private TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
+	bytes32 private BUNDLE_TYPEHASH = keccak256('Bundle(uint nonce,Txn[] transactions)');
+	function sendTxns(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Txn[] calldata txns) external {
+		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
+
+		// hashing + prepping args
+		bytes32[] memory txnBytes = new bytes32[](txns.length);
+		Identity.Transaction[] memory identityTxns = new Identity.Transaction[](txns.length);
+		for (uint256 i = 0; i < txns.length; i++) {
+			txnBytes[i] = keccak256(abi.encode(TXNS_TYPEHASH, txns[i].description, txns[i].to, txns[i].value, txns[i].data));
+			identityTxns[i].to = txns[i].to;
+			identityTxns[i].value = txns[i].value;
+			identityTxns[i].data = txns[i].data;
+		}
+		bytes32 txnsHash = keccak256(abi.encodePacked(txnBytes));
+		bytes32 hash = keccak256(abi.encodePacked(
+			'\x19\x01',
+			DOMAIN_SEPARATOR,
+			keccak256(abi.encode(BUNDLE_TYPEHASH, nonces[address(identity)]++, txnsHash))
+		));
+		require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
+		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
+		identity.executeBySender(identityTxns);
 	}
 }
