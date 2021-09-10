@@ -75,13 +75,13 @@ contract QuickAccManager {
 		}
 	}
 
-	function cancel(Identity identity, QuickAccount calldata acc, uint nonce, bytes calldata sig, Identity.Transaction[] calldata txns) external {
+	function cancel(Identity identity, QuickAccount calldata acc, uint nonce, DualSig calldata sigs, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 
 		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, nonce, txns, false));
-		address signer = SignatureValidator.recoverAddr(hash, sig);
-		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
+		require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
+		require(acc.two == SignatureValidator.recoverAddr(hash, sigs.two), 'SIG_TWO');
 
 		// @NOTE: should we allow cancelling even when it's matured? probably not, otherwise there's a minor grief
 		// opportunity: someone wants to cancel post-maturity, and you front them with execScheduled
@@ -166,5 +166,4 @@ contract QuickAccManager {
 		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
 		identity.executeBySender(identityTxns);
 	}
-
 }
