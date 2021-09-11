@@ -33,9 +33,10 @@ contract QuickAccManager {
 
 	struct QuickAccount {
 		uint timelock;
-		bool bothCanCancel;
 		address one;
 		address two;
+		// We decided to not allow certain options here such as ability to skip the second sig for send(), but leaving this a struct rather than a tuple
+		// for clarity and to ensure it's future proof
 	}
 	struct DualSig {
 		bool isBothSigned;
@@ -80,7 +81,7 @@ contract QuickAccManager {
 
 		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, nonce, txns, false));
 		address signer = SignatureValidator.recoverAddr(hash, sig);
-		require(signer == acc.one || (acc.bothCanCancel && signer == acc.two), 'INVALID_SIGNATURE');
+		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
 
 		// @NOTE: should we allow cancelling even when it's matured? probably not, otherwise there's a minor grief
 		// opportunity: someone wants to cancel post-maturity, and you front them with execScheduled
@@ -103,10 +104,9 @@ contract QuickAccManager {
 	// EIP 1271 implementation
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		(address payable id, uint timelock, bool bothCanCancel, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, uint, bool, bytes, bytes));
+		(address payable id, uint timelock, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, uint, bytes, bytes));
 		bytes32 accHash = keccak256(abi.encode(QuickAccount({
 			timelock: timelock,
-			bothCanCancel: bothCanCancel,
 			one: SignatureValidator.recoverAddr(hash, sig1),
 			two: SignatureValidator.recoverAddr(hash, sig2)
 		})));
