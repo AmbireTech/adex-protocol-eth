@@ -13,7 +13,7 @@ contract QuickAccManager {
 	// Events
 	// we only need those for timelocked stuff so we can show scheduled txns to the user; the oens that get executed immediately do not need logs
 	event LogScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, address indexed signer, uint nonce, uint time, Identity.Transaction[] txns);
-	event LogCancelled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
+	event LogCancelled(bytes32 indexed txnHash, bytes32 indexed accHash, address indexed signer, uint time);
 	event LogExecScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
 
 	// EIP 2612
@@ -89,7 +89,7 @@ contract QuickAccManager {
 		require(scheduled[hashTx] != 0 && block.timestamp < scheduled[hashTx], 'TOO_LATE');
 		delete scheduled[hashTx];
 
-		emit LogCancelled(hashTx, accHash, block.timestamp);
+		emit LogCancelled(hashTx, accHash, signer, block.timestamp);
 	}
 
 	function execScheduled(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
