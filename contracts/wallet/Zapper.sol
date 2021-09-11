@@ -38,6 +38,14 @@ interface IUniswapSimple {
 	) external returns (uint[] memory amounts);
 }
 
+
+interface IyVaultV2 {
+    //function token() external view returns (address);
+    //function deposit() external returns (uint);
+    //function deposit(uint) external returns (uint);
+    function deposit(uint, address) external returns (uint);
+}
+
 // Decisions: will start with aave over compound (easier API - has `onBehalfOf`, referrals), compound can be added later if needed
 // uni v3 needs to be supported since it's proving that it's efficient and the router is different
 contract WalletZapper {
@@ -67,6 +75,7 @@ contract WalletZapper {
 		lendingPool = _lendingPool;
 		aaveRefCode = _aaveRefCode;
 		allowedSpenders[address(_lendingPool)] = true;
+		// This needs to include all of the routers, and all of the Yearn vaults
 		for (uint i=0; i!=spenders.length; i++) {
 			allowedSpenders[spenders[i]] = true;
 		}
@@ -209,6 +218,10 @@ contract WalletZapper {
 		// NOTE: what if there is dust?
 		if (wrappedETHAmount > 0) require(wrappedETH.transfer(msg.sender, wrappedETHAmount));
 		// require(totalAllocPts == 1000, "ALLOC_PTS");
+	}
+
+	function depositYearn(IyVaultV2 vault, uint amount) external returns (uint) {
+		return vault.deposit(amount, msg.sender);
 	}
 
 	function recoverFunds(IERC20 token, uint amount) external {
