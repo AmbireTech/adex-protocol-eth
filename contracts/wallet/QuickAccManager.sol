@@ -120,21 +120,23 @@ contract QuickAccManager {
 
 	// EIP 712 methods
 	// all of the following are 2/2 only
-	bytes32 private TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 nonce)');
-	struct Transfer { address token; address to; uint amount; }
+	bytes32 private TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,uint256 nonce)');
+	struct Transfer { address token; address to; uint amount; uint fee; }
 	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
 			DOMAIN_SEPARATOR,
-			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, nonces[address(identity)]++))
+			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, t.fee, nonces[address(identity)]++))
 		));
 		require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
 		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
-		Identity.Transaction[] memory txns = new Identity.Transaction[](1);
+		Identity.Transaction[] memory txns = new Identity.Transaction[](2);
 		txns[0].to = t.token;
 		txns[0].data = abi.encodeWithSelector(IERC20.transfer.selector, t.to, t.amount);
+		txns[1].to = t.token;
+		txns[1].data = abi.encodeWithSelector(IERC20.transfer.selector, msg.sender, t.fee);
 		identity.executeBySender(txns);
 	}
 
