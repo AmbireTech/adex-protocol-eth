@@ -7,6 +7,7 @@ const Outpace = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
+const QuickAccManager = artifacts.require('QuickAccManager')
 
 const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
@@ -33,6 +34,8 @@ contract('Identity', function(accounts) {
 	let identityFactory
 	// A dummy token
 	let token
+	// Instance of QuickAccManager
+	let quickAccManager
 	// An instance of the OUTPACE contract
 	let coreAddr
 	// an Identity contract that will be used as a base for all proxies
@@ -82,6 +85,10 @@ contract('Identity', function(accounts) {
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
+		// the QuickAccManager facilitates access from 2/2 multisig 'quick' acounts
+		const quickAccWeb3 = await QuickAccManager.new()
+		quickAccManager = new Contract(quickAccWeb3.address, QuickAccManager._json.abi, signer)
+
 		await token.setBalanceTo(id.address, 10000)
 	})
 
@@ -113,6 +120,15 @@ contract('Identity', function(accounts) {
 		assert.equal(await newIdentity.privileges(userAcc), TRUE_BYTES, 'privilege level is OK')
 		// it's usually around 69k (155k in v4)
 		assert.ok(deployReceipt.gasUsed.toNumber() < 100000, 'gas used for deploying is under 100k')
+	})
+
+	// Evaluate if isValidSignature is working correctly
+	it('isValidSignature', async function() {
+		const msgHash = keccak256('0x21851b')
+		const sigUser = await signMsg(userAcc, arrayify(msgHash))
+		assert.equal(await id.isValidSignature(msgHash, sigUser), '0x1626ba7e')
+		const sigEvil = await signMsg(evilAcc, arrayify(msgHash))
+		assert.equal(await id.isValidSignature(msgHash, sigEvil), '0xffffffff')
 	})
 
 	it('relay a tx', async function() {
@@ -155,19 +171,43 @@ contract('Identity', function(accounts) {
 		// A nonce can only be used once
 		await expectEVMError(id.execute([relayerTx], relayerTxSig), 'INSUFFICIENT_PRIVILEGE')
 
-		it('setAddPrivilege behavior', async function() {
-			// Try to downgrade the privilege: should not be allowed
-			const relayerDowngradeTx = [
-				id.address,
-				0,
-				idInterface.functions.setAddrPrivilege.encode([userAcc, FALSE_BYTES])
-			]
-			const sig = await signMsg(userAcc, hashTxn(id.address, chainId, 1, [relayerDowngradeTx]))
-			await expectEVMError(
-				id.execute([relayerDowngradeTx], sig),
-				'PRIVILEGE_NOT_DOWNGRADED'
-			)
+		// Try to downgrade the privilege: should not be allowed
+		const relayerDowngradeTx = [
+			id.address,
+			0,
+			idInterface.functions.setAddrPrivilege.encode([userAcc, FALSE_BYTES])
+		]
+		const sig = await signMsg(userAcc, hashTxns(id.address, chainId, 1, [relayerDowngradeTx]))
+		await expectEVMError(
+			id.execute([relayerDowngradeTx], sig),
+			'PRIVILEGE_NOT_DOWNGRADED'
+		)
+	})
+
+	it('quickAccount', async function() {
+		const quickAccount = [600, userAcc, anotherAccount]
+		const abiCoder = new AbiCoder()
+		const accHash = keccak256(abiCoder.encode(['tuple(uint, address, address)'], [quickAccount]))
+		const [bytecode, salt, expectedAddr] = createAccount([[quickAccManager.address, accHash]], {
+			...getStorageSlotsFromArtifact(Identity)
 		})
+		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
+
+		const msgHash = keccak256('0x21851b')
+		const [sig1, sig2] = await Promise.all([
+			signMsg(userAcc, arrayify(msgHash)),
+			signMsg(anotherAccount, arrayify(msgHash))
+		])
+
+		// The part that is evaluated by QuickAccManager
+		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [expectedAddr, 600, sig1, sig2])
+		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '03'
+
+		// we need to deploy before being able to validate sigs
+		const deployReceipt = await (await deploy()).wait()
+		const deployedEv = deployReceipt.events.find(x => x.event === 'LogDeployed')
+		const identity = new Contract(deployedEv.args.addr, Identity._json.abi, web3Provider.getSigner(userAcc))
+		assert.equal(await identity.isValidSignature(msgHash, sig), '0x1626ba7e')
 	})
 
 	/*
@@ -531,12 +571,15 @@ contract('Identity', function(accounts) {
 	})
 	*/
 
+	function mapSignatureV(sig) {
+		sig = arrayify(sig)
+		if (sig[64] < 27) sig[64] += 27
+		return hexlify(sig)
+	}
 	async function signMsg(from, hash) {
 		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-		let sig = arrayify(await web3Provider.getSigner(from).signMessage(hash))
-		if (sig[64] < 27) sig[64] += 27
 		// 02 is the enum number of EthSign signature type
-		return hexlify(sig)+'02'
+		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '02'
 	}
 
 	function createAccount(privileges, opts) {

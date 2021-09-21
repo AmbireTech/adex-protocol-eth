@@ -1,5 +1,4 @@
 // @TODO: use ethers v5
-// @TODO test: if something matches a particular bytecode
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
 
@@ -16,7 +15,7 @@ function sstoreCode(slotNumber, keyType, key, valueType, valueBuf) {
 	const buf = abi.rawEncode([keyType, valueType], [key, slotNumber])
 	const slot = keccak256(buf)
 	return Buffer.concat([
-		evmPush(valueBuf),
+		evmPush(typeof valueBuf === 'string' ? Buffer.from(valueBuf.slice(2), 'hex') : valueBuf),
 		evmPush(Buffer.from(slot, 'hex')),
 		Buffer.from('55', 'hex')
 	])
