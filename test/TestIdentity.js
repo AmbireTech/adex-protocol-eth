@@ -228,25 +228,28 @@ contract('Identity', function(accounts) {
 			'fee was paid out for all transactions'
 		)
 	})
+	*/
 
 	it('execute by sender', async function() {
-		const relayerTx = await zeroFeeTx(
+		const relayerTx = [
 			id.address,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, true])
-		)
+			0,
+			idInterface.functions.setAddrPrivilege.encode([userAcc, TRUE_BYTES])
+		]
 
 		await expectEVMError(
-			id.executeBySender([relayerTx.toSolidityTuple()]),
-			'INSUFFICIENT_PRIVILEGE_SENDER'
+			id.executeBySender([relayerTx]),
+			'INSUFFICIENT_PRIVILEGE'
 		)
 
 		const idWithUser = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
-		const receipt = await (await idWithUser.executeBySender([relayerTx.toSolidityTuple()], {
+		const receipt = await (await idWithUser.executeBySender([relayerTx], {
 			gasLimit
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 	})
 
+	/*
 	it('actions: channel deposit, withdraw', async function() {
 		const tokenAmnt = 500
 
