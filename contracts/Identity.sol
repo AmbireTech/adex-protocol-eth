@@ -135,6 +135,9 @@ contract Identity {
 			}
 			default {}
 		}
+		// A single call consumes around 477 more gas with the pure solidity version, for whatever reason
+		//(bool success, bytes memory returnData) = to.call{value: value, gas: gasleft()}(data);
+		//if (!success) revert(string(data));
 	}
 
 	// EIP 1271 implementation
