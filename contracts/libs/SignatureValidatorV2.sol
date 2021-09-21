@@ -23,8 +23,6 @@ library SignatureValidator {
 	bytes4 constant internal ERC1271_MAGICVALUE_BYTES32 = 0x1626ba7e;
 
 	function recoverAddr(bytes32 hash, bytes memory sig) internal view returns (address) {
-		// @TODO sig len check
-		// @TODO err messages
 		require(sig.length >= 1, "SignatureValidator: basic sig len");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
 		require(modeRaw < uint8(SignatureMode.Unsupported), "SignatureValidator: unsupported sig mode");
@@ -34,6 +32,7 @@ library SignatureValidator {
 			return address(0x0);
 		}
 
+		// {r}{s}{v}{mode}
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
 			// @TODO sig len check
 			require(sig.length == 66, "SignatureValidator: sig len");
@@ -46,6 +45,7 @@ library SignatureValidator {
 			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
 			return ecrecover(hash, v, r, s);
 		}
+		// {sig}{verifier}{mode}
 		if (mode == SignatureMode.SmartWallet) {
 			// @TODO: sig len check
 			// 32 bytes for the addr, 1 byte for the type = 33
