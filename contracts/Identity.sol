@@ -1,31 +1,19 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.1;
 
-import "./libs/SafeERC20.sol";
-import "./libs/SignatureValidator.sol";
+import "./libs/SignatureValidatorV2.sol";
 
 contract Identity {
-
-	mapping (address => bool) public privileges;
+	mapping (address => bytes32) public privileges;
 	// The next allowed nonce
 	uint public nonce = 0;
 
 	// Events
-	event LogPrivilegeChanged(address indexed addr, bool priv);
+	event LogPrivilegeChanged(address indexed addr, bytes32 priv);
 
 	// Transaction structure
-	// Those can be executed by keys with >= PrivilegeLevel.Transactions
-	// Even though the contract cannot receive ETH, we are able to send ETH (.value), cause ETH might've been sent to the contract address before it's deployed
+	// we handle replay protection separately by requiring (address(this), chainID, nonce) as part of the sig
 	struct Transaction {
-		// replay protection
-		address identityContract;
-		// The nonce is also part of the replay protection, when signing Transaction objects we need to ensure they can be ran only once
-		// this means it doesn't apply to executeBySender
-		uint nonce;
-		// tx fee, in tokens
-		address feeTokenAddr;
-		uint feeAmount;
-		// all the regular txn data
 		address to;
 		uint value;
 		bytes data;
@@ -34,8 +22,9 @@ contract Identity {
 	constructor(address[] memory addrs) {
 		uint len = addrs.length;
 		for (uint i=0; i<len; i++) {
-			privileges[addrs[i]] = true;
-			emit LogPrivilegeChanged(addrs[i], true);
+			// @TODO should we allow setting to any arb value here?
+			privileges[addrs[i]] = bytes32(uint(1));
+			emit LogPrivilegeChanged(addrs[i], bytes32(uint(1)));
 		}
 	}
 
@@ -43,16 +32,43 @@ contract Identity {
 	receive() external payable {}
 
 	// This contract can accept ETH with calldata
-	fallback() external payable {}
+	// However, to support EIP 721 and EIP 1155, we need to respond to those methods with their own method signature
+	fallback() external payable {
+		if (msg.data.length >= 4) {
+			bytes4 method;
+			// solium-disable-next-line security/no-inline-assembly
+			assembly {
+				// can also do shl(224, shr(224, calldataload(0)))
+				method := and(calldataload(0), 0xffffffff00000000000000000000000000000000000000000000000000000000)
+			}
+			if (
+				method == 0x150b7a02 // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
+					|| method == 0xf23a6e61 // bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"))
+					|| method == 0xbc197c81 // bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
+			) {
+				// Copy back the method
+				// solhint-disable-next-line no-inline-assembly
+				assembly {
+					calldatacopy(0, 0, 0x04)
+					return (0, 0x20)
+				}
+			}
+		}
+	}
 
-	function setAddrPrivilege(address addr, bool priv)
+	function setAddrPrivilege(address addr, bytes32 priv)
 		external
 	{
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		// Anti-bricking measure: if the privileges slot is used for special data (not 0x01),
+		// don't allow to set it to true
+		if (privileges[addr] != bytes32(0) && privileges[addr] != bytes32(uint(1)))
+			require(priv != bytes32(uint(1)), 'UNSETTING_SPECIAL_DATA');
 		privileges[addr] = priv;
 		emit LogPrivilegeChanged(addr, priv);
 	}
 
+	// @TODO: should this stay? is this the right place for it?
 	function tipMiner(uint amount)
 		external
 	{
@@ -62,53 +78,41 @@ contract Identity {
 		executeCall(block.coinbase, amount, new bytes(0));
 	}
 
-	function execute(Transaction[] memory txns, bytes32[3][] memory signatures)
-		public
+	function execute(Transaction[] calldata txns, bytes calldata signature)
+		external
 	{
 		require(txns.length > 0, 'MUST_PASS_TX');
-		address feeTokenAddr = txns[0].feeTokenAddr;
-		uint feeAmount = 0;
+		// If we use the naive abi.encode(txn) and have a field of type `bytes`,
+		// there is a discrepancy between ethereumjs-abi and solidity
+		// @TODO check if this is resolved
+		uint currentNonce = nonce;
+		// NOTE: abi.encode is safer than abi.encodePacked in terms of collision safety
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, currentNonce, txns));
+		// We have to increment before execution cause it protects from reentrancies
+		nonce = currentNonce + 1;
+
+		address signer = SignatureValidator.recoverAddr(hash, signature);
+		require(privileges[signer] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
-			require(txn.identityContract == address(this), 'TRANSACTION_NOT_FOR_CONTRACT');
-			require(txn.feeTokenAddr == feeTokenAddr, 'EXECUTE_NEEDS_SINGLE_TOKEN');
-			require(txn.nonce == nonce, 'WRONG_NONCE');
-
-			// If we use the naive abi.encode(txn) and have a field of type `bytes`,
-			// there is a discrepancy between ethereumjs-abi and solidity
-			// if we enter every field individually, in order, there is no discrepancy
-			//bytes32 hash = keccak256(abi.encode(txn));
-			bytes32 hash = keccak256(abi.encode(txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeAmount, txn.to, txn.value, txn.data));
-			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
-
-			require(privileges[signer] == true, 'INSUFFICIENT_PRIVILEGE_TRANSACTION');
-
-			// NOTE: we have to change nonce on every txn: do not be tempted to optimize this by incrementing it once by the full txn count
-			// otherwise reentrancies are possible, and/or anyone who is reading nonce within a txn will read a wrong value
-			nonce = nonce + 1;
-			feeAmount = feeAmount + txn.feeAmount;
-
 			executeCall(txn.to, txn.value, txn.data);
-			// The actual anti-bricking mechanism - do not allow a signer to drop his own priviledges
-			require(privileges[signer] == true, 'PRIVILEGE_NOT_DOWNGRADED');
 		}
-		if (feeAmount > 0) {
-			SafeERC20.transfer(feeTokenAddr, msg.sender, feeAmount);
-		}
+		// The actual anti-bricking mechanism - do not allow a signer to drop their own priviledges
+		require(privileges[signer] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
-	function executeBySender(Transaction[] memory txns)
-		public
-	{
-		require(privileges[msg.sender] == true || msg.sender == address(this), 'INSUFFICIENT_PRIVILEGE_SENDER');
+	// no need for nonce management here cause we're not dealing with sigs
+	function executeBySender(Transaction[] calldata txns) external {
+		require(txns.length > 0, 'MUST_PASS_TX');
+		require(privileges[msg.sender] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
-		// The actual anti-bricking mechanism - do not allow the sender to drop his own priviledges
-		require(privileges[msg.sender] == true, 'PRIVILEGE_NOT_DOWNGRADED');
+		// again, anti-bricking
+		require(privileges[msg.sender] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
@@ -136,34 +140,19 @@ contract Identity {
 	// EIP 1271 implementation
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
-		if (privileges[SignatureValidator.recoverAddrBytes(hash, signature)]) {
+		if (privileges[SignatureValidator.recoverAddr(hash, signature)] != bytes32(0)) {
 			// bytes4(keccak256("isValidSignature(bytes32,bytes)")
 			return 0x1626ba7e;
 		} else {
 			return 0xffffffff;
 		}
 	}
-}
 
-contract MultiSig {
-	// @TODO logs
-	mapping (address => mapping (bytes32 => bool)) public multisigs;
-	function setMultisig(bytes32 id, bool on) public {
-		multisigs[msg.sender][id] = on;
-	}
-	function execMultsig(Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
-		// we allow an array passed in so we can easily give it to executeBySender, but this should only look at one txn
-		require(txns.length == 1, "MULTISIG_ONLY_ONE_TXN");
-		Identity.Transaction memory txn = txns[0];
-		bytes32 hash = keccak256(abi.encode(address(this), txn.identityContract, txn.nonce, txn.feeTokenAddr, txn.feeAmount, txn.to, txn.value, txn.data));
-		uint len = signatures.length;
-		bytes32 id;
-		for (uint i=0; i<len; i++) {
-			address signer = SignatureValidator.recoverAddr(hash, signatures[i]);
-			if (i==0) id = keccak256(abi.encode(signer));
-			else id = keccak256(abi.encode(id, signer));
-		}
-		require(multisigs[txn.identityContract][id], "MULTISIG_UNAUTHORIZED");
-		Identity(payable(txn.identityContract)).executeBySender(txns);
+	// EIP 1155 implementation
+	// we pretty much only need to signal that we support the interface for 165, but for 1155 we also need the fallback function
+	function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
+		return
+			interfaceID == 0x01ffc9a7 ||    // ERC-165 support (i.e. `bytes4(keccak256('supportsInterface(bytes4)'))`).
+			interfaceID == 0x4e2312e0;      // ERC-1155 `ERC1155TokenReceiver` support (i.e. `bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)")) ^ bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))`).
 	}
 }
