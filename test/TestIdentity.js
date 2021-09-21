@@ -1,6 +1,6 @@
 const promisify = require('util').promisify
 const { providers, Contract } = require('ethers')
-const { Interface, randomBytes, getAddress } = require('ethers').utils
+const { Interface, randomBytes, getAddress, AbiCoder, keccak256, arrayify, hexlify } = require('ethers').utils
 const { generateAddress2 } = require('ethereumjs-util')
 
 const Outpace = artifacts.require('OUTPACE')
@@ -11,10 +11,8 @@ const MockToken = artifacts.require('./mocks/Token')
 const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
-const { Transaction, Channel, splitSig, MerkleTree } = require('../js')
+const { Transaction, Channel, MerkleTree } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy2')
-
-const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
@@ -23,6 +21,9 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 // gasLimit must be hardcoded cause ganache cannot estimate it properly
 // that's cause of the call() that we do here; see https://github.com/AdExNetwork/adex-protocol-eth/issues/55
 const gasLimit = 1000000
+
+const TRUE_BYTES = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const FALSE_BYTES = '0x0000000000000000000000000000000000000000000000000000000000000000'
 
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
@@ -38,6 +39,8 @@ contract('Identity', function(accounts) {
 	let baseIdentityAddr
 	// The Identity contract instance that will be used
 	let id
+	// the chainId
+	let chainId
 
 	const leader = accounts[1]
 	const follower = accounts[2]
@@ -47,6 +50,10 @@ contract('Identity', function(accounts) {
 	const anotherAccount = accounts[7]
 
 	before(async function() {
+		//chainId = (await web3Provider.getNetwork()).chainId
+		// we seem to be using 1 in testing conditions for whatever reason
+		chainId = 1
+
 		const signer = web3Provider.getSigner(relayerAddr)
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
@@ -79,7 +86,7 @@ contract('Identity', function(accounts) {
 	})
 
 	it('protected methods', async function() {
-		await expectEVMError(id.setAddrPrivilege(userAcc, '0x'+Buffer.alloc(32).toString('hex'), { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(id.setAddrPrivilege(userAcc, TRUE_BYTES, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
 	})
 
 	it('deploy an Identity, counterfactually', async function() {
@@ -103,45 +110,41 @@ contract('Identity', function(accounts) {
 			Identity._json.abi,
 			web3Provider.getSigner(relayerAddr)
 		)
-		assert.equal(await newIdentity.privileges(userAcc), true, 'privilege level is OK')
+		assert.equal(await newIdentity.privileges(userAcc), TRUE_BYTES, 'privilege level is OK')
 		// it's usually around 69k (155k in v4)
 		assert.ok(deployReceipt.gasUsed.toNumber() < 100000, 'gas used for deploying is under 100k')
-		console.log(await newIdentity.privileges(userAcc), deployReceipt.gasUsed.toNumber())
 	})
 
-	/*
-	it('relay a tx: setAddrPrivilege', async function() {
-		const initialBal = await token.balanceOf(relayerAddr)
+	it('relay a tx', async function() {
 		const initialNonce = (await id.nonce()).toNumber()
-		const relayerTx = new Transaction({
-			identityContract: id.address,
-			nonce: initialNonce,
-			feeTokenAddr: token.address,
-			feeAmount: 25,
-			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([anotherAccount, true])
-		})
-		const hash = relayerTx.hashHex()
+
+		// to, value, data
+		const relayerTx = [
+			id.address,
+			0,
+			idInterface.functions.setAddrPrivilege.encode([anotherAccount, TRUE_BYTES])
+		]
+		// @TODO: to library
+		const abiCoder = new AbiCoder()
+		const hashTxns = (identityAddr, chainId, nonce, txns) => {
+			const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
+			return arrayify(keccak256(encoded))
+		}
+		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
 
 		// Non-authorized address does not work
-		const invalidSig = splitSig(await ethSign(hash, evilAcc))
+		const invalidSig = await signMsg(evilAcc, hash) 
 		await expectEVMError(
-			id.execute([relayerTx.toSolidityTuple()], [invalidSig]),
-			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
+			id.execute([relayerTx], invalidSig),
+			'INSUFFICIENT_PRIVILEGE'
 		)
 
 		// Do the execute() correctly, verify if it worked
-		const relayerTxSig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [relayerTxSig], {
+		const relayerTxSig = await signMsg(userAcc, hash)
+		const receipt = await (await id.execute([relayerTx], relayerTxSig, {
 			gasLimit
 		})).wait()
-
-		assert.equal(await id.privileges(anotherAccount), true, 'privilege level changed')
-		assert.equal(
-			await token.balanceOf(relayerAddr),
-			initialBal.toNumber() + relayerTx.feeAmount.toNumber(),
-			'relayer has received the tx fee'
-		)
+		assert.equal(await id.privileges(anotherAccount), TRUE_BYTES, 'privilege level changed')
 		assert.ok(
 			receipt.events.find(x => x.event === 'LogPrivilegeChanged'),
 			'LogPrivilegeChanged event found'
@@ -150,32 +153,24 @@ contract('Identity', function(accounts) {
 		// console.log('relay cost', receipt.gasUsed.toString(10))
 
 		// A nonce can only be used once
-		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [relayerTxSig]), 'WRONG_NONCE')
+		await expectEVMError(id.execute([relayerTx], relayerTxSig), 'INSUFFICIENT_PRIVILEGE')
 
-		// Try to downgrade the privilege: should not be allowed
-		const relayerDowngradeTx = await zeroFeeTx(
-			id.address,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, false])
-		)
-		const newHash = relayerDowngradeTx.hashHex()
-		const newSig = splitSig(await ethSign(newHash, userAcc))
-		await expectEVMError(
-			id.execute([relayerDowngradeTx.toSolidityTuple()], [newSig]),
-			'PRIVILEGE_NOT_DOWNGRADED'
-		)
-
-		// Try to run a TX from an acc with insufficient privilege (unauthorized account)
-		const relayerTxEvil = await zeroFeeTx(
-			id.address,
-			idInterface.functions.setAddrPrivilege.encode([evilAcc, true])
-		)
-		const hashEvil = relayerTxEvil.hashHex()
-		const sigEvil = splitSig(await ethSign(hashEvil, evilAcc))
-		await expectEVMError(
-			id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]),
-			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
-		)
+		it('setAddPrivilege behavior', async function() {
+			// Try to downgrade the privilege: should not be allowed
+			const relayerDowngradeTx = [
+				id.address,
+				0,
+				idInterface.functions.setAddrPrivilege.encode([userAcc, FALSE_BYTES])
+			]
+			const sig = await signMsg(userAcc, hashTxn(id.address, chainId, 1, [relayerDowngradeTx]))
+			await expectEVMError(
+				id.execute([relayerDowngradeTx], sig),
+				'PRIVILEGE_NOT_DOWNGRADED'
+			)
+		})
 	})
+
+	/*
 
 	// Relay two transactions
 	// this could be quite useful in real applications, e.g. approve and call into a contract in one TX
@@ -532,6 +527,14 @@ contract('Identity', function(accounts) {
 		)
 	})
 	*/
+
+	async function signMsg(from, hash) {
+		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
+		let sig = arrayify(await web3Provider.getSigner(from).signMessage(hash))
+		if (sig[64] < 27) sig[64] += 27
+		// 02 is the enum number of EthSign signature type
+		return hexlify(sig)+'02'
+	}
 
 	function createAccount(privileges, opts) {
 		const bytecode = getProxyDeployBytecode(baseIdentityAddr, privileges, opts)
