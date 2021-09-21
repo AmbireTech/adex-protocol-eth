@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Identity.sol";
+import "./interfaces/IERC20.sol";
 
 contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
@@ -11,7 +12,7 @@ contract IdentityFactory {
 		creator = msg.sender;
 	}
 
-	function deploy(bytes memory code, uint256 salt) public {
+	function deploy(bytes calldata code, uint256 salt) external {
 		deploySafe(code, salt);
 	}
 
@@ -19,17 +20,17 @@ contract IdentityFactory {
 	// if it's already deployed, or call `deployAndExecute` if the account is still counterfactual
 	// can't have deployAndExecuteBySender, because the sender will be the factory
 	function deployAndExecute(
-		bytes memory code, uint256 salt,
-		Identity.Transaction[] memory txns, bytes32[3][] memory signatures
-	) public {
+		bytes calldata code, uint256 salt,
+		Identity.Transaction[] calldata txns, bytes calldata signature
+	) external {
 		address payable addr = payable(deploySafe(code, salt));
-		Identity(addr).execute(txns, signatures);
+		Identity(addr).execute(txns, signature);
 	}
 
 	// Withdraw the earnings from various fees (deploy fees and execute fees earned cause of `deployAndExecute`)
-	function withdraw(address tokenAddr, address to, uint256 tokenAmount) public {
+	function withdraw(IERC20 token, address to, uint256 tokenAmount) public {
 		require(msg.sender == creator, 'ONLY_CREATOR');
-		SafeERC20.transfer(tokenAddr, to, tokenAmount);
+		token.transfer(to, tokenAmount);
 	}
 
 	// This is done to mitigate possible frontruns where, for example, deploying the same code/salt via deploy()
