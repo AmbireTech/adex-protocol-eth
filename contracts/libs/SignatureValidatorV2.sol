@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.7;
 
 import "./BytesLib.sol";
@@ -24,9 +25,9 @@ library SignatureValidator {
 	function recoverAddr(bytes32 hash, bytes memory sig) internal view returns (address) {
 		// @TODO sig len check
 		// @TODO err messages
-		require(sig.length >= 1, "sig len");
+		require(sig.length >= 1, "SignatureValidator: basic sig len");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
-		require(modeRaw < uint8(SignatureMode.Unsupported), "unsupported sig mode");
+		require(modeRaw < uint8(SignatureMode.Unsupported), "SignatureValidator: unsupported sig mode");
 		SignatureMode mode = SignatureMode(modeRaw);
 
 		if (mode == SignatureMode.NoSig) {
@@ -35,7 +36,7 @@ library SignatureValidator {
 
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
 			// @TODO sig len check
-			require(sig.length == 66, "sig len");
+			require(sig.length == 66, "SignatureValidator: sig len");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
 			// @TODO: is there a gas saving to be had here by using assembly?
@@ -47,11 +48,11 @@ library SignatureValidator {
 		if (mode == SignatureMode.SmartWallet) {
 			// @TODO: sig len check
 			// 32 bytes for the addr, 1 byte for the type = 33
-			require(sig.length > 33, "sig len");
+			require(sig.length > 33, "SignatureValidator: wallet sig len");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
 			sig.trimToSize(sig.length - 33);
-			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "invalid wallet sig");
+			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SignatureValidator: invalid wallet sig");
 			return address(wallet);
 		}
 		return address(0x00);
