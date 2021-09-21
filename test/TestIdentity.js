@@ -12,8 +12,7 @@ const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
 const { Transaction, Channel, splitSig, MerkleTree } = require('../js')
-const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
-const { solcModule } = require('../js/solc')
+const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy2')
 
 const ethSign = promisify(web3.eth.sign.bind(web3))
 
@@ -62,13 +61,15 @@ contract('Identity', function(accounts) {
 		const idWeb3 = await Identity.new([])
 		baseIdentityAddr = idWeb3.address
 
+		// a hardcoded test 
+		assert.equal(getProxyDeployBytecode('0x02a63ec1bced5545296a5193e652e25ec0bae410', [['0xe5a4Dad2Ea987215460379Ab285DF87136E83BEA', true]]), '0x60017f02c94ba85f2ea274a3869293a0a9bf447d073c83c617963b0be7c862ec2ee44e553d602d80602e3d3981f3363d3d373d3d3d363d7302a63ec1bced5545296a5193e652e25ec0bae4105af43d82803e903d91602b57fd5bf3')
+
 		const bytecode = getProxyDeployBytecode(
 			baseIdentityAddr,
-			[[userAcc, 1]],
+			[[userAcc, true]],
 			{
 				...getStorageSlotsFromArtifact(Identity)
-			},
-			solcModule
+			}
 		)
 		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
@@ -78,32 +79,17 @@ contract('Identity', function(accounts) {
 	})
 
 	it('protected methods', async function() {
-		await expectEVMError(id.setAddrPrivilege(userAcc, true, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(id.setAddrPrivilege(userAcc, '0x'+Buffer.alloc(32).toString('hex'), { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
 	})
 
-	it('deploy an Identity, counterfactually, and pay the fee', async function() {
-		const feeAmnt = 250
-
+	it('deploy an Identity, counterfactually', async function() {
 		// Generating a proxy deploy transaction
-		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 1]], {
-			fee: {
-				tokenAddr: token.address,
-				recepient: relayerAddr,
-				amount: feeAmnt,
-				// Using this option is fine if the token.address is a token that reverts on failures
-				unsafeERC20: true
-			},
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, true]], {
 			...getStorageSlotsFromArtifact(Identity)
 		})
 		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
-		// Without any tokens to pay for the fee, we should revert
-		// if this is failing, then the contract is probably not trying to pay the fee
-		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
 
-		// set the balance so that we can pay out the fee when deploying
-		await token.setBalanceTo(expectedAddr, 10000)
-
-		// deploy the contract, which should also pay out the fee
+		// deploy the contract
 		const deployReceipt = await (await deploy()).wait()
 
 		// The counterfactually generated expectedAddr matches
@@ -118,12 +104,12 @@ contract('Identity', function(accounts) {
 			web3Provider.getSigner(relayerAddr)
 		)
 		assert.equal(await newIdentity.privileges(userAcc), true, 'privilege level is OK')
-		// it's usually around 155k
-		assert.ok(deployReceipt.gasUsed.toNumber() < 200000, 'gas used for deploying is under 200k')
-		// check if deploy fee is paid out
-		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
+		// it's usually around 69k (155k in v4)
+		assert.ok(deployReceipt.gasUsed.toNumber() < 100000, 'gas used for deploying is under 100k')
+		console.log(await newIdentity.privileges(userAcc), deployReceipt.gasUsed.toNumber())
 	})
 
+	/*
 	it('relay a tx: setAddrPrivilege', async function() {
 		const initialBal = await token.balanceOf(relayerAddr)
 		const initialNonce = (await id.nonce()).toNumber()
@@ -545,9 +531,10 @@ contract('Identity', function(accounts) {
 			'withdraw earnings from IdentityFactory'
 		)
 	})
+	*/
 
 	function createAccount(privileges, opts) {
-		const bytecode = getProxyDeployBytecode(baseIdentityAddr, privileges, opts, solcModule)
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, privileges, opts)
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
 			`0x${generateAddress2(identityFactory.address, salt, bytecode).toString('hex')}`
@@ -555,6 +542,7 @@ contract('Identity', function(accounts) {
 		return [bytecode, salt, expectedAddr]
 	}
 
+	/*
 	async function getWithdrawData(channel, addr, tokenAmnt) {
 		const elem1 = Channel.getBalanceLeaf(addr, tokenAmnt)
 		const tree = new MerkleTree([elem1])
@@ -575,4 +563,5 @@ contract('Identity', function(accounts) {
 			data
 		})
 	}
+	*/
 })

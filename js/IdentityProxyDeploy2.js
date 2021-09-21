@@ -27,7 +27,7 @@ function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlo
 	if (privLevels.length > 3) throw new Error('getProxyDeployBytecode: max 3 privLevels')
 	const storage = Buffer.concat(privLevels
 		.map(([addr, data]) => {
-			return data ?
+			return data !== true ?
 				sstoreCode(privSlot, 'address', addr, 'bytes32', data)
 				: sstoreCode(privSlot, 'address', addr, 'bool', Buffer.from('01', 'hex'))
 		})
@@ -47,8 +47,20 @@ function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlo
 	return `0x${initialCode.toString('hex')}3d3981f3363d3d373d3d3d363d${evmPush(masterAddrBuf).toString('hex')}5af43d82803e903d91602b57fd5bf3`
 }
 
-// test
-// assert.eq(getProxyDeployBytecode('0x02a63ec1bced5545296a5193e652e25ec0bae410', [['0xe5a4Dad2Ea987215460379Ab285DF87136E83BEA', null]]), '0x60017f02c94ba85f2ea274a3869293a0a9bf447d073c83c617963b0be7c862ec2ee44e553d602d80602e3d3981f3363d3d373d3d3d363d7302a63ec1bced5545296a5193e652e25ec0bae4105af43d82803e903d91602b57fd5bf3')
+function getStorageSlotsFromArtifact(IdentityArtifact) {
+	// Find storage locations of privileges
+	const identityNode = IdentityArtifact.ast.nodes.find(
+		({ name, nodeType }) => nodeType === 'ContractDefinition' && name === 'Identity'
+	)
+	assert.ok(identityNode, 'Identity contract definition not found')
+	const storageVariableNodes = identityNode.nodes.filter(
+		n => n.nodeType === 'VariableDeclaration' && !n.constant && n.stateVariable
+	)
+	const privSlot = storageVariableNodes.findIndex(x => x.name === 'privileges')
+	assert.notEqual(privSlot, -1, 'privSlot was not found')
 
-module.exports = { evmPush, sstoreCode, getProxyDeployBytecode }
+	return { privSlot }
+}
+
+module.exports = { evmPush, sstoreCode, getProxyDeployBytecode, getStorageSlotsFromArtifact }
 

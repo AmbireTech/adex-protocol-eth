@@ -9,7 +9,7 @@ contract ADXFlashLoans {
 	// since some ERC20s have built-in token lockup; the new ADXToken is not one of them,
 	// but it's the better way to approach things given that this contract can be used for any token
 	// NOTE: we cannot use executeBySender since this contract will be the sender
-	function flash(address token, uint amount, Identity receiver, Identity.Transaction[] memory txns, bytes32[3][] memory signatures) public {
+	function flash(address token, uint amount, Identity receiver, Identity.Transaction[] calldata txns, bytes calldata signatures) external {
 		SafeERC20.transfer(token, address(receiver), amount);
 		receiver.execute(txns, signatures);
 		SafeERC20.transferFrom(token, address(receiver), address(this), amount);
