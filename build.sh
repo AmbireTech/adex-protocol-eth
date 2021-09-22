@@ -21,8 +21,8 @@ mkdir -p resources abi
 
 # AdexCore abi
 mv temp/OUTPACE.abi abi/OUTPACE.json
-mv temp/Identity.abi abi/Identity5.0.json  
-mv temp/IdentityFactory.abi abi/IdentityFactory5.0.json
+mv temp/Identity.abi abi/Identity5.2.json  
+mv temp/IdentityFactory.abi abi/IdentityFactory5.2.json
 mv temp/StakingPool.abi abi/StakingPool.json
 
 # Sweeper abi & bin file
