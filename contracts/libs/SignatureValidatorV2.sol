@@ -15,6 +15,7 @@ library SignatureValidator {
 		EIP712,
 		EthSign,
 		SmartWallet,
+		Spoof,
 		// must be at the end
 		Unsupported
 	}
@@ -55,6 +56,13 @@ library SignatureValidator {
 			sig.trimToSize(sig.length - 33);
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SignatureValidator: invalid wallet sig");
 			return address(wallet);
+		}
+		// {address}{mode}; the spoof mode is used when simulating calls
+		if (mode == SignatureMode.Spoof) {
+			require(tx.origin == address(0), "SignatureValidator: spoof must be used with zero");
+			require(sig.length == 33, "SignatureValidator: spoof sig len");
+			sig.trimToSize(sig.length - 1);
+			return address(uint160(uint256(sig.readBytes32(0))));
 		}
 		return address(0x00);
 	}
