@@ -61,8 +61,8 @@ library SignatureValidator {
 		if (mode == SignatureMode.Spoof) {
 			require(tx.origin == address(0), "SignatureValidator: spoof must be used with zero");
 			require(sig.length == 33, "SignatureValidator: spoof sig len");
-			sig.trimToSize(sig.length - 1);
-			return address(uint160(uint256(sig.readBytes32(0))));
+			sig.trimToSize(32);
+			return abi.decode(sig, (address));
 		}
 		return address(0x00);
 	}
