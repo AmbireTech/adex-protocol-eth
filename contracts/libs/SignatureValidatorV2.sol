@@ -59,7 +59,7 @@ library SignatureValidator {
 		}
 		// {address}{mode}; the spoof mode is used when simulating calls
 		if (mode == SignatureMode.Spoof) {
-			require(tx.origin == address(0), "SignatureValidator: spoof must be used with zero");
+			require(tx.origin == address(1), "SignatureValidator: spoof must be used with specific addr");
 			require(sig.length == 33, "SignatureValidator: spoof sig len");
 			sig.trimToSize(32);
 			return abi.decode(sig, (address));
