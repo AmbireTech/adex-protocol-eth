@@ -24,6 +24,10 @@ library SignatureValidator {
 	bytes4 constant internal ERC1271_MAGICVALUE_BYTES32 = 0x1626ba7e;
 
 	function recoverAddr(bytes32 hash, bytes memory sig) internal view returns (address) {
+		return recoverAddrImpl(hash, sig, false);
+	}
+
+	function recoverAddrImpl(bytes32 hash, bytes memory sig, bool allowSpoofing) internal view returns (address) {
 		require(sig.length >= 1, "SignatureValidator: basic sig len");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
 		require(modeRaw < uint8(SignatureMode.Unsupported), "SignatureValidator: unsupported sig mode");
@@ -58,7 +62,7 @@ library SignatureValidator {
 			return address(wallet);
 		}
 		// {address}{mode}; the spoof mode is used when simulating calls
-		if (mode == SignatureMode.Spoof) {
+		if (mode == SignatureMode.Spoof && allowSpoofing) {
 			require(tx.origin == address(1), "SignatureValidator: spoof must be used with specific addr");
 			require(sig.length == 33, "SignatureValidator: spoof sig len");
 			sig.trimToSize(32);

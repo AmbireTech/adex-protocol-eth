@@ -91,7 +91,7 @@ contract Identity {
 		// We have to increment before execution cause it protects from reentrancies
 		nonce = currentNonce + 1;
 
-		address signer = SignatureValidator.recoverAddr(hash, signature);
+		address signer = SignatureValidator.recoverAddrImpl(hash, signature, true);
 		require(privileges[signer] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
