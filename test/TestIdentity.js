@@ -13,7 +13,7 @@ const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
 const { Transaction, Channel, MerkleTree } = require('../js')
-const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy2')
+const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
