@@ -140,12 +140,6 @@ contract('Identity', function(accounts) {
 			0,
 			idInterface.functions.setAddrPrivilege.encode([anotherAccount, TRUE_BYTES])
 		]
-		// @TODO: to library
-		const abiCoder = new AbiCoder()
-		const hashTxns = (identityAddr, chainId, nonce, txns) => {
-			const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
-			return arrayify(keccak256(encoded))
-		}
 		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
 
 		// Non-authorized address does not work
@@ -193,6 +187,7 @@ contract('Identity', function(accounts) {
 		})
 		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
 
+		// just any random hash - the value here doesn't matter
 		const msgHash = keccak256('0x21851b')
 		const [sig1, sig2] = await Promise.all([
 			signMsg(userAcc, arrayify(msgHash)),
@@ -207,6 +202,7 @@ contract('Identity', function(accounts) {
 		const deployReceipt = await (await deploy()).wait()
 		const deployedEv = deployReceipt.events.find(x => x.event === 'LogDeployed')
 		const identity = new Contract(deployedEv.args.addr, Identity._json.abi, web3Provider.getSigner(userAcc))
+		// 0x1626ba7e is the signature that the function has to return in case of successful verification
 		assert.equal(await identity.isValidSignature(msgHash, sig), '0x1626ba7e')
 	})
 
@@ -570,12 +566,18 @@ contract('Identity', function(accounts) {
 		)
 	})
 	*/
+	function hashTxns(identityAddr, chainId, nonce, txns) {
+		const abiCoder = new AbiCoder()
+		const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
+		return arrayify(keccak256(encoded))
+	}
 
 	function mapSignatureV(sig) {
 		sig = arrayify(sig)
 		if (sig[64] < 27) sig[64] += 27
 		return hexlify(sig)
 	}
+
 	async function signMsg(from, hash) {
 		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
 		// 02 is the enum number of EthSign signature type
