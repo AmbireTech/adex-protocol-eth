@@ -138,7 +138,7 @@ contract('Identity', function(accounts) {
 		const relayerTx = [
 			id.address,
 			0,
-			idInterface.functions.setAddrPrivilege.encode([anotherAccount, TRUE_BYTES])
+			idInterface.encodeFunctionData('setAddrPrivilege', [anotherAccount, TRUE_BYTES])
 		]
 		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
 
@@ -169,7 +169,7 @@ contract('Identity', function(accounts) {
 		const relayerDowngradeTx = [
 			id.address,
 			0,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, FALSE_BYTES])
+			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, FALSE_BYTES])
 		]
 		const sig = await signMsg(userAcc, hashTxns(id.address, chainId, 1, [relayerDowngradeTx]))
 		await expectEVMError(
@@ -230,7 +230,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: 5,
 			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, true])
+			data: idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, TRUE_BYTES])
 		}))
 		const totalFee = txns.map(x => x.feeAmount).reduce((a, b) => a + b, 0)
 
@@ -270,7 +270,7 @@ contract('Identity', function(accounts) {
 		const relayerTx = [
 			id.address,
 			0,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, TRUE_BYTES])
+			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, TRUE_BYTES])
 		]
 
 		await expectEVMError(
@@ -297,7 +297,7 @@ contract('Identity', function(accounts) {
 			// we use the deposit on Outpace here
 			await zeroFeeTx(
 				coreAddr,
-				coreInterface.functions.deposit.encode([channel.toSolidityTuple(), id.address, tokenAmnt])
+				coreInterface.encodeFunctionData('deposit', [channel.toSolidityTuple(), id.address, tokenAmnt])
 			)
 		]
 		const sigs = await Promise.all(
@@ -324,7 +324,7 @@ contract('Identity', function(accounts) {
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: coreAddr,
-				data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+				data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 			})
 		]
 		const withdrawTxnSigs = await Promise.all(
@@ -400,7 +400,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount,
 			to: coreAddr,
-			data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+			data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 		})
 
 		const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
@@ -494,7 +494,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: 0,
 			to: coreAddr,
-			data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+			data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 		})
 
 		// Now the regular tx to withdraw our funds out of our Identity
@@ -505,7 +505,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: txFeeAmount,
 			to: token.address,
-			data: tokenInterface.functions.transfer.encode([accountToWithdrawTo, maxToWithdraw])
+			data: tokenInterface.encodeFunctionData('transfer', [accountToWithdrawTo, maxToWithdraw])
 		})
 		const txns = [withdrawTx, txToWithdraw]
 		const sigs = await Promise.all(
