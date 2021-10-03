@@ -51,6 +51,7 @@ contract QuickAccManager {
 
 	// isBothSigned is hashed in so that we don't allow signatures from two-sig txns to be reused for single sig txns,
 	// ...potentially frontrunning a normal two-sig transaction and making it wait
+	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function send(Identity identity, QuickAccount calldata acc, DualSig calldata sigs, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
@@ -124,6 +125,7 @@ contract QuickAccManager {
 	// all of the following are 2/2 only
 	bytes32 private TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,uint256 nonce)');
 	struct Transfer { address token; address to; uint amount; uint fee; }
+	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
@@ -148,6 +150,7 @@ contract QuickAccManager {
 	struct Txn { string description; address to; uint value; bytes data; }
 	bytes32 private TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
 	bytes32 private BUNDLE_TYPEHASH = keccak256('Bundle(uint256 nonce,Txn[] transactions)');
+	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function sendTxns(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Txn[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
