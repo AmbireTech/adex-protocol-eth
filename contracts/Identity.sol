@@ -71,6 +71,7 @@ contract Identity {
 		executeCall(block.coinbase, amount, new bytes(0));
 	}
 
+	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function execute(Transaction[] calldata txns, bytes calldata signature)
 		external
 	{
