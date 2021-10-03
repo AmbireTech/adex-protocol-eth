@@ -35,6 +35,7 @@ contract Identity {
 	// However, to support EIP 721 and EIP 1155, we need to respond to those methods with their own method signature
 	fallback() external payable {
 		if (msg.data.length >= 4) {
+			// NOTE: it seems we can use msg.sig - we should do gas usage tests
 			bytes4 method;
 			// solium-disable-next-line security/no-inline-assembly
 			assembly {
