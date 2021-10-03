@@ -29,7 +29,7 @@ contract IdentityFactory {
 	// but for the quick accounts we need this
 	function deployAndCall(bytes calldata code, uint256 salt, address callee, bytes calldata data) external {
 		deploySafe(code, salt);
-		require(data.length > 4, 'DAtA_LEN');
+		require(data.length > 4, 'DATA_LEN');
 		bytes4 method;
 		// solium-disable-next-line security/no-inline-assembly
 		assembly {
