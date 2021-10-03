@@ -34,25 +34,17 @@ contract Identity {
 	// This contract can accept ETH with calldata
 	// However, to support EIP 721 and EIP 1155, we need to respond to those methods with their own method signature
 	fallback() external payable {
-		if (msg.data.length >= 4) {
-			// NOTE: it seems we can use msg.sig - we should do gas usage tests
-			bytes4 method;
-			// solium-disable-next-line security/no-inline-assembly
+		bytes4 method = msg.sig;
+		if (
+			method == 0x150b7a02 // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
+				|| method == 0xf23a6e61 // bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"))
+				|| method == 0xbc197c81 // bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
+		) {
+			// Copy back the method
+			// solhint-disable-next-line no-inline-assembly
 			assembly {
-				// can also do shl(224, shr(224, calldataload(0)))
-				method := and(calldataload(0), 0xffffffff00000000000000000000000000000000000000000000000000000000)
-			}
-			if (
-				method == 0x150b7a02 // bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))
-					|| method == 0xf23a6e61 // bytes4(keccak256("onERC1155Received(address,address,uint256,uint256,bytes)"))
-					|| method == 0xbc197c81 // bytes4(keccak256("onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"))
-			) {
-				// Copy back the method
-				// solhint-disable-next-line no-inline-assembly
-				assembly {
-					calldatacopy(0, 0, 0x04)
-					return (0, 0x20)
-				}
+				calldatacopy(0, 0, 0x04)
+				return (0, 0x20)
 			}
 		}
 	}
