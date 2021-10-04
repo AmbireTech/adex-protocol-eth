@@ -1,12 +1,17 @@
 const { AbiCoder, hexlify, arrayify, keccak256 } = require('ethers').utils
+const { Contract } = require('ethers')
+
 const ensure = require('./ensureTypes')
+
+const IdentityInterface = require('../abi/Identity5.2')
+const IdentityFactoryInterface = require('../abi/IdentityFactory5.2')
+const QuickAccManagerInterface = require('../abi/QuickAccManager')
 
 function Bundle(args) {
 	this.identity = ensure.Address(args.identity)
-	// @TODO
+	// @TODO validate this
 	this.signer = args.signer
-
-	Object.freeze(this)
+	this.txns = args.txns
 	return this
 }
 
@@ -27,6 +32,20 @@ async function signMsg(wallet, hash) {
 	// 02 is the enum number of EthSign signature type
 	return mapSignatureV(await wallet.signMessage(hash)) + '02'
 }
+
+async function getNonce (provider, userTxnBundle) {
+	try {
+		return (userTxnBundle.signer.quickAccManager
+			? (await (new Contract(userTxnBundle.signer.quickAccManager, QuickAccManagerInterface, provider)).nonces(userTxnBundle.identity))
+			: (await (new Contract(userTxnBundle.identity, IdentityInterface, provider)).nonce())
+		).toNumber()
+	} catch(e) {
+		// means the identity isn't deployed, which certainly implies nonce 0
+		if (e.code === 'CALL_EXCEPTION' && (await provider.getCode(userTxnBundle.identity)) === '0x') return 0
+		else throw e
+	}
+}
+//getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
 
 module.exports = { Bundle }
 
