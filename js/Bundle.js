@@ -12,6 +12,9 @@ function Bundle(args) {
 	// @TODO validate this
 	this.signer = args.signer
 	this.txns = args.txns
+	this.gasLimit = args.gasLimit
+	this.nonce = args.nonce
+	this.signature = args.signature
 	return this
 }
 
@@ -76,20 +79,20 @@ function getSignable(userTxnBundle) {
 	if (signer.address)
 		return abiCoder.encode(
 			['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'],
-			[this.identity, getChainID(this.network), this.nonce, this.txns]
+			[userTxnBundle.identity, getChainID(userTxnBundle.network), userTxnBundle.nonce, userTxnBundle.txns]
 		)
 	if (signer.quickAccManager) {
 		const accHash = keccak256(
 			abiCoder.encode(
 				['tuple(uint, address, address)'],
-				[[this.signer.timelock, this.signer.one, this.signer.two]]
+				[[userTxnBundle.signer.timelock, userTxnBundle.signer.one, userTxnBundle.signer.two]]
 			)
 		)
 		// @TODO typed data
 		// if (signer.isTypedData)
 		return abiCoder.encode(
 			['address', 'uint', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
-			[this.identity, getChainID(this.network), accHash, this.nonce, this.txns, true]
+			[userTxnBundle.identity, getChainID(userTxnBundle.network), accHash, userTxnBundle.nonce, userTxnBundle.txns, true]
 		)
 	}
 	throw new Error(`invalid signer object`)
