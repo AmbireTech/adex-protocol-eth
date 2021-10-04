@@ -28,7 +28,8 @@ Bundle.prototype.estimate = async function({ fetch, relayerURL }) {
 }
 
 Bundle.prototype.sign = async function(wallet) {
-	// @TODO quickAccount
+	const encoded = getSignable(this)
+	const hash = arrayify(keccak256(encoded))
 	const signature = await signMsg(wallet, hashTxns(this.identity, this.network, this.nonce, this.txns))
 	this.signature = signature
 	return signature
@@ -39,10 +40,35 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 
 }
 
-function hashTxns (identityAddr, chainId, nonce, txns) {
+function getSignable(userTxnBundle) {
 	const abiCoder = new AbiCoder()
-	const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
-	return arrayify(keccak256(encoded))
+	const signer = userTxnBundle.signer
+	if (signer.address) return abiCoder.encode(
+		['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'],
+		[this.identity, getChainID(this.network), this.nonce, this.txns]
+	)
+	if (signer.quickAccManager) {
+		const accHash = keccak256(abiEncoder.encode(
+			['tuple(uint, address, address)'],
+			[[this.signer.timelock, this.signer.one, this.signer.two]]
+		))
+		// @TODO typed data
+		// if (signer.isTypedData)
+		return abiCoder.encode(
+			['address', 'uint', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
+			[this.identity, getChainID(this.network), accHash, this.nonce, this.txns, true]
+		)
+	}
+	throw new Error(`invalid signer object`)
+}
+
+function getChainID(network) {
+	if (network === 'ethereum') return 0
+	if (network === 'polygon') return 137
+	if (network === 'bsc') return 56
+	if (network === 'fantom') return 250
+	if (network == 'avalanache') return 43114
+	throw new Error(`unsupproted network ${network}`)
 }
 
 function mapSignatureV (sig) {
