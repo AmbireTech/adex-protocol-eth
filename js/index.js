@@ -8,11 +8,15 @@ const splitSig = require('./splitSig')
 const unbondCommitmentlLib = require('./UnbondCommitment')
 const Permit = require('./Permit')
 
+// Identity and QuickAccManager
+const bundleLib = require('./Bundle')
+
 module.exports = {
 	...channelLib,
 	...withdrawalLib,
 	...unbondCommitmentlLib,
 	...Permit,
+	...bundleLib,
 	MerkleTree,
 	splitSig
 }
