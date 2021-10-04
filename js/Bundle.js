@@ -31,6 +31,8 @@ Bundle.prototype.estimate = async function({ fetch, relayerURL }) {
 }
 
 Bundle.prototype.sign = async function(wallet) {
+	if (isNaN(this.nonce)) throw new Error('nonce is not set')
+	if (isNaN(this.gasLimit)) throw new Error('gasLimit is not set')
 	const encoded = getSignable(this)
 	const hash = arrayify(keccak256(encoded))
 	const signature = await signMsg(wallet, hash)
