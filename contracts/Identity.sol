@@ -10,6 +10,7 @@ contract Identity {
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, bytes32 priv);
+	event LogErr(address indexed to, uint value, bytes data, bytes returnData); // only used in tryCatch
 
 	// Transaction structure
 	// we handle replay protection separately by requiring (address(this), chainID, nonce) as part of the sig
@@ -61,7 +62,6 @@ contract Identity {
 		emit LogPrivilegeChanged(addr, priv);
 	}
 
-	// @TODO: should this stay? is this the right place for it?
 	function tipMiner(uint amount)
 		external
 	{
@@ -70,6 +70,15 @@ contract Identity {
 		// generally this contract is reentrancy proof cause of the nonce
 		executeCall(block.coinbase, amount, new bytes(0));
 	}
+
+	function tryCatch(address to, uint value, bytes calldata data)
+		external
+	{
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		(bool success, bytes memory returnData) = to.call{value: value, gas: gasleft()}(data);
+		if (!success) emit LogErr(to, value, data, returnData);
+	}
+
 
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function execute(Transaction[] calldata txns, bytes calldata signature)
