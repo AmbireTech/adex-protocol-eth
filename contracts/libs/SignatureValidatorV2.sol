@@ -39,7 +39,6 @@ library SignatureValidator {
 
 		// {r}{s}{v}{mode}
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
-			// @TODO sig len check
 			require(sig.length == 66, "SignatureValidator: sig len");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
@@ -52,7 +51,6 @@ library SignatureValidator {
 		}
 		// {sig}{verifier}{mode}
 		if (mode == SignatureMode.SmartWallet) {
-			// @TODO: sig len check
 			// 32 bytes for the addr, 1 byte for the type = 33
 			require(sig.length > 33, "SignatureValidator: wallet sig len");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
