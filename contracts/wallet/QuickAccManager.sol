@@ -96,6 +96,8 @@ contract QuickAccManager {
 	}
 
 	function execScheduled(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
+		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
+
 		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns, false));
 		require(scheduled[hash] != 0 && block.timestamp >= scheduled[hash], 'NOT_TIME');
 		delete scheduled[hash];
