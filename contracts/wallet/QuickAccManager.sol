@@ -110,6 +110,9 @@ contract QuickAccManager {
 	// see https://eips.ethereum.org/EIPS/eip-1271
 	function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
 		(address payable id, uint timelock, bytes memory sig1, bytes memory sig2) = abi.decode(signature, (address, uint, bytes, bytes));
+		// @TODO: perhaps we can avoid having to encode the ID in the sig
+		// this method is not intended to be called from off-chain eth_calls
+		require(id == msg.sender);
 		bytes32 accHash = keccak256(abi.encode(QuickAccount({
 			timelock: timelock,
 			one: SignatureValidator.recoverAddr(hash, sig1),
