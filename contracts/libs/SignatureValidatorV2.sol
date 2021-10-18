@@ -48,9 +48,8 @@ library SignatureValidator {
 			require(v == 27 || v == 28, "invalid v");
 			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
 			return ecrecover(hash, v, r, s);
-		}
 		// {sig}{verifier}{mode}
-		if (mode == SignatureMode.SmartWallet) {
+		} else if (mode == SignatureMode.SmartWallet) {
 			// 32 bytes for the addr, 1 byte for the type = 33
 			require(sig.length > 33, "SignatureValidator: wallet sig len");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
@@ -58,14 +57,12 @@ library SignatureValidator {
 			sig.trimToSize(sig.length - 33);
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SignatureValidator: invalid wallet sig");
 			return address(wallet);
-		}
 		// {address}{mode}; the spoof mode is used when simulating calls
-		if (mode == SignatureMode.Spoof && allowSpoofing) {
+		} else if (mode == SignatureMode.Spoof && allowSpoofing) {
 			require(tx.origin == address(1), "SignatureValidator: spoof must be used with specific addr");
 			require(sig.length == 33, "SignatureValidator: spoof sig len");
 			sig.trimToSize(32);
 			return abi.decode(sig, (address));
-		}
-		return address(0x00);
+		} else return address(0x00);
 	}
 }
