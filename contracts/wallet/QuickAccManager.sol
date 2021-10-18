@@ -10,7 +10,7 @@ contract QuickAccManager {
 	mapping (address => uint) nonces;
 	mapping (bytes32 => uint) scheduled;
 
-	bytes4 immutable CANCEL_PREFIX = 0xc47c3100;
+	bytes4 constant CANCEL_PREFIX = 0xc47c3100;
 
 	// Events
 	// we only need those for timelocked stuff so we can show scheduled txns to the user; the oens that get executed immediately do not need logs
@@ -19,7 +19,7 @@ contract QuickAccManager {
 	event LogExecScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
 
 	// EIP 2612
-	bytes32 public DOMAIN_SEPARATOR;
+	bytes32 public immutable DOMAIN_SEPARATOR;
 	constructor() {
 		DOMAIN_SEPARATOR = keccak256(
 			abi.encode(
