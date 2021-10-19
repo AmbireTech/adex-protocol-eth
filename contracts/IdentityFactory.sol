@@ -49,7 +49,7 @@ contract IdentityFactory {
 
 	// Withdraw the earnings from various fees (deploy fees and execute fees earned cause of `deployAndExecute`)
 	// although we do not use this since we no longer receive fees on the factory, it's good to have this for safety
-	function withdraw(IERC20 token, address to, uint256 tokenAmount) public {
+	function withdraw(IERC20 token, address to, uint256 tokenAmount) external {
 		require(msg.sender == creator, 'ONLY_CREATOR');
 		token.transfer(to, tokenAmount);
 	}
