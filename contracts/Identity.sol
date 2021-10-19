@@ -6,7 +6,7 @@ import "./libs/SignatureValidatorV2.sol";
 contract Identity {
 	mapping (address => bytes32) public privileges;
 	// The next allowed nonce
-	uint public nonce = 0;
+	uint public nonce;
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, bytes32 priv);
