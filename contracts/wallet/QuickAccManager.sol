@@ -128,7 +128,7 @@ contract QuickAccManager {
 
 	// EIP 712 methods
 	// all of the following are 2/2 only
-	bytes32 private TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,uint256 nonce)');
+	bytes32 private constant TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,uint256 nonce)');
 	struct Transfer { address token; address to; uint amount; uint fee; }
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
@@ -153,8 +153,8 @@ contract QuickAccManager {
 	// and https://eips.ethereum.org/EIPS/eip-712
 	// and for signTypedData_v4: https://gist.github.com/danfinlay/750ce1e165a75e1c3387ec38cf452b71
 	struct Txn { string description; address to; uint value; bytes data; }
-	bytes32 private TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
-	bytes32 private BUNDLE_TYPEHASH = keccak256('Bundle(uint256 nonce,Txn[] transactions)');
+	bytes32 private constant TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
+	bytes32 private constant BUNDLE_TYPEHASH = keccak256('Bundle(uint256 nonce,Txn[] transactions)');
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
 	function sendTxns(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Txn[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
