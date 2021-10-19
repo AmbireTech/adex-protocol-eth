@@ -76,7 +76,7 @@ contract WalletZapper {
 		aaveRefCode = _aaveRefCode;
 		allowedSpenders[address(_lendingPool)] = true;
 		// This needs to include all of the routers, and all of the Yearn vaults
-		for (uint i=0; i!=spenders.length; i++) {
+		for (uint i=0; i<spenders.length; i++) {
 			allowedSpenders[spenders[i]] = true;
 		}
 	}
@@ -84,7 +84,7 @@ contract WalletZapper {
 	function approveMaxMany(address spender, address[] calldata tokens) external {
 		require(msg.sender == admin, "NOT_ADMIN");
 		require(allowedSpenders[spender], "NOT_ALLOWED");
-		for (uint i=0; i!=tokens.length; i++) {
+		for (uint i=0; i<tokens.length; i++) {
 			SafeERC20.approve(tokens[i], spender, type(uint256).max);
 		}
 	}
@@ -101,13 +101,13 @@ contract WalletZapper {
 	//  because we expect diversifyV3 to be enough
 	// We can very easily deploy a new Zapper and upgrade to it since it's just a UI change
 	function exchangeV2(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
-		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+		for (uint i=0; i<assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
 		address to = msg.sender;
 		uint deadline = block.timestamp;
 		uint len = trades.length;
-		for (uint i=0; i!=len; i++) {
+		for (uint i=0; i<len; i++) {
 			Trade memory trade = trades[i];
 			if (!trade.wrap) {
 				trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, to, deadline);
@@ -123,12 +123,12 @@ contract WalletZapper {
 
 	// go in/out of lending assets
 	function wrapLending(address[] calldata assetsToWrap) external {
-		for (uint i=0; i!=assetsToWrap.length; i++) {
+		for (uint i=0; i<assetsToWrap.length; i++) {
 			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, aaveRefCode);
 		}
 	}
 	function unwrapLending(address[] calldata assetsToUnwrap) external {
-		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+		for (uint i=0; i<assetsToUnwrap.length; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, msg.sender);
 		}
 	}
@@ -180,7 +180,7 @@ contract WalletZapper {
 
 		uint totalAllocPts;
 		uint len = trades.length;
-		for (uint i=0; i!=len; i++) {
+		for (uint i=0; i<len; i++) {
 			DiversificationTrade memory trade = trades[i];
 			totalAllocPts += trade.allocPts;
 			if (!trade.wrap) {
