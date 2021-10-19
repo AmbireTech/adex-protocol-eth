@@ -64,16 +64,16 @@ contract WalletZapper {
 		bool wrap;
 	}
 
-	address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
-	address public admin;
+	address public immutable admin;
+	IAaveLendingPool public immutable lendingPool;
+	uint16 immutable aaveRefCode;
+	address public immutable WETH;
 	mapping (address => bool) public allowedSpenders;
-	IAaveLendingPool public lendingPool;
-	uint16 aaveRefCode;
-	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] memory spenders) {
+	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address _weth, address[] memory spenders) {
 		admin = msg.sender;
 		lendingPool = _lendingPool;
 		aaveRefCode = _aaveRefCode;
+		WETH = _weth;
 		allowedSpenders[address(_lendingPool)] = true;
 		// This needs to include all of the routers, and all of the Yearn vaults
 		for (uint i=0; i<spenders.length; i++) {
