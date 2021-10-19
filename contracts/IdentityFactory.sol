@@ -7,7 +7,7 @@ import "./interfaces/IERC20.sol";
 contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
 
-	address public creator;
+	address public immutable creator;
 	constructor() {
 		creator = msg.sender;
 	}
