@@ -216,7 +216,7 @@ contract WalletZapper {
 		IERC20 wrappedETH = IERC20(WETH);
 		uint wrappedETHAmount = wrappedETH.balanceOf(address(this));
 		// NOTE: what if there is dust?
-		if (wrappedETHAmount > 0) require(wrappedETH.transfer(msg.sender, wrappedETHAmount));
+		if (wrappedETHAmount > 0) require(wrappedETH.transfer(msg.sender, wrappedETHAmount), "WETH_TRANSFER");
 		// require(totalAllocPts == 1000, "ALLOC_PTS");
 	}
 
