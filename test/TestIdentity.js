@@ -196,7 +196,7 @@ contract('Identity', function(accounts) {
 
 		// The part that is evaluated by QuickAccManager
 		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [expectedAddr, 600, sig1, sig2])
-		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '03'
+		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
 
 		// we need to deploy before being able to validate sigs
 		const deployReceipt = await (await deploy()).wait()
@@ -578,10 +578,11 @@ contract('Identity', function(accounts) {
 		return hexlify(sig)
 	}
 
+	// @TODO: replace with Bundle.js methods
 	async function signMsg(from, hash) {
 		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-		// 02 is the enum number of EthSign signature type
-		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '02'
+		// 01 is the enum number of EthSign signature type
+		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '01'
 	}
 
 	function createAccount(privileges, opts) {
