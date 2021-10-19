@@ -60,6 +60,7 @@ contract QuickAccManager {
 		bytes32 hash = keccak256(abi.encode(
 			address(this),
 			block.chainid,
+			address(identity),
 			accHash,
 			nonces[address(identity)]++,
 			txns,
@@ -82,7 +83,7 @@ contract QuickAccManager {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 
-		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, accHash, nonce, txns, false));
+		bytes32 hash = keccak256(abi.encode(CANCEL_PREFIX, address(this), block.chainid, address(identity), accHash, nonce, txns, false));
 		address signer = SignatureValidator.recoverAddr(hash, sig);
 		require(signer == acc.one || signer == acc.two, 'INVALID_SIGNATURE');
 
@@ -98,7 +99,7 @@ contract QuickAccManager {
 	function execScheduled(Identity identity, bytes32 accHash, uint nonce, Identity.Transaction[] calldata txns) external {
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 
-		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns, false));
+		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, address(identity), accHash, nonce, txns, false));
 		require(scheduled[hash] != 0 && block.timestamp >= scheduled[hash], 'NOT_TIME');
 		delete scheduled[hash];
 		identity.executeBySender(txns);
@@ -126,21 +127,27 @@ contract QuickAccManager {
 		}
 	}
 
+
 	// EIP 712 methods
 	// all of the following are 2/2 only
-	bytes32 private constant TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,uint256 nonce)');
+	struct DualSigAlwaysBoth {
+		bytes one;
+		bytes two;
+	}
+
+	bytes32 private constant TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,address identity,uint256 nonce)');
 	struct Transfer { address token; address to; uint amount; uint fee; }
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
-	function sendTransfer(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Transfer calldata t) external {
+	function sendTransfer(Identity identity, QuickAccount calldata acc, DualSigAlwaysBoth calldata sigs, Transfer calldata t) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
 			DOMAIN_SEPARATOR,
-			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, t.fee, nonces[address(identity)]++))
+			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, t.fee, address(identity), nonces[address(identity)]++))
 		));
-		require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
-		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
+		require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
+		require(acc.two == SignatureValidator.recoverAddr(hash, sigs.two), 'SIG_TWO');
 		Identity.Transaction[] memory txns = new Identity.Transaction[](2);
 		txns[0].to = t.token;
 		txns[0].data = abi.encodeWithSelector(IERC20.transfer.selector, t.to, t.amount);
@@ -154,9 +161,9 @@ contract QuickAccManager {
 	// and for signTypedData_v4: https://gist.github.com/danfinlay/750ce1e165a75e1c3387ec38cf452b71
 	struct Txn { string description; address to; uint value; bytes data; }
 	bytes32 private constant TXNS_TYPEHASH = keccak256('Txn(string description,address to,uint256 value,bytes data)');
-	bytes32 private constant BUNDLE_TYPEHASH = keccak256('Bundle(uint256 nonce,Txn[] transactions)');
+	bytes32 private constant BUNDLE_TYPEHASH = keccak256('Bundle(address identity,uint256 nonce,Txn[] transactions)');
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
-	function sendTxns(Identity identity, QuickAccount calldata acc, bytes calldata sigOne, bytes calldata sigTwo, Txn[] calldata txns) external {
+	function sendTxns(Identity identity, QuickAccount calldata acc, DualSigAlwaysBoth calldata sigs, Txn[] calldata txns) external {
 		require(identity.privileges(address(this)) == keccak256(abi.encode(acc)), 'WRONG_ACC_OR_NO_PRIV');
 
 		// hashing + prepping args
@@ -172,10 +179,10 @@ contract QuickAccManager {
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
 			DOMAIN_SEPARATOR,
-			keccak256(abi.encode(BUNDLE_TYPEHASH, nonces[address(identity)]++, txnsHash))
+			keccak256(abi.encode(BUNDLE_TYPEHASH, address(identity), nonces[address(identity)]++, txnsHash))
 		));
-		require(acc.one == SignatureValidator.recoverAddr(hash, sigOne), 'SIG_ONE');
-		require(acc.two == SignatureValidator.recoverAddr(hash, sigTwo), 'SIG_TWO');
+		require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
+		require(acc.two == SignatureValidator.recoverAddr(hash, sigs.two), 'SIG_TWO');
 		identity.executeBySender(identityTxns);
 	}
 
