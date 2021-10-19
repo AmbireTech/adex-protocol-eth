@@ -51,14 +51,14 @@ contract QuickAccManager {
 	function send(Identity identity, QuickAccount calldata acc, DualSig calldata sigs, Identity.Transaction[] calldata txns) external {
 		bytes32 accHash = keccak256(abi.encode(acc));
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
-		uint initialNonce = nonces[address(identity)];
+		uint initialNonce = nonces[address(identity)]++;
 		// Security: we must also hash in the hash of the QuickAccount, otherwise the sig of one key can be reused across multiple accs
 		bytes32 hash = keccak256(abi.encode(
 			address(this),
 			block.chainid,
 			address(identity),
 			accHash,
-			nonces[address(identity)]++,
+			initialNonce,
 			txns,
 			sigs.isBothSigned
 		));
