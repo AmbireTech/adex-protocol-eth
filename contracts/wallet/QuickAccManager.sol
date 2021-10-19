@@ -19,18 +19,14 @@ contract QuickAccManager {
 	event LogExecScheduled(bytes32 indexed txnHash, bytes32 indexed accHash, uint time);
 
 	// EIP 2612
-	bytes32 public immutable DOMAIN_SEPARATOR;
+	/// @notice Chain Id at this contract's deployment.
+	uint256 internal immutable DOMAIN_SEPARATOR_CHAIN_ID;
+	/// @notice EIP-712 typehash for this contract's domain at deployment.
+	bytes32 internal immutable _DOMAIN_SEPARATOR;
+
 	constructor() {
-		DOMAIN_SEPARATOR = keccak256(
-			abi.encode(
-				keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
-				// @TODO: maybe we should use a more user friendly name here?
-				keccak256(bytes('QuickAccManager')),
-				keccak256(bytes('1')),
-				block.chainid,
-				address(this)
-			)
-		);
+		DOMAIN_SEPARATOR_CHAIN_ID = block.chainid;
+		_DOMAIN_SEPARATOR = calculateDomainSeparator();
 	}
 
 	struct QuickAccount {
@@ -135,6 +131,24 @@ contract QuickAccManager {
 		bytes two;
 	}
 
+	function calculateDomainSeparator() internal view returns (bytes32) {
+		return keccak256(
+			abi.encode(
+				keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+				// @TODO: maybe we should use a more user friendly name here?
+				keccak256(bytes('QuickAccManager')),
+				keccak256(bytes('1')),
+				block.chainid,
+				address(this)
+			)
+		);
+	}
+
+	/// @notice EIP-712 typehash for this contract's domain.
+	function DOMAIN_SEPARATOR() public view returns (bytes32) {
+		return block.chainid == DOMAIN_SEPARATOR_CHAIN_ID ? _DOMAIN_SEPARATOR : calculateDomainSeparator();
+	}
+
 	bytes32 private constant TRANSFER_TYPEHASH = keccak256('Transfer(address tokenAddr,address to,uint256 value,uint256 fee,address identity,uint256 nonce)');
 	struct Transfer { address token; address to; uint amount; uint fee; }
 	// WARNING: if the signature of this is changed, we have to change IdentityFactory
@@ -143,7 +157,7 @@ contract QuickAccManager {
 
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
-			DOMAIN_SEPARATOR,
+			DOMAIN_SEPARATOR(),
 			keccak256(abi.encode(TRANSFER_TYPEHASH, t.token, t.to, t.amount, t.fee, address(identity), nonces[address(identity)]++))
 		));
 		require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
@@ -178,7 +192,7 @@ contract QuickAccManager {
 		bytes32 txnsHash = keccak256(abi.encodePacked(txnBytes));
 		bytes32 hash = keccak256(abi.encodePacked(
 			'\x19\x01',
-			DOMAIN_SEPARATOR,
+			DOMAIN_SEPARATOR(),
 			keccak256(abi.encode(BUNDLE_TYPEHASH, address(identity), nonces[address(identity)]++, txnsHash))
 		));
 		require(acc.one == SignatureValidator.recoverAddr(hash, sigs.one), 'SIG_ONE');
