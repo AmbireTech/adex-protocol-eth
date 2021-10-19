@@ -11,7 +11,6 @@ library SignatureValidator {
 	using LibBytes for bytes;
 
 	enum SignatureMode {
-		NoSig,
 		EIP712,
 		EthSign,
 		SmartWallet,
@@ -33,10 +32,6 @@ library SignatureValidator {
 		require(modeRaw < uint8(SignatureMode.Unsupported), "SignatureValidator: unsupported sig mode");
 		SignatureMode mode = SignatureMode(modeRaw);
 
-		if (mode == SignatureMode.NoSig) {
-			return address(0x0);
-		}
-
 		// {r}{s}{v}{mode}
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
 			require(sig.length == 66, "SignatureValidator: sig len");
@@ -47,7 +42,9 @@ library SignatureValidator {
 			// Hesitant about this check: seems like this is something that has no business being checked on-chain
 			require(v == 27 || v == 28, "invalid v");
 			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
-			return ecrecover(hash, v, r, s);
+			address signer = ecrecover(hash, v, r, s);
+			require(signer != address(0), "SV_ZERO_SIG");
+			return signer;
 		// {sig}{verifier}{mode}
 		} else if (mode == SignatureMode.SmartWallet) {
 			// 32 bytes for the addr, 1 byte for the type = 33
@@ -63,6 +60,6 @@ library SignatureValidator {
 			require(sig.length == 33, "SignatureValidator: spoof sig len");
 			sig.trimToSize(32);
 			return abi.decode(sig, (address));
-		} else return address(0x00);
+		} else revert("SV_SIGMODE");
 	}
 }

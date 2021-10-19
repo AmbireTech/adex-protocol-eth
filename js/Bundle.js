@@ -115,8 +115,8 @@ function mapSignatureV(sigRaw) {
 
 async function signMsg(wallet, hash) {
 	// assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-	// 02 is the enum number of EthSign signature type
-	return `${mapSignatureV(await wallet.signMessage(hash))}02`
+	// 01 is the enum number of EthSign signature type
+	return `${mapSignatureV(await wallet.signMessage(hash))}01`
 }
 
 async function getNonce(provider, userTxnBundle) {
