@@ -27,14 +27,14 @@ library SignatureValidator {
 	}
 
 	function recoverAddrImpl(bytes32 hash, bytes memory sig, bool allowSpoofing) internal view returns (address) {
-		require(sig.length >= 1, "SignatureValidator: basic sig len");
+		require(sig.length >= 1, "SV_SIGLEN");
 		uint8 modeRaw = uint8(sig[sig.length - 1]);
-		require(modeRaw < uint8(SignatureMode.Unsupported), "SignatureValidator: unsupported sig mode");
+		require(modeRaw < uint8(SignatureMode.Unsupported), "SV_SIGMODE");
 		SignatureMode mode = SignatureMode(modeRaw);
 
 		// {r}{s}{v}{mode}
 		if (mode == SignatureMode.EIP712 || mode == SignatureMode.EthSign) {
-			require(sig.length == 66, "SignatureValidator: sig len");
+			require(sig.length == 66, "SV_LEN");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
 			// @TODO: is there a gas saving to be had here by using assembly?
@@ -48,16 +48,16 @@ library SignatureValidator {
 		// {sig}{verifier}{mode}
 		} else if (mode == SignatureMode.SmartWallet) {
 			// 32 bytes for the addr, 1 byte for the type = 33
-			require(sig.length > 33, "SignatureValidator: wallet sig len");
+			require(sig.length > 33, "SV_LEN_WALLET");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
 			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
 			sig.trimToSize(sig.length - 33);
-			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SignatureValidator: invalid wallet sig");
+			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SV_WALLET_INVALID");
 			return address(wallet);
 		// {address}{mode}; the spoof mode is used when simulating calls
 		} else if (mode == SignatureMode.Spoof && allowSpoofing) {
-			require(tx.origin == address(1), "SignatureValidator: spoof must be used with specific addr");
-			require(sig.length == 33, "SignatureValidator: spoof sig len");
+			require(tx.origin == address(1), "SV_SPOOF_ORIGIN");
+			require(sig.length == 33, "SV_SPOOF_LEN");
 			sig.trimToSize(32);
 			return abi.decode(sig, (address));
 		} else revert("SV_SIGMODE");
