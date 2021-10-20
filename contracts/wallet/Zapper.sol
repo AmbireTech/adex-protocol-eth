@@ -68,6 +68,7 @@ contract WalletZapper {
 	IAaveLendingPool public immutable lendingPool;
 	uint16 immutable aaveRefCode;
 	address public immutable WETH;
+	// for security reasons, allowedSpenders cannot be mutated: the idea is that once a zapper is considered safe, sending funds to it and calling trade() cannot lead to unexpected consequences
 	mapping (address => bool) public allowedSpenders;
 	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address _weth, address[] memory spenders) {
 		admin = msg.sender;
