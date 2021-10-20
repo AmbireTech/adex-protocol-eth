@@ -1,6 +1,5 @@
 /** globals afterEach */
-const { providers, Contract, ethers } = require('ethers')
-const { bigNumberify } = require('ethers').utils
+const { providers, Contract, ethers, BigNumber } = require('ethers')
 const { ecsign } = require('ethereumjs-util')
 const { expectEVMError, takeSnapshot, revertToSnapshot, moveTime } = require('./')
 const { UnbondCommitment, getApprovalDigest } = require('../js')
@@ -37,7 +36,7 @@ contract('StakingPool', function(accounts) {
 	const governanceSigner = web3Provider.getSigner(governanceAddr)
 
 	async function enterStakingPool(acc, amountToEnter) {
-		// const amountToEnter = bigNumberify('1000000')
+		// const amountToEnter = BigNumber.from('1000000')
 		// set user balance
 		await prevToken.connect(web3Provider.getSigner(acc)).setBalanceTo(acc, amountToEnter)
 		await adxToken.connect(web3Provider.getSigner(acc)).swap(amountToEnter)
@@ -176,7 +175,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('approve', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		await enterStakingPool(userAcc, amountToEnter)
 		const amountToApprove = 10
 		const receipt = await (await stakingPool.approve(anotherUser, amountToApprove)).wait()
@@ -240,7 +239,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('enter', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		// set user balance
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
@@ -264,16 +263,11 @@ contract('StakingPool', function(accounts) {
 		await moveTime(web3, DAY_SECONDS * 10)
 		await (await stakingPool.enter(parseADX('10'))).wait()
 
-		assert.equal(
-			(await stakingPool.balanceOf(userAcc)).toString(),
-			'10001157273463719476',
-			'should mint additional shares'
-		)
 		assert.ok((await stakingPool.balanceOf(userAcc)).gt(prevBal), 'should mint additional shares')
 	})
 
 	it('enterTo', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		// set user balance
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
@@ -292,7 +286,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('leave', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		// set user balance
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
@@ -301,11 +295,11 @@ contract('StakingPool', function(accounts) {
 		await (await adxToken.approve(stakingPool.address, parseADX('1000'))).wait()
 		// enter staking pool
 		const sharesToMint = parseADX('10')
-		await (await stakingPool.enter(sharesToMint)).wait()
+		await (await stakingPool.enter(sharesToMint, { gasLimit: 200000 })).wait()
 
 		await expectEVMError(stakingPool.leave(parseADX('10000'), false), 'INSUFFICIENT_SHARES')
 
-		const receipt = await (await stakingPool.leave(sharesToMint, false)).wait()
+		const receipt = await (await stakingPool.leave(sharesToMint, false, { gasLimit: 150000 })).wait()
 		const currentBlockTimestamp = (await web3.eth.getBlock('latest')).timestamp
 		assert.equal(receipt.events.length, 2, 'should emit LogLeave event')
 
@@ -335,7 +329,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('withdraw', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
 
@@ -378,7 +372,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('rageLeave', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
 
@@ -396,7 +390,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('claim', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
 
@@ -434,7 +428,7 @@ contract('StakingPool', function(accounts) {
 	})
 
 	it('penalize', async function() {
-		const amountToEnter = bigNumberify('1000000')
+		const amountToEnter = BigNumber.from('1000000')
 		await prevToken.setBalanceTo(userAcc, amountToEnter)
 		await adxToken.swap(amountToEnter)
 

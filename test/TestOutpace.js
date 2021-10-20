@@ -469,7 +469,7 @@ contract('OUTPACE', function(accounts) {
 		// check states
 		assert.equal((await core.remaining(channel.hashHex())).toNumber(), 0, 'incorrect remaining')
 		assert.equal(
-			(await core.challenges(channel.hashHex())).toString('hex'),
+			(await core.challenges(channel.hashHex())).toString(),
 			ChannelState.Challenged,
 			'incorrect challenge state'
 		)

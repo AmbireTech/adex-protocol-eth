@@ -1,92 +1,49 @@
-const wrapper = require('solc/wrapper')
+// @TODO: use ethers v5
 const abi = require('ethereumjs-abi')
 const keccak256 = require('js-sha3').keccak256
-const assert = require('assert')
 
-function getMappingSstore(slotNumber, keyType, key, value) {
-	// https://blog.zeppelin.solutions/ethereum-in-depth-part-2-6339cf6bddb9
-	const buf = abi.rawEncode([keyType, 'bool'], [key, slotNumber])
-	const slot = keccak256(buf)
-	return `sstore(0x${slot}, ${value})`
+function evmPush(data) {
+	if (data.length < 1) throw new Error('evmPush: no data')
+	if (data.length > 32) throw new Error('evmPush: data too long')
+	const opCode = data.length + 95
+	const opCodeBuf = Buffer.alloc(1)
+	opCodeBuf.writeUInt8(opCode, 0)
+	return Buffer.concat([opCodeBuf, data])
 }
 
-// opts:
-// * privSlot: the storage slots used by the proxiedAddr
-// * unsafeERC20: true OR safeERC20Artifact
-// solcWrapper:
-// * wannabe temp solution to work in browsers https://github.com/ethereum/solc-js#browser-usage
-// * For node usage: pass ./solc { solcModule }
-function getProxyDeployBytecode(proxiedAddr, privLevels, opts, solcModule) {
-	assert.ok(opts, 'opts not passed')
-	const { privSlot } = opts
-	assert.ok(typeof privSlot === 'number', 'privSlot must be a number')
+function sstoreCode(slotNumber, keyType, key, valueType, valueBuf) {
+	const buf = abi.rawEncode([keyType, valueType], [key, slotNumber])
+	const slot = keccak256(buf)
+	return Buffer.concat([
+		evmPush(typeof valueBuf === 'string' ? Buffer.from(valueBuf.slice(2), 'hex') : valueBuf),
+		evmPush(Buffer.from(slot, 'hex')),
+		Buffer.from('55', 'hex')
+	])
+}
 
-	const privLevelsCode = privLevels
-		.map(([addr, level]) => getMappingSstore(privSlot, 'address', addr, level))
-		.join('\n')
-
-	let erc20Header = ''
-	let feeCode = ''
-	if (opts.fee) {
-		const fee = opts.fee
-		// This is fine if we're only accepting whitelisted tokens
-		if (fee.unsafeERC20) {
-			erc20Header = `interface GeneralERC20 { function transfer(address to, uint256 value) external; }`
-			feeCode = `GeneralERC20(${fee.tokenAddr}).transfer(${fee.recepient}, ${fee.amount});`
-		} else {
-			assert.ok(fee.safeERC20Artifact, 'opts: either unsafeERC20 or safeERC20Artifact required')
-			erc20Header = fee.safeERC20Artifact.source
-				.split('\n')
-				.filter(x => !x.startsWith('pragma '))
-				.join('\n')
-			feeCode = `SafeERC20.transfer(${fee.tokenAddr}, ${fee.recepient}, ${fee.amount});`
-		}
-	}
-
-	const content = `
-pragma solidity ^0.5.6;
-${erc20Header}
-contract IdentityProxy {
-	constructor()
-		public
-	{
-		assembly {
-			${privLevelsCode}
-		}
-		${feeCode}
-	}
-
-	// Can accept ETH
-	function () external payable
-	{
-		address to = address(${proxiedAddr});
-		assembly {
-			calldatacopy(0, 0, calldatasize())
-			let result := delegatecall(sub(gas, 10000), to, 0, calldatasize(), 0, 0)
-			returndatacopy(0, 0, returndatasize)
-			switch result case 0 {revert(0, returndatasize)} default {return (0, returndatasize)}
-		}
-	}
-}`
-	const input = {
-		language: 'Solidity',
-		sources: { 'Proxy.sol': { content } },
-		settings: {
-			outputSelection: {
-				'*': {
-					'*': ['evm.bytecode']
-				}
-			},
-			optimizer: {
-				enabled: true,
-				runs: 200
-			}
-		}
-	}
-	const solc = wrapper(solcModule)
-	const output = JSON.parse(solc.compile(JSON.stringify(input)))
-	assert.ifError(output.errors)
-	return `0x${output.contracts['Proxy.sol'].IdentityProxy.evm.bytecode.object}`
+function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlot: 0 }) {
+	const { privSlot = 0 } = opts
+	if (privLevels.length > 3) throw new Error('getProxyDeployBytecode: max 3 privLevels')
+	const storage = Buffer.concat(privLevels
+		.map(([addr, data]) => {
+			return data !== true ?
+				sstoreCode(privSlot, 'address', addr, 'bytes32', data)
+				: sstoreCode(privSlot, 'address', addr, 'bool', Buffer.from('01', 'hex'))
+		})
+	)
+	const initial = Buffer.from('3d602d80', 'hex')
+	// NOTE: this means we can't support offset>256
+	// @TODO solve this case; this will remove the "max 3 privLevels" restriction
+	const offset = storage.length + initial.length + 6 // 6 more bytes including the push added later on
+	if (offset > 256) throw new Error('getProxyDeployBytecode: internal: offset>256')
+	const initialCode = Buffer.concat([
+		storage,
+		initial,
+		evmPush(Buffer.from([offset]))
+	])
+	const masterAddrBuf = Buffer.from(masterContractAddr.slice(2).replace(/^(00)+/, ''), 'hex')
+	if (masterAddrBuf > 20) throw new Error('invalid address')
+	return `0x${initialCode.toString('hex')}3d3981f3363d3d373d3d3d363d${evmPush(masterAddrBuf).toString('hex')}5af43d82803e903d91602b57fd5bf3`
 }
 
 function getStorageSlotsFromArtifact(IdentityArtifact) {
@@ -104,4 +61,5 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 	return { privSlot }
 }
 
-module.exports = { getProxyDeployBytecode, getStorageSlotsFromArtifact }
+module.exports = { evmPush, sstoreCode, getProxyDeployBytecode, getStorageSlotsFromArtifact }
+
