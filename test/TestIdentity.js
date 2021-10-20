@@ -1,21 +1,19 @@
 const promisify = require('util').promisify
 const { providers, Contract } = require('ethers')
-const { Interface, randomBytes, getAddress } = require('ethers').utils
+const { Interface, randomBytes, getAddress, AbiCoder, keccak256, arrayify, hexlify } = require('ethers').utils
 const { generateAddress2 } = require('ethereumjs-util')
 
 const Outpace = artifacts.require('OUTPACE')
 const Identity = artifacts.require('Identity')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const MockToken = artifacts.require('./mocks/Token')
+const QuickAccManager = artifacts.require('QuickAccManager')
 
 const { sampleChannel, expectEVMError } = require('./')
 const { Withdraw } = require('../js')
 
-const { Transaction, Channel, splitSig, MerkleTree } = require('../js')
+const { Transaction, Channel, MerkleTree } = require('../js')
 const { getProxyDeployBytecode, getStorageSlotsFromArtifact } = require('../js/IdentityProxyDeploy')
-const { solcModule } = require('../js/solc')
-
-const ethSign = promisify(web3.eth.sign.bind(web3))
 
 const web3Provider = new providers.Web3Provider(web3.currentProvider)
 
@@ -25,6 +23,9 @@ const web3Provider = new providers.Web3Provider(web3.currentProvider)
 // that's cause of the call() that we do here; see https://github.com/AdExNetwork/adex-protocol-eth/issues/55
 const gasLimit = 1000000
 
+const TRUE_BYTES = '0x0000000000000000000000000000000000000000000000000000000000000001'
+const FALSE_BYTES = '0x0000000000000000000000000000000000000000000000000000000000000000'
+
 contract('Identity', function(accounts) {
 	const idInterface = new Interface(Identity._json.abi)
 	const coreInterface = new Interface(Outpace._json.abi)
@@ -33,12 +34,16 @@ contract('Identity', function(accounts) {
 	let identityFactory
 	// A dummy token
 	let token
+	// Instance of QuickAccManager
+	let quickAccManager
 	// An instance of the OUTPACE contract
 	let coreAddr
 	// an Identity contract that will be used as a base for all proxies
 	let baseIdentityAddr
 	// The Identity contract instance that will be used
 	let id
+	// the chainId
+	let chainId
 
 	const leader = accounts[1]
 	const follower = accounts[2]
@@ -48,6 +53,10 @@ contract('Identity', function(accounts) {
 	const anotherAccount = accounts[7]
 
 	before(async function() {
+		//chainId = (await web3Provider.getNetwork()).chainId
+		// we seem to be using 1 in testing conditions for whatever reason
+		chainId = 1
+
 		const signer = web3Provider.getSigner(relayerAddr)
 		const tokenWeb3 = await MockToken.new()
 		token = new Contract(tokenWeb3.address, MockToken._json.abi, signer)
@@ -62,48 +71,39 @@ contract('Identity', function(accounts) {
 		const idWeb3 = await Identity.new([])
 		baseIdentityAddr = idWeb3.address
 
+		// a hardcoded test 
+		assert.equal(getProxyDeployBytecode('0x02a63ec1bced5545296a5193e652e25ec0bae410', [['0xe5a4Dad2Ea987215460379Ab285DF87136E83BEA', true]]), '0x60017f02c94ba85f2ea274a3869293a0a9bf447d073c83c617963b0be7c862ec2ee44e553d602d80602e3d3981f3363d3d373d3d3d363d7302a63ec1bced5545296a5193e652e25ec0bae4105af43d82803e903d91602b57fd5bf3')
+
 		const bytecode = getProxyDeployBytecode(
 			baseIdentityAddr,
-			[[userAcc, 1]],
+			[[userAcc, true]],
 			{
 				...getStorageSlotsFromArtifact(Identity)
-			},
-			solcModule
+			}
 		)
 		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
 
+		// the QuickAccManager facilitates access from 2/2 multisig 'quick' acounts
+		const quickAccWeb3 = await QuickAccManager.new()
+		quickAccManager = new Contract(quickAccWeb3.address, QuickAccManager._json.abi, signer)
+
 		await token.setBalanceTo(id.address, 10000)
 	})
 
 	it('protected methods', async function() {
-		await expectEVMError(id.setAddrPrivilege(userAcc, true, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(id.setAddrPrivilege(userAcc, TRUE_BYTES, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
 	})
 
-	it('deploy an Identity, counterfactually, and pay the fee', async function() {
-		const feeAmnt = 250
-
+	it('deploy an Identity, counterfactually', async function() {
 		// Generating a proxy deploy transaction
-		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, 1]], {
-			fee: {
-				tokenAddr: token.address,
-				recepient: relayerAddr,
-				amount: feeAmnt,
-				// Using this option is fine if the token.address is a token that reverts on failures
-				unsafeERC20: true
-			},
+		const [bytecode, salt, expectedAddr] = createAccount([[userAcc, true]], {
 			...getStorageSlotsFromArtifact(Identity)
 		})
 		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
-		// Without any tokens to pay for the fee, we should revert
-		// if this is failing, then the contract is probably not trying to pay the fee
-		await expectEVMError(deploy(), 'FAILED_DEPLOYING')
 
-		// set the balance so that we can pay out the fee when deploying
-		await token.setBalanceTo(expectedAddr, 10000)
-
-		// deploy the contract, which should also pay out the fee
+		// deploy the contract
 		const deployReceipt = await (await deploy()).wait()
 
 		// The counterfactually generated expectedAddr matches
@@ -117,45 +117,44 @@ contract('Identity', function(accounts) {
 			Identity._json.abi,
 			web3Provider.getSigner(relayerAddr)
 		)
-		assert.equal(await newIdentity.privileges(userAcc), true, 'privilege level is OK')
-		// it's usually around 155k
-		assert.ok(deployReceipt.gasUsed.toNumber() < 200000, 'gas used for deploying is under 200k')
-		// check if deploy fee is paid out
-		assert.equal(await token.balanceOf(relayerAddr), feeAmnt, 'fee is paid out')
+		assert.equal(await newIdentity.privileges(userAcc), TRUE_BYTES, 'privilege level is OK')
+		// it's usually around 69k (155k in v4)
+		assert.ok(deployReceipt.gasUsed.toNumber() < 100000, 'gas used for deploying is under 100k')
 	})
 
-	it('relay a tx: setAddrPrivilege', async function() {
-		const initialBal = await token.balanceOf(relayerAddr)
+	// Evaluate if isValidSignature is working correctly
+	it('isValidSignature', async function() {
+		const msgHash = keccak256('0x21851b')
+		const sigUser = await signMsg(userAcc, arrayify(msgHash))
+		assert.equal(await id.isValidSignature(msgHash, sigUser), '0x1626ba7e')
+		const sigEvil = await signMsg(evilAcc, arrayify(msgHash))
+		assert.equal(await id.isValidSignature(msgHash, sigEvil), '0xffffffff')
+	})
+
+	it('relay a tx', async function() {
 		const initialNonce = (await id.nonce()).toNumber()
-		const relayerTx = new Transaction({
-			identityContract: id.address,
-			nonce: initialNonce,
-			feeTokenAddr: token.address,
-			feeAmount: 25,
-			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([anotherAccount, true])
-		})
-		const hash = relayerTx.hashHex()
+
+		// to, value, data
+		const relayerTx = [
+			id.address,
+			0,
+			idInterface.encodeFunctionData('setAddrPrivilege', [anotherAccount, TRUE_BYTES])
+		]
+		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
 
 		// Non-authorized address does not work
-		const invalidSig = splitSig(await ethSign(hash, evilAcc))
+		const invalidSig = await signMsg(evilAcc, hash) 
 		await expectEVMError(
-			id.execute([relayerTx.toSolidityTuple()], [invalidSig]),
-			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
+			id.execute([relayerTx], invalidSig),
+			'INSUFFICIENT_PRIVILEGE'
 		)
 
 		// Do the execute() correctly, verify if it worked
-		const relayerTxSig = splitSig(await ethSign(hash, userAcc))
-		const receipt = await (await id.execute([relayerTx.toSolidityTuple()], [relayerTxSig], {
+		const relayerTxSig = await signMsg(userAcc, hash)
+		const receipt = await (await id.execute([relayerTx], relayerTxSig, {
 			gasLimit
 		})).wait()
-
-		assert.equal(await id.privileges(anotherAccount), true, 'privilege level changed')
-		assert.equal(
-			await token.balanceOf(relayerAddr),
-			initialBal.toNumber() + relayerTx.feeAmount.toNumber(),
-			'relayer has received the tx fee'
-		)
+		assert.equal(await id.privileges(anotherAccount), TRUE_BYTES, 'privilege level changed')
 		assert.ok(
 			receipt.events.find(x => x.event === 'LogPrivilegeChanged'),
 			'LogPrivilegeChanged event found'
@@ -164,32 +163,50 @@ contract('Identity', function(accounts) {
 		// console.log('relay cost', receipt.gasUsed.toString(10))
 
 		// A nonce can only be used once
-		await expectEVMError(id.execute([relayerTx.toSolidityTuple()], [relayerTxSig]), 'WRONG_NONCE')
+		await expectEVMError(id.execute([relayerTx], relayerTxSig), 'INSUFFICIENT_PRIVILEGE')
 
 		// Try to downgrade the privilege: should not be allowed
-		const relayerDowngradeTx = await zeroFeeTx(
+		const relayerDowngradeTx = [
 			id.address,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, false])
-		)
-		const newHash = relayerDowngradeTx.hashHex()
-		const newSig = splitSig(await ethSign(newHash, userAcc))
+			0,
+			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, FALSE_BYTES])
+		]
+		const sig = await signMsg(userAcc, hashTxns(id.address, chainId, 1, [relayerDowngradeTx]))
 		await expectEVMError(
-			id.execute([relayerDowngradeTx.toSolidityTuple()], [newSig]),
+			id.execute([relayerDowngradeTx], sig),
 			'PRIVILEGE_NOT_DOWNGRADED'
 		)
-
-		// Try to run a TX from an acc with insufficient privilege (unauthorized account)
-		const relayerTxEvil = await zeroFeeTx(
-			id.address,
-			idInterface.functions.setAddrPrivilege.encode([evilAcc, true])
-		)
-		const hashEvil = relayerTxEvil.hashHex()
-		const sigEvil = splitSig(await ethSign(hashEvil, evilAcc))
-		await expectEVMError(
-			id.execute([relayerTxEvil.toSolidityTuple()], [sigEvil]),
-			'INSUFFICIENT_PRIVILEGE_TRANSACTION'
-		)
 	})
+
+	it('quickAccount', async function() {
+		const quickAccount = [600, userAcc, anotherAccount]
+		const abiCoder = new AbiCoder()
+		const accHash = keccak256(abiCoder.encode(['tuple(uint, address, address)'], [quickAccount]))
+		const [bytecode, salt, expectedAddr] = createAccount([[quickAccManager.address, accHash]], {
+			...getStorageSlotsFromArtifact(Identity)
+		})
+		const deploy = identityFactory.deploy.bind(identityFactory, bytecode, salt, { gasLimit })
+
+		// just any random hash - the value here doesn't matter
+		const msgHash = keccak256('0x21851b')
+		const [sig1, sig2] = await Promise.all([
+			signMsg(userAcc, arrayify(msgHash)),
+			signMsg(anotherAccount, arrayify(msgHash))
+		])
+
+		// The part that is evaluated by QuickAccManager
+		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [expectedAddr, 600, sig1, sig2])
+		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '03'
+
+		// we need to deploy before being able to validate sigs
+		const deployReceipt = await (await deploy()).wait()
+		const deployedEv = deployReceipt.events.find(x => x.event === 'LogDeployed')
+		const identity = new Contract(deployedEv.args.addr, Identity._json.abi, web3Provider.getSigner(userAcc))
+		// 0x1626ba7e is the signature that the function has to return in case of successful verification
+		assert.equal(await identity.isValidSignature(msgHash, sig), '0x1626ba7e')
+	})
+
+	/*
 
 	// Relay two transactions
 	// this could be quite useful in real applications, e.g. approve and call into a contract in one TX
@@ -213,7 +230,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: 5,
 			to: id.address,
-			data: idInterface.functions.setAddrPrivilege.encode([userAcc, true])
+			data: idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, TRUE_BYTES])
 		}))
 		const totalFee = txns.map(x => x.feeAmount).reduce((a, b) => a + b, 0)
 
@@ -247,25 +264,28 @@ contract('Identity', function(accounts) {
 			'fee was paid out for all transactions'
 		)
 	})
+	*/
 
 	it('execute by sender', async function() {
-		const relayerTx = await zeroFeeTx(
+		const relayerTx = [
 			id.address,
-			idInterface.functions.setAddrPrivilege.encode([userAcc, true])
-		)
+			0,
+			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, TRUE_BYTES])
+		]
 
 		await expectEVMError(
-			id.executeBySender([relayerTx.toSolidityTuple()]),
-			'INSUFFICIENT_PRIVILEGE_SENDER'
+			id.executeBySender([relayerTx]),
+			'INSUFFICIENT_PRIVILEGE'
 		)
 
 		const idWithUser = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
-		const receipt = await (await idWithUser.executeBySender([relayerTx.toSolidityTuple()], {
+		const receipt = await (await idWithUser.executeBySender([relayerTx], {
 			gasLimit
 		})).wait()
 		assert.equal(receipt.events.length, 1, 'right number of events emitted')
 	})
 
+	/*
 	it('actions: channel deposit, withdraw', async function() {
 		const tokenAmnt = 500
 
@@ -277,7 +297,7 @@ contract('Identity', function(accounts) {
 			// we use the deposit on Outpace here
 			await zeroFeeTx(
 				coreAddr,
-				coreInterface.functions.deposit.encode([channel.toSolidityTuple(), id.address, tokenAmnt])
+				coreInterface.encodeFunctionData('deposit', [channel.toSolidityTuple(), id.address, tokenAmnt])
 			)
 		]
 		const sigs = await Promise.all(
@@ -304,7 +324,7 @@ contract('Identity', function(accounts) {
 				feeTokenAddr: token.address,
 				feeAmount: fee,
 				to: coreAddr,
-				data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+				data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 			})
 		]
 		const withdrawTxnSigs = await Promise.all(
@@ -380,7 +400,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount,
 			to: coreAddr,
-			data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+			data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 		})
 
 		const sig = splitSig(await ethSign(tx1.hashHex(), userAcc))
@@ -474,7 +494,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: 0,
 			to: coreAddr,
-			data: coreInterface.functions.withdraw.encode([withdrawal.toSolidityTuple()])
+			data: coreInterface.encodeFunctionData('withdraw', [withdrawal.toSolidityTuple()])
 		})
 
 		// Now the regular tx to withdraw our funds out of our Identity
@@ -485,7 +505,7 @@ contract('Identity', function(accounts) {
 			feeTokenAddr: token.address,
 			feeAmount: txFeeAmount,
 			to: token.address,
-			data: tokenInterface.functions.transfer.encode([accountToWithdrawTo, maxToWithdraw])
+			data: tokenInterface.encodeFunctionData('transfer', [accountToWithdrawTo, maxToWithdraw])
 		})
 		const txns = [withdrawTx, txToWithdraw]
 		const sigs = await Promise.all(
@@ -545,9 +565,27 @@ contract('Identity', function(accounts) {
 			'withdraw earnings from IdentityFactory'
 		)
 	})
+	*/
+	function hashTxns(identityAddr, chainId, nonce, txns) {
+		const abiCoder = new AbiCoder()
+		const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
+		return arrayify(keccak256(encoded))
+	}
+
+	function mapSignatureV(sig) {
+		sig = arrayify(sig)
+		if (sig[64] < 27) sig[64] += 27
+		return hexlify(sig)
+	}
+
+	async function signMsg(from, hash) {
+		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
+		// 02 is the enum number of EthSign signature type
+		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '02'
+	}
 
 	function createAccount(privileges, opts) {
-		const bytecode = getProxyDeployBytecode(baseIdentityAddr, privileges, opts, solcModule)
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, privileges, opts)
 		const salt = `0x${Buffer.from(randomBytes(32)).toString('hex')}`
 		const expectedAddr = getAddress(
 			`0x${generateAddress2(identityFactory.address, salt, bytecode).toString('hex')}`
@@ -555,6 +593,7 @@ contract('Identity', function(accounts) {
 		return [bytecode, salt, expectedAddr]
 	}
 
+	/*
 	async function getWithdrawData(channel, addr, tokenAmnt) {
 		const elem1 = Channel.getBalanceLeaf(addr, tokenAmnt)
 		const tree = new MerkleTree([elem1])
@@ -575,4 +614,5 @@ contract('Identity', function(accounts) {
 			data
 		})
 	}
+	*/
 })

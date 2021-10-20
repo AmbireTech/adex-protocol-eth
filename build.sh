@@ -13,6 +13,7 @@ solc --overwrite --optimize --abi --bin contracts/OUTPACE.sol -o temp
 solc --overwrite --optimize --allow-paths . --abi --bin contracts/deposits/Depositor.sol -o temp
 solc --overwrite --optimize --allow-paths . --abi --bin contracts/deposits/Sweeper.sol -o temp
 solc --overwrite --abi contracts/Identity.sol -o temp 
+solc --overwrite --abi --allow-paths . contracts/wallet/QuickAccManager.sol -o temp
 solc --overwrite --abi contracts/IdentityFactory.sol -o temp 
 solc --overwrite --abi contracts/StakingPool.sol -o temp 
 
@@ -21,9 +22,10 @@ mkdir -p resources abi
 
 # AdexCore abi
 mv temp/OUTPACE.abi abi/OUTPACE.json
-mv temp/Identity.abi abi/Identity5.0.json  
-mv temp/IdentityFactory.abi abi/IdentityFactory5.0.json
+mv temp/Identity.abi abi/Identity5.2.json  
+mv temp/IdentityFactory.abi abi/IdentityFactory5.2.json
 mv temp/StakingPool.abi abi/StakingPool.json
+mv temp/QuickAccManager.abi abi/QuickAccManager.json
 
 # Sweeper abi & bin file
 mv temp/Sweeper.abi abi/Sweeper.json

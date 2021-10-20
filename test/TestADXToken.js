@@ -1,5 +1,4 @@
-const { providers, Contract } = require('ethers')
-const { bigNumberify } = require('ethers').utils
+const { providers, Contract, BigNumber } = require('ethers')
 
 const { expectEVMError } = require('./')
 
@@ -53,7 +52,7 @@ contract('ADXToken', function(accounts) {
 
 		await prevToken.setBalanceTo(userAddr, 15000)
 		const receipt = await (await adxToken.swap(10000)).wait()
-		const expectedAmnt = bigNumberify('1000000000000000000')
+		const expectedAmnt = BigNumber.from('1000000000000000000')
 		assert.deepEqual(await adxToken.balanceOf(userAddr), expectedAmnt, 'migrated amount is correct')
 		assert.equal(
 			(await prevToken.balanceOf(userAddr)).toNumber(),
@@ -68,13 +67,13 @@ contract('ADXToken', function(accounts) {
 		await adxToken.swap(5000)
 		assert.deepEqual(
 			await adxToken.totalSupply(),
-			bigNumberify('1500000000000000000'),
+			BigNumber.from('1500000000000000000'),
 			'total supply is reflected'
 		)
 	})
 
 	it('transfer some tokens', async function() {
-		const transferredAmount = bigNumberify('550000000000000000')
+		const transferredAmount = BigNumber.from('550000000000000000')
 		const receipt = await (await adxToken.transfer(anotherUser, transferredAmount)).wait()
 		assert.deepEqual(
 			await adxToken.balanceOf(anotherUser),
@@ -94,7 +93,7 @@ contract('ADXToken', function(accounts) {
 			adxToken.balanceOf(userAddr)
 		])
 
-		const largeAmnt = bigNumberify('60000000000000000000000000')
+		const largeAmnt = BigNumber.from('60000000000000000000000000')
 		const totalSupply = (await adxToken.totalSupply()).toString()
 		console.log({ totalSupply })
 		await expectEVMError(

@@ -202,6 +202,15 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * [Forkway, ADXToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/Forkway_ADXToken_audit.pdf): all issues discovered were informational and resolved
 * [Forkway, ADXLoyaltyPoolToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/forkway-loyalty-pool.md): all issues discovered were resolved
 
+
+## Integration guide: Identity v5.2
+
+### EIP 1271 `isValidSignature` doesn't work until deployed
+
+Since `isValidSignature` relies on calling the Identity contract through `eth_call`, we need that said Identity contract (proxy) is deployed. With the relayer, this is not true until the first transaction, due to the counterfactual deployment.
+
+dApps can actually work around this by asking the user to deploy the proxy first.
+
 ## Credits
 
 * @BrendanChou for SafeERC20: https://gist.github.com/BrendanChou/88a2eeb80947ff00bcf58ffdafeaeb61

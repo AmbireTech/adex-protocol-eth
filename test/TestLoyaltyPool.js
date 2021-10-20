@@ -1,5 +1,5 @@
-const { providers, Contract } = require('ethers')
-const { bigNumberify, parseUnits } = require('ethers').utils
+const { providers, Contract, BigNumber } = require('ethers')
+const { parseUnits } = require('ethers').utils
 
 const { moveTime, expectEVMError } = require('./')
 
@@ -65,7 +65,7 @@ contract('LoyaltyPool', function(accounts) {
 
 	it('enter and then leave', async function() {
 		// 10 ADX
-		const legacyAmountToMint = bigNumberify('100000')
+		const legacyAmountToMint = BigNumber.from('100000')
 		await prevToken.setBalanceTo(userAddr, legacyAmountToMint)
 		await adxToken.swap(legacyAmountToMint)
 
@@ -78,7 +78,7 @@ contract('LoyaltyPool', function(accounts) {
 
 		// leave and test bal
 		const preLeave = await adxToken.balanceOf(userAddr)
-		await loyaltyPool.leave(amountToTest)
+		await loyaltyPool.leave(amountToTest, { gasLimit: 150000 })
 		const postLeave = await adxToken.balanceOf(userAddr)
 		assert.deepEqual(postLeave.sub(preLeave), amountToTest, 'received the original amount')
 
