@@ -86,7 +86,8 @@ contract QuickAccManager {
 		// @NOTE: should we allow cancelling even when it's matured? probably not, otherwise there's a minor grief
 		// opportunity: someone wants to cancel post-maturity, and you front them with execScheduled
 		bytes32 hashTx = keccak256(abi.encode(address(this), block.chainid, accHash, nonce, txns, false));
-		require(scheduled[hashTx] != 0 && block.timestamp < scheduled[hashTx], 'TOO_LATE');
+		uint scheduledTime = scheduled[hashTx];
+		require(scheduledTime != 0 && block.timestamp < scheduledTime, 'TOO_LATE');
 		delete scheduled[hashTx];
 
 		emit LogCancelled(hashTx, accHash, signer, block.timestamp);
@@ -96,7 +97,8 @@ contract QuickAccManager {
 		require(identity.privileges(address(this)) == accHash, 'WRONG_ACC_OR_NO_PRIV');
 
 		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, address(identity), accHash, nonce, txns, false));
-		require(scheduled[hash] != 0 && block.timestamp >= scheduled[hash], 'NOT_TIME');
+		uint scheduledTime = scheduled[hash];
+		require(scheduledTime != 0 && block.timestamp >= scheduledTime, 'NOT_TIME');
 		delete scheduled[hash];
 		identity.executeBySender(txns);
 
