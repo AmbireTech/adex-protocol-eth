@@ -46,6 +46,10 @@ interface IyVaultV2 {
     function deposit(uint, address) external returns (uint);
 }
 
+interface IWETH {
+    function deposit() external payable;
+}
+
 // Decisions: will start with aave over compound (easier API - has `onBehalfOf`, referrals), compound can be added later if needed
 // uni v3 needs to be supported since it's proving that it's efficient and the router is different
 contract WalletZapper {
@@ -141,8 +145,7 @@ contract WalletZapper {
 
 	// wrap WETH
 	function wrapETH() payable external {
-		// TODO: it may be slightly cheaper to call deposit() directly
-		payable(WETH).transfer(msg.value);
+		IWETH(WETH).deposit{ value: msg.value }();
 	}
 
 	// Uniswap V3
