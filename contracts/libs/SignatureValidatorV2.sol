@@ -50,8 +50,12 @@ library SignatureValidator {
 			// 32 bytes for the addr, 1 byte for the type = 33
 			require(sig.length > 33, "SV_LEN_WALLET");
 			// @TODO: can we pack the addr tigher into 20 bytes? should we?
-			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(sig.length - 33)))));
-			sig.trimToSize(sig.length - 33);
+			uint newLen;
+			unchecked {
+				newLen = sig.length - 33;
+			}
+			IERC1271Wallet wallet = IERC1271Wallet(address(uint160(uint256(sig.readBytes32(newLen)))));
+			sig.trimToSize(newLen);
 			require(ERC1271_MAGICVALUE_BYTES32 == wallet.isValidSignature(hash, sig), "SV_WALLET_INVALID");
 			return address(wallet);
 		// {address}{mode}; the spoof mode is used when simulating calls

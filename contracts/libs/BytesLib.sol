@@ -33,10 +33,10 @@ library LibBytes {
     pure
     returns (bytes32 result)
   {
-    require(b.length >= index + 32, "BytesLib: length");
-
     // Arrays are prefixed by a 256 bit length parameter
     index += 32;
+
+    require(b.length >= index, "BytesLib: length");
 
     // Read the bytes32 from array memory
     assembly {
