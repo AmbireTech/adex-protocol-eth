@@ -28,7 +28,8 @@ library SignatureValidator {
 
 	function recoverAddrImpl(bytes32 hash, bytes memory sig, bool allowSpoofing) internal view returns (address) {
 		require(sig.length >= 1, "SV_SIGLEN");
-		uint8 modeRaw = uint8(sig[sig.length - 1]);
+		uint8 modeRaw;
+		unchecked { modeRaw = uint8(sig[sig.length - 1]); }
 		require(modeRaw < uint8(SignatureMode.Unsupported), "SV_SIGMODE");
 		SignatureMode mode = SignatureMode(modeRaw);
 
