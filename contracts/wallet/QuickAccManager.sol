@@ -183,7 +183,8 @@ contract QuickAccManager {
 		// hashing + prepping args
 		bytes32[] memory txnBytes = new bytes32[](txns.length);
 		Identity.Transaction[] memory identityTxns = new Identity.Transaction[](txns.length);
-		for (uint256 i = 0; i < txns.length; i++) {
+		uint txnLen = txns.length;
+		for (uint256 i = 0; i < txnLen; i++) {
 			txnBytes[i] = keccak256(abi.encode(TXNS_TYPEHASH, txns[i].description, txns[i].to, txns[i].value, txns[i].data));
 			identityTxns[i].to = txns[i].to;
 			identityTxns[i].value = txns[i].value;

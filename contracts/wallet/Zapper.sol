@@ -77,7 +77,8 @@ contract WalletZapper {
 		WETH = _weth;
 		allowedSpenders[address(_lendingPool)] = true;
 		// This needs to include all of the routers, and all of the Yearn vaults
-		for (uint i=0; i<spenders.length; i++) {
+		uint spendersLen = spenders.length;
+		for (uint i=0; i<spendersLen; i++) {
 			allowedSpenders[spenders[i]] = true;
 		}
 	}
@@ -85,7 +86,8 @@ contract WalletZapper {
 	function approveMaxMany(address spender, address[] calldata tokens) external {
 		require(msg.sender == admin, "NOT_ADMIN");
 		require(allowedSpenders[spender], "NOT_ALLOWED");
-		for (uint i=0; i<tokens.length; i++) {
+		uint tokensLen = tokens.length;
+		for (uint i=0; i<tokensLen; i++) {
 			SafeERC20.approve(tokens[i], spender, type(uint256).max);
 		}
 	}
@@ -102,7 +104,8 @@ contract WalletZapper {
 	//  because we expect diversifyV3 to be enough
 	// We can very easily deploy a new Zapper and upgrade to it since it's just a UI change
 	function exchangeV2(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
-		for (uint i=0; i<assetsToUnwrap.length; i++) {
+		uint assetsLen = assetsToUnwrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
 		address to = msg.sender;
@@ -124,12 +127,14 @@ contract WalletZapper {
 
 	// go in/out of lending assets
 	function wrapLending(address[] calldata assetsToWrap) external {
-		for (uint i=0; i<assetsToWrap.length; i++) {
+		uint assetsLen = assetsToWrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, aaveRefCode);
 		}
 	}
 	function unwrapLending(address[] calldata assetsToUnwrap) external {
-		for (uint i=0; i<assetsToUnwrap.length; i++) {
+		uint assetsLen = assetsToUnwrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, msg.sender);
 		}
 	}
