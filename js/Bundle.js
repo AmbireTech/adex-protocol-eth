@@ -52,6 +52,15 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 	return res
 }
 
+Bundle.prototype.cancel = async function({ fetch, relayerURL }) {
+	const res = await fetchPost(
+		fetch,
+		`${relayerURL}/identity/${this.identity}/${this.network}/cancel`,
+		{ nonce: this.nonce, signer: this.signer }
+	)
+	return res
+}
+
 // wallet: wallet provider
 // identity: identity addr
 // signer: same object as the one we pass to Bundle, either {address} or {quickAccManager,timelock,one,two}
