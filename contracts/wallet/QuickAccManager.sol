@@ -7,8 +7,8 @@ import "../interfaces/IERC20.sol";
 contract QuickAccManager {
 	// Note: nonces are scoped by identity rather than by accHash - the reason for this is that there's no reason to scope them by accHash,
 	// we merely need them for replay protection
-	mapping (address => uint) nonces;
-	mapping (bytes32 => uint) scheduled;
+	mapping (address => uint) public nonces;
+	mapping (bytes32 => uint) public scheduled;
 
 	bytes4 constant CANCEL_PREFIX = 0xc47c3100;
 
