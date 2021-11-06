@@ -75,8 +75,8 @@ async function signMsgHash(wallet, identity, signer, msgHash, signatureTwo) {
 			['address', 'uint', 'bytes', 'bytes'],
 			[identity, signer.timelock, signatureOne, signatureTwo]
 		)
-		// 03 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
-		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}03`
+		// 02 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
+		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}02`
 		return sig
 	}
 	throw new Error(`invalid signer object`)
