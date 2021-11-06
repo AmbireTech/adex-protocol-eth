@@ -52,6 +52,15 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 	return res
 }
 
+Bundle.prototype.cancel = async function({ fetch, relayerURL }) {
+	const res = await fetchPost(
+		fetch,
+		`${relayerURL}/identity/${this.identity}/${this.network}/cancel`,
+		{ nonce: this.nonce, signer: this.signer }
+	)
+	return res
+}
+
 // wallet: wallet provider
 // identity: identity addr
 // signer: same object as the one we pass to Bundle, either {address} or {quickAccManager,timelock,one,two}
@@ -66,8 +75,8 @@ async function signMsgHash(wallet, identity, signer, msgHash, signatureTwo) {
 			['address', 'uint', 'bytes', 'bytes'],
 			[identity, signer.timelock, signatureOne, signatureTwo]
 		)
-		// 03 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
-		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}03`
+		// 02 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
+		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}02`
 		return sig
 	}
 	throw new Error(`invalid signer object`)
@@ -115,8 +124,8 @@ function mapSignatureV(sigRaw) {
 
 async function signMsg(wallet, hash) {
 	// assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-	// 02 is the enum number of EthSign signature type
-	return `${mapSignatureV(await wallet.signMessage(hash))}02`
+	// 01 is the enum number of EthSign signature type
+	return `${mapSignatureV(await wallet.signMessage(hash))}01`
 }
 
 async function getNonce(provider, userTxnBundle) {
@@ -148,4 +157,4 @@ async function fetchPost(fetch, url, body) {
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
 
-module.exports = { Bundle, signMsgHash }
+module.exports = { Bundle, signMsgHash, getSignable }

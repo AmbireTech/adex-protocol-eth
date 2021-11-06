@@ -46,6 +46,10 @@ interface IyVaultV2 {
     function deposit(uint, address) external returns (uint);
 }
 
+interface IWETH {
+    function deposit() external payable;
+}
+
 // Decisions: will start with aave over compound (easier API - has `onBehalfOf`, referrals), compound can be added later if needed
 // uni v3 needs to be supported since it's proving that it's efficient and the router is different
 contract WalletZapper {
@@ -64,19 +68,21 @@ contract WalletZapper {
 		bool wrap;
 	}
 
-	address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-
-	address public admin;
+	address public immutable admin;
+	IAaveLendingPool public immutable lendingPool;
+	uint16 immutable aaveRefCode;
+	address public immutable WETH;
+	// for security reasons, allowedSpenders cannot be mutated: the idea is that once a zapper is considered safe, sending funds to it and calling trade() cannot lead to unexpected consequences
 	mapping (address => bool) public allowedSpenders;
-	IAaveLendingPool public lendingPool;
-	uint16 aaveRefCode;
-	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address[] memory spenders) {
+	constructor(IAaveLendingPool _lendingPool, uint16 _aaveRefCode, address _weth, address[] memory spenders) {
 		admin = msg.sender;
 		lendingPool = _lendingPool;
 		aaveRefCode = _aaveRefCode;
+		WETH = _weth;
 		allowedSpenders[address(_lendingPool)] = true;
 		// This needs to include all of the routers, and all of the Yearn vaults
-		for (uint i=0; i!=spenders.length; i++) {
+		uint spendersLen = spenders.length;
+		for (uint i=0; i<spendersLen; i++) {
 			allowedSpenders[spenders[i]] = true;
 		}
 	}
@@ -84,7 +90,8 @@ contract WalletZapper {
 	function approveMaxMany(address spender, address[] calldata tokens) external {
 		require(msg.sender == admin, "NOT_ADMIN");
 		require(allowedSpenders[spender], "NOT_ALLOWED");
-		for (uint i=0; i!=tokens.length; i++) {
+		uint tokensLen = tokens.length;
+		for (uint i=0; i<tokensLen; i++) {
 			SafeERC20.approve(tokens[i], spender, type(uint256).max);
 		}
 	}
@@ -101,13 +108,14 @@ contract WalletZapper {
 	//  because we expect diversifyV3 to be enough
 	// We can very easily deploy a new Zapper and upgrade to it since it's just a UI change
 	function exchangeV2(address[] calldata assetsToUnwrap, Trade[] memory trades) external {
-		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+		uint assetsLen = assetsToUnwrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, address(this));
 		}
 		address to = msg.sender;
 		uint deadline = block.timestamp;
 		uint len = trades.length;
-		for (uint i=0; i!=len; i++) {
+		for (uint i=0; i<len; i++) {
 			Trade memory trade = trades[i];
 			if (!trade.wrap) {
 				trade.router.swapExactTokensForTokens(trade.amountIn, trade.amountOutMin, trade.path, to, deadline);
@@ -123,20 +131,21 @@ contract WalletZapper {
 
 	// go in/out of lending assets
 	function wrapLending(address[] calldata assetsToWrap) external {
-		for (uint i=0; i!=assetsToWrap.length; i++) {
+		uint assetsLen = assetsToWrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.deposit(assetsToWrap[i], IERC20(assetsToWrap[i]).balanceOf(address(this)), msg.sender, aaveRefCode);
 		}
 	}
 	function unwrapLending(address[] calldata assetsToUnwrap) external {
-		for (uint i=0; i!=assetsToUnwrap.length; i++) {
+		uint assetsLen = assetsToUnwrap.length;
+		for (uint i=0; i<assetsLen; i++) {
 			lendingPool.withdraw(assetsToUnwrap[i], type(uint256).max, msg.sender);
 		}
 	}
 
 	// wrap WETH
 	function wrapETH() payable external {
-		// TODO: it may be slightly cheaper to call deposit() directly
-		payable(WETH).transfer(msg.value);
+		IWETH(WETH).deposit{ value: msg.value }();
 	}
 
 	// Uniswap V3
@@ -146,14 +155,13 @@ contract WalletZapper {
 	
 	function tradeV3Single(ISwapRouter uniV3Router, ISwapRouter.ExactInputSingleParams calldata params, bool wrapOutputToLending) external returns (uint) {
 		ISwapRouter.ExactInputSingleParams memory tradeParams = params;
-		address recipient = params.recipient;
 		if(wrapOutputToLending) {
 			tradeParams.recipient = address(this);
 		}
 
 		uint amountOut = uniV3Router.exactInputSingle(tradeParams);
 		if(wrapOutputToLending) {
-			lendingPool.deposit(params.tokenOut, amountOut, recipient, aaveRefCode);
+			lendingPool.deposit(params.tokenOut, amountOut, params.recipient, aaveRefCode);
 		}
 		return amountOut;
 	}
@@ -180,7 +188,7 @@ contract WalletZapper {
 
 		uint totalAllocPts;
 		uint len = trades.length;
-		for (uint i=0; i!=len; i++) {
+		for (uint i=0; i<len; i++) {
 			DiversificationTrade memory trade = trades[i];
 			totalAllocPts += trade.allocPts;
 			if (!trade.wrap) {
@@ -216,7 +224,7 @@ contract WalletZapper {
 		IERC20 wrappedETH = IERC20(WETH);
 		uint wrappedETHAmount = wrappedETH.balanceOf(address(this));
 		// NOTE: what if there is dust?
-		if (wrappedETHAmount > 0) require(wrappedETH.transfer(msg.sender, wrappedETHAmount));
+		if (wrappedETHAmount > 0) require(wrappedETH.transfer(msg.sender, wrappedETHAmount), "WETH_TRANSFER");
 		// require(totalAllocPts == 1000, "ALLOC_PTS");
 	}
 

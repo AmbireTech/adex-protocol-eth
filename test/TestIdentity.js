@@ -196,7 +196,7 @@ contract('Identity', function(accounts) {
 
 		// The part that is evaluated by QuickAccManager
 		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [expectedAddr, 600, sig1, sig2])
-		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '03'
+		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
 
 		// we need to deploy before being able to validate sigs
 		const deployReceipt = await (await deploy()).wait()
@@ -204,6 +204,53 @@ contract('Identity', function(accounts) {
 		const identity = new Contract(deployedEv.args.addr, Identity._json.abi, web3Provider.getSigner(userAcc))
 		// 0x1626ba7e is the signature that the function has to return in case of successful verification
 		assert.equal(await identity.isValidSignature(msgHash, sig), '0x1626ba7e')
+	})
+
+	it('quickAccount: identity.send with a QuickAccount dual sig', async function() {
+		const abiCoder = new AbiCoder()
+
+		// First, prepare to authorize the quickAccount
+		const quickAccount = [600, userAcc, anotherAccount]
+		const accHash = keccak256(abiCoder.encode(['tuple(uint, address, address)'], [quickAccount]))
+		const authorizeQuickAcc = () => 
+			(new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))).executeBySender([
+				[ id.address, 0, idInterface.encodeFunctionData('setAddrPrivilege', [quickAccManager.address, accHash]) ]
+			])
+
+		// Try relaying a txn
+		const relayerTx = [
+			id.address,
+			0,
+			idInterface.encodeFunctionData('setAddrPrivilege', [anotherAccount, TRUE_BYTES])
+		]
+		const initialNonce = (await id.nonce()).toNumber()
+		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
+		const [sig1, sig2] = await Promise.all([
+			signMsg(userAcc, arrayify(hash)),
+			signMsg(anotherAccount, arrayify(hash))
+		])
+
+		// The part that is evaluated by QuickAccManager
+		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [id.address, 600, sig1, sig2])
+		// smart contract sig for quickAccManager.address
+		const dualSig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
+
+		// Not authorized yet
+		await expectEVMError(
+			id.execute([relayerTx], dualSig, { gasLimit }),
+			'SV_WALLET_INVALID'
+		)
+
+		// Authorize the QuickAccManager with this accHash
+		await authorizeQuickAcc()
+
+		const receipt = await (await id.execute([relayerTx], dualSig, { gasLimit })).wait()
+		assert.equal(await id.privileges(anotherAccount), TRUE_BYTES, 'privilege level changed')
+		assert.ok(
+			receipt.events.find(x => x.event === 'LogPrivilegeChanged'),
+			'LogPrivilegeChanged event found'
+		)
+		assert.equal((await id.nonce()).toNumber(), initialNonce + 1, 'nonce has increased with 1')
 	})
 
 	/*
@@ -578,10 +625,11 @@ contract('Identity', function(accounts) {
 		return hexlify(sig)
 	}
 
+	// @TODO: replace with Bundle.js methods
 	async function signMsg(from, hash) {
 		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-		// 02 is the enum number of EthSign signature type
-		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '02'
+		// 01 is the enum number of EthSign signature type
+		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '01'
 	}
 
 	function createAccount(privileges, opts) {
