@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.7;
 
-import "./interfaces/IADXToken.sol";
+import "../interfaces/IADXToken.sol";
 
 contract ADXLoyaltyPoolToken {
 	// ERC20 stuff

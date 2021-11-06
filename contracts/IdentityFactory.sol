@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.7;
 
 import "./Identity.sol";
 import "./interfaces/IERC20.sol";
@@ -7,7 +7,7 @@ import "./interfaces/IERC20.sol";
 contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
 
-	address public creator;
+	address public immutable creator;
 	constructor() {
 		creator = msg.sender;
 	}
@@ -49,7 +49,7 @@ contract IdentityFactory {
 
 	// Withdraw the earnings from various fees (deploy fees and execute fees earned cause of `deployAndExecute`)
 	// although we do not use this since we no longer receive fees on the factory, it's good to have this for safety
-	function withdraw(IERC20 token, address to, uint256 tokenAmount) public {
+	function withdraw(IERC20 token, address to, uint256 tokenAmount) external {
 		require(msg.sender == creator, 'ONLY_CREATOR');
 		token.transfer(to, tokenAmount);
 	}

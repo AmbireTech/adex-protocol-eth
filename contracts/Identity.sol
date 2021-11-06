@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.7;
+pragma solidity 0.8.7;
 
 import "./libs/SignatureValidatorV2.sol";
 
 contract Identity {
 	mapping (address => bytes32) public privileges;
 	// The next allowed nonce
-	uint public nonce = 0;
+	uint public nonce;
 
 	// Events
 	event LogPrivilegeChanged(address indexed addr, bytes32 priv);
@@ -56,8 +56,7 @@ contract Identity {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		// Anti-bricking measure: if the privileges slot is used for special data (not 0x01),
 		// don't allow to set it to true
-		if (privileges[addr] != bytes32(0) && privileges[addr] != bytes32(uint(1)))
-			require(priv != bytes32(uint(1)), 'UNSETTING_SPECIAL_DATA');
+		if (uint(privileges[addr]) > 1) require(priv != bytes32(uint(1)), 'UNSETTING_SPECIAL_DATA');
 		privileges[addr] = priv;
 		emit LogPrivilegeChanged(addr, priv);
 	}

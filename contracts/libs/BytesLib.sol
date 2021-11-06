@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity ^0.8.7;
+pragma solidity 0.8.7;
 
 // @TODO: Formatting
 library LibBytes {
-  using LibBytes for bytes;
-
   // @TODO: see if we can just set .length = 
   function trimToSize(bytes memory b, uint newLen)
     internal
@@ -35,10 +33,10 @@ library LibBytes {
     pure
     returns (bytes32 result)
   {
-    require(b.length >= index + 32, "BytesLib: length");
-
     // Arrays are prefixed by a 256 bit length parameter
     index += 32;
+
+    require(b.length >= index, "BytesLib: length");
 
     // Read the bytes32 from array memory
     assembly {
