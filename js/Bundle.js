@@ -1,10 +1,12 @@
-const { AbiCoder, hexlify, arrayify, keccak256 } = require('ethers').utils
+const { AbiCoder, hexlify, arrayify, keccak256, Interface } = require('ethers').utils
 const { Contract } = require('ethers')
 
 const ensure = require('./ensureTypes')
 
-const IdentityInterface = require('../abi/Identity5.2')
-const QuickAccManagerInterface = require('../abi/QuickAccManager')
+const IdentityABI = require('../abi/Identity5.2')
+const QuickAccManagerABI = require('../abi/QuickAccManager')
+
+const IdentityInterface = new Interface(IdentityABI)
 
 function Bundle(args) {
 	this.identity = ensure.Address(args.identity)
@@ -59,6 +61,36 @@ Bundle.prototype.cancel = async function({ fetch, relayerURL }) {
 		{ nonce: this.nonce, signer: this.signer }
 	)
 	return res
+}
+
+Bundle.prototype.estimateNoRelayer = async function({ provider }) {
+	const txParams = {
+		from: this.signer.quickAccManager || this.signer.address,
+		to: this.identity,
+		data: IdentityInterface.encodeFunctionData('executeBySender', [this.txns])
+	}
+	const { error, gasLimit } = await estimateGasWithCatch(provider, txParams)
+	if (error) {
+		if (error.code !== 'UNPREDICTABLE_GAS_LIMIT') throw error
+		return { success: false, message: await getErrMsg(provider, txParams) }
+	} else {
+		this.gasLimit = gasLimit.toNumber()
+		// @TODO EIP1559-optimized estimations (good first issue for external contributors)
+		const feeData = await provider.getFeeData()
+		const gasPrice = feeData.gasPrice.toNumber()
+		const baseFee = gasPrice * gasLimit / 1e18
+		return {
+			success: true,
+			gasLimit: this.gasLimit,
+			gasPrice,
+			feeInNative: {
+				slow: baseFee * 0.9,
+				medium: baseFee * 1.0,
+				fast: baseFee * 1.15,
+				ape: baseFee * 1.4
+			}
+		}
+	}
 }
 
 // wallet: wallet provider
@@ -133,10 +165,10 @@ async function getNonce(provider, userTxnBundle) {
 		return (userTxnBundle.signer.quickAccManager
 			? await new Contract(
 					userTxnBundle.signer.quickAccManager,
-					QuickAccManagerInterface,
+					QuickAccManagerABI,
 					provider
 			  ).nonces(userTxnBundle.identity)
-			: await new Contract(userTxnBundle.identity, IdentityInterface, provider).nonce()
+			: await new Contract(userTxnBundle.identity, IdentityABI, provider).nonce()
 		).toNumber()
 	} catch (e) {
 		// means the identity isn't deployed, which certainly implies nonce 0
@@ -153,6 +185,30 @@ async function fetchPost(fetch, url, body) {
 		body: JSON.stringify(body)
 	})
 	return r.json()
+}
+
+// helpers for estimateNoRelayer
+
+// Signature of Error(string)
+const ERROR_SIG = '0x08c379a0'
+
+async function getErrMsg (provider, txParams, blockTag) {
+	// .call always returns a hex string with ethers
+	try {
+		const returnData = await provider.call(txParams, blockTag)
+		return returnData.startsWith(ERROR_SIG)
+			? (new AbiCoder()).decode(['string'], '0x' + returnData.slice(10))[0]
+			: returnData
+	} catch (e) {
+		if (e.code === 'CALL_EXCEPTION') return 'no error string, possibly insufficient amount'
+		throw e
+	}
+}
+
+async function estimateGasWithCatch (provider, tx) {
+	return provider.estimateGas(tx)
+		.then(gasLimit => ({ gasLimit }))
+		.catch(error => ({ error }))
 }
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
