@@ -49,7 +49,7 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 	const res = await fetchPost(
 		fetch,
 		`${relayerURL}/identity/${this.identity}/${this.network}/submit`,
-		this
+		{ nonce: this.nonce, signer: this.signer, txns: this.txns, gasLimit: this.gasLimit, signature: this.signature }
 	)
 	return res
 }
