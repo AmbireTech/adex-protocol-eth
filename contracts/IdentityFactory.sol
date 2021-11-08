@@ -42,8 +42,20 @@ contract IdentityFactory {
 			|| method == 0xf9338537 // sendTransfer(address,(uint256,address,address),bytes,bytes,(address,address,uint256,uint256))
 			|| method == 0xa9f5353d // sendTxns(address,(uint256,address,address),bytes,bytes,(string,address,uint256,bytes)[])
 		, 'INVALID_METHOD');
-		(bool success, bytes memory errData) = callee.call(data);
-		if (!success) revert(string(errData));
+
+		assembly {
+			let dataPtr := mload(0x40)
+			calldatacopy(dataPtr, data.offset, data.length)
+			let result := call(gas(), callee, 0, dataPtr, data.length, 0, 0)
+
+			switch result case 0 {
+				let size := returndatasize()
+				let ptr := mload(0x40)
+				returndatacopy(ptr, 0, size)
+				revert(ptr, size)
+			}
+			default {}
+		}
 	}
 
 

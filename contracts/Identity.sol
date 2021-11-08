@@ -138,6 +138,7 @@ contract Identity {
 			default {}
 		}
 		// A single call consumes around 477 more gas with the pure solidity version, for whatever reason
+		// WARNING: do not use this, it corrupts the returnData string (returns it in a slightly different format)
 		//(bool success, bytes memory returnData) = to.call{value: value, gas: gasleft()}(data);
 		//if (!success) revert(string(data));
 	}
