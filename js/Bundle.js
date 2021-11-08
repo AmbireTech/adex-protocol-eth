@@ -132,8 +132,8 @@ function getSignable(userTxnBundle) {
 		// @TODO typed data
 		// if (signer.isTypedData)
 		return abiCoder.encode(
-			['address', 'uint', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
-			[userTxnBundle.identity, getChainID(userTxnBundle.network), accHash, userTxnBundle.nonce, userTxnBundle.txns, true]
+			['address', 'uint', 'address', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
+			[userTxnBundle.identity, getChainID(userTxnBundle.network), userTxnBundle.identity, accHash, userTxnBundle.nonce, userTxnBundle.txns, true]
 		)
 	}
 	throw new Error(`invalid signer object`)
