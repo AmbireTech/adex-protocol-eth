@@ -145,6 +145,7 @@ function getChainID(network) {
 	if (network === 'bsc') return 56
 	if (network === 'fantom') return 250
 	if (network === 'avalanche') return 43114
+	if (network === 'arbitrum') return 42161
 	throw new Error(`unsupproted network ${network}`)
 }
 
