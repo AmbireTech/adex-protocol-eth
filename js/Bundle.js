@@ -72,7 +72,6 @@ Bundle.prototype.estimateNoRelayer = async function({ provider, replacing }) {
 	}
 	const blockTag = replacing ? 'latest' : 'pending'
 	const { error, gasLimit } = await estimateGasWithCatch(provider, blockTag, txParams)
-	console.log(error)
 	if (error && error.message.startsWith('execution reverted: ')) {
 		const message = error.message.slice(20)
 		return { success: false, message }
