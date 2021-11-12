@@ -1,5 +1,5 @@
 const { AbiCoder, hexlify, arrayify, keccak256, Interface } = require('ethers').utils
-const { Contract } = require('ethers')
+const { Contract, BigNumber } = require('ethers')
 
 const ensure = require('./ensureTypes')
 
@@ -25,11 +25,11 @@ Bundle.prototype.getNonce = async function(provider) {
 	return this.nonce
 }
 
-Bundle.prototype.estimate = async function({ fetch, relayerURL }) {
+Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing }) {
 	const res = await fetchPost(
 		fetch,
 		`${relayerURL}/identity/${this.identity}/${this.network}/estimate`,
-		{ txns: this.txns, signer: this.signer }
+		{ txns: this.txns, signer: this.signer, replacing }
 	)
 	this.gasLimit = res.gasLimit
 	return res
@@ -63,16 +63,23 @@ Bundle.prototype.cancel = async function({ fetch, relayerURL }) {
 	return res
 }
 
-Bundle.prototype.estimateNoRelayer = async function({ provider }) {
+const UNPREDICTABLE_GAS_REGEX = /gas required exceeds allowance|always failing transaction|execution reverted/
+Bundle.prototype.estimateNoRelayer = async function({ provider, replacing }) {
 	const txParams = {
 		from: this.signer.quickAccManager || this.signer.address,
 		to: this.identity,
 		data: IdentityInterface.encodeFunctionData('executeBySender', [this.txns])
 	}
-	const { error, gasLimit } = await estimateGasWithCatch(provider, txParams)
-	if (error) {
-		if (error.code !== 'UNPREDICTABLE_GAS_LIMIT') throw error
-		return { success: false, message: await getErrMsg(provider, txParams) }
+	const blockTag = replacing ? 'latest' : 'pending'
+	const { error, gasLimit } = await estimateGasWithCatch(provider, blockTag, txParams)
+	console.log(error)
+	if (error && error.message.startsWith('execution reverted: ')) {
+		const message = error.message.slice(20)
+		return { success: false, message }
+	} else if (error) {
+		// Match both the code and the regex to handle both errs from ethers and raw ones from nodes in case we use .send
+		if (!(error.code === 'UNPREDICTABLE_GAS_LIMIT' || error.message.match(UNPREDICTABLE_GAS_REGEX))) throw error
+		return { success: false, message: await getErrMsg(provider, txParams, blockTag) }
 	} else {
 		this.gasLimit = gasLimit.toNumber()
 		// @TODO EIP1559-optimized estimations (good first issue for external contributors)
@@ -206,10 +213,11 @@ async function getErrMsg (provider, txParams, blockTag) {
 	}
 }
 
-async function estimateGasWithCatch (provider, tx) {
-	return provider.estimateGas(tx)
-		.then(gasLimit => ({ gasLimit }))
-		.catch(error => ({ error }))
+async function estimateGasWithCatch (provider, blockTag, tx) {
+	return provider.send('eth_estimateGas', [tx, blockTag])
+		.then(gasLimit => ({ gasLimit: BigNumber.from(gasLimit) }))
+		// with .send, the error is wrapped in another error
+		.catch(e => e.code === 'SERVER_ERROR' ? { error: e.error } : { error: e })
 }
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
