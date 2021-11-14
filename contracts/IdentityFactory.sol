@@ -7,9 +7,9 @@ import "./interfaces/IERC20.sol";
 contract IdentityFactory {
 	event LogDeployed(address addr, uint256 salt);
 
-	address public immutable creator;
-	constructor() {
-		creator = msg.sender;
+	address public immutable allowedToDrain;
+	constructor(address allowed) {
+		allowedToDrain = allowed;
 	}
 
 	function deploy(bytes calldata code, uint256 salt) external {
@@ -63,7 +63,7 @@ contract IdentityFactory {
 	// although we do not use this since we no longer receive fees on the factory, it's good to have this for safety
 	// In practice, we (almost) never receive fees on the factory, but there's one exception: QuickAccManager EIP 712 methods (sendTransfer) + deployAndCall
 	function withdraw(IERC20 token, address to, uint256 tokenAmount) external {
-		require(msg.sender == creator, 'ONLY_CREATOR');
+		require(msg.sender == allowedToDrain, 'ONLY_AUTHORIZED');
 		token.transfer(to, tokenAmount);
 	}
 
