@@ -84,9 +84,6 @@ contract Identity {
 		external
 	{
 		require(txns.length > 0, 'MUST_PASS_TX');
-		// If we use the naive abi.encode(txn) and have a field of type `bytes`,
-		// there is a discrepancy between ethereumjs-abi and solidity
-		// @TODO check if this is resolved
 		uint currentNonce = nonce;
 		// NOTE: abi.encode is safer than abi.encodePacked in terms of collision safety
 		bytes32 hash = keccak256(abi.encode(address(this), block.chainid, currentNonce, txns));
@@ -116,6 +113,7 @@ contract Identity {
 		// again, anti-bricking
 		require(privileges[msg.sender] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
 	}
+
 	function executeBySelf(Transaction[] calldata txns) external {
 		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
 		require(txns.length > 0, 'MUST_PASS_TX');
