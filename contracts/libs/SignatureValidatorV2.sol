@@ -14,9 +14,7 @@ library SignatureValidator {
 		EIP712,
 		EthSign,
 		SmartWallet,
-		Spoof,
-		// must be at the end
-		Unsupported
+		Spoof
 	}
 
 	// bytes4(keccak256("isValidSignature(bytes32,bytes)"))
@@ -30,7 +28,6 @@ library SignatureValidator {
 		require(sig.length >= 1, "SV_SIGLEN");
 		uint8 modeRaw;
 		unchecked { modeRaw = uint8(sig[sig.length - 1]); }
-		require(modeRaw < uint8(SignatureMode.Unsupported), "SV_SIGMODE");
 		SignatureMode mode = SignatureMode(modeRaw);
 
 		// {r}{s}{v}{mode}
@@ -50,7 +47,6 @@ library SignatureValidator {
 		} else if (mode == SignatureMode.SmartWallet) {
 			// 32 bytes for the addr, 1 byte for the type = 33
 			require(sig.length > 33, "SV_LEN_WALLET");
-			// @TODO: can we pack the addr tigher into 20 bytes? should we?
 			uint newLen;
 			unchecked {
 				newLen = sig.length - 33;
