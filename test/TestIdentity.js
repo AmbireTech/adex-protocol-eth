@@ -178,7 +178,7 @@ contract('Identity', function(accounts) {
 		)
 	})
 
-	it('quickAccount', async function() {
+	it('quickAccount signature validation', async function() {
 		const quickAccount = [600, userAcc, anotherAccount]
 		const abiCoder = new AbiCoder()
 		const accHash = keccak256(abiCoder.encode(['tuple(uint, address, address)'], [quickAccount]))
@@ -195,7 +195,7 @@ contract('Identity', function(accounts) {
 		])
 
 		// The part that is evaluated by QuickAccManager
-		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [expectedAddr, 600, sig1, sig2])
+		const sigInner = abiCoder.encode([ 'uint', 'bytes', 'bytes' ], [600, sig1, sig2])
 		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
 
 		// we need to deploy before being able to validate sigs
@@ -231,7 +231,7 @@ contract('Identity', function(accounts) {
 		])
 
 		// The part that is evaluated by QuickAccManager
-		const sigInner = abiCoder.encode([ 'address', 'uint', 'bytes', 'bytes' ], [id.address, 600, sig1, sig2])
+		const sigInner = abiCoder.encode([ 'uint', 'bytes', 'bytes' ], [600, sig1, sig2])
 		// smart contract sig for quickAccManager.address
 		const dualSig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
 
