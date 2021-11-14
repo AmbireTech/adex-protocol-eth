@@ -207,7 +207,10 @@ async function getErrMsg (provider, txParams, blockTag) {
 			? (new AbiCoder()).decode(['string'], '0x' + returnData.slice(10))[0]
 			: returnData
 	} catch (e) {
+		// weird infura case
+		if (e.code === 'UNPREDICTABLE_GAS_LIMIT' && e.error) return e.error.message.slice(20)
 		if (e.code === 'CALL_EXCEPTION') return 'no error string, possibly insufficient amount'
+		if (e.code === 'INVALID_ARGUMENT') return `unable to deserialize: ${hexlify(e.value)}`
 		throw e
 	}
 }
