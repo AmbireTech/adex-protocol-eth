@@ -4,12 +4,13 @@ const Identity = artifacts.require('Identity')
 const Zapper = artifacts.require('WalletZapper')
 
 module.exports = async function(deployer, network) {
-	await deployer.deploy(OUTPACE)
+	//await deployer.deploy(OUTPACE)
 	await deployer.deploy(IdentityFactory)
 	await deployer.deploy(Identity, [])
+	await deployer.deploy(QuickAccManager)
 	
 	if (network === 'development') return
-	// ethereum mainnet: https://docs.aave.com/developers/v/2.0/deployed-contracts/deployed-contracts
+	/*// ethereum mainnet: https://docs.aave.com/developers/v/2.0/deployed-contracts/deployed-contracts
 	await deployer.deploy(Zapper, '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9', 0, [
 		// uni v2
 		'0x7a250d5630b4cf539739df2c5dacb4c659f2488d',
@@ -37,6 +38,6 @@ module.exports = async function(deployer, network) {
 	]) {
 		console.log(`Approving tokens for ${spender} on zapper ${zapper.address}`, tokens)
 		await zapper.approveMaxMany(spender, tokens)
-	}
+	}*/
 
 }
