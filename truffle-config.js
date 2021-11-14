@@ -103,7 +103,8 @@ module.exports = {
 		mainnet: {
 			provider: () => new HDWalletProvider(mnemonicOrKeys, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
 			network_id: 1,
-			gasPrice: 46e9, // in gwei
+			gasPrice: 95e9, // in gwei
+			gasLimit: 2000000,
 		},
 
 		goerli: {
@@ -113,9 +114,10 @@ module.exports = {
 		},
 
 		polygon: {
-			provider: () => new HDWalletProvider(mnemonicOrKeys, 'wss://matic-mainnet-archive-ws.bwarelabs.com'),
+			provider: () => new HDWalletProvider(mnemonicOrKeys, 'https://rpc-mainnet.maticvigil.com/v1/a5ab110a213caf96d58376b2ab55f37e9b61eb64'),
 			network_id: 137,
-			gasPrice: 4e9,
+			gasLimit: 2000000,
+			gasPrice: 110e9,
 		},
 
 		bsc: {
