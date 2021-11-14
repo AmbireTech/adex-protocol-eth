@@ -107,14 +107,23 @@ contract Identity {
 	// no need for nonce management here cause we're not dealing with sigs
 	function executeBySender(Transaction[] calldata txns) external {
 		require(txns.length > 0, 'MUST_PASS_TX');
-		require(privileges[msg.sender] != bytes32(0) || msg.sender == address(this), 'INSUFFICIENT_PRIVILEGE');
+		require(privileges[msg.sender] != bytes32(0), 'INSUFFICIENT_PRIVILEGE');
 		uint len = txns.length;
 		for (uint i=0; i<len; i++) {
 			Transaction memory txn = txns[i];
 			executeCall(txn.to, txn.value, txn.data);
 		}
 		// again, anti-bricking
-		require(privileges[msg.sender] != bytes32(0) || msg.sender == address(this), 'PRIVILEGE_NOT_DOWNGRADED');
+		require(privileges[msg.sender] != bytes32(0), 'PRIVILEGE_NOT_DOWNGRADED');
+	}
+	function executeBySelf(Transaction[] calldata txns) external {
+		require(msg.sender == address(this), 'ONLY_IDENTITY_CAN_CALL');
+		require(txns.length > 0, 'MUST_PASS_TX');
+		uint len = txns.length;
+		for (uint i=0; i<len; i++) {
+			Transaction memory txn = txns[i];
+			executeCall(txn.to, txn.value, txn.data);
+		}
 	}
 
 	// we shouldn't use address.call(), cause: https://github.com/ethereum/solidity/issues/2884
