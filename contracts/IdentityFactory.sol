@@ -39,8 +39,8 @@ contract IdentityFactory {
 		require(
 			method == 0x6171d1c9 // execute((address,uint256,bytes)[],bytes)
 			|| method == 0x534255ff // send(address,(uint256,address,address),(bool,bytes,bytes),(address,uint256,bytes)[])
-			|| method == 0xf9338537 // sendTransfer(address,(uint256,address,address),bytes,bytes,(address,address,uint256,uint256))
-			|| method == 0xa9f5353d // sendTxns(address,(uint256,address,address),bytes,bytes,(string,address,uint256,bytes)[])
+			|| method == 0x4b776c6d // sendTransfer(address,(uint256,address,address),(bytes,bytes),(address,address,uint256,uint256))
+			|| method == 0x63486689 // sendTxns(address,(uint256,address,address),(bytes,bytes),(string,address,uint256,bytes)[])
 		, 'INVALID_METHOD');
 
 		assembly {
