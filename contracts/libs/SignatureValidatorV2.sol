@@ -35,10 +35,9 @@ library SignatureValidator {
 			require(sig.length == 66, "SV_LEN");
 			bytes32 r = sig.readBytes32(0);
 			bytes32 s = sig.readBytes32(32);
-			// @TODO: is there a gas saving to be had here by using assembly?
 			uint8 v = uint8(sig[64]);
 			// Hesitant about this check: seems like this is something that has no business being checked on-chain
-			require(v == 27 || v == 28, "invalid v");
+			require(v == 27 || v == 28, "SV_INVALID_V");
 			if (mode == SignatureMode.EthSign) hash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
 			address signer = ecrecover(hash, v, r, s);
 			require(signer != address(0), "SV_ZERO_SIG");
