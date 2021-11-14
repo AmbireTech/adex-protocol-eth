@@ -2,6 +2,7 @@ const OUTPACE = artifacts.require('OUTPACE')
 const IdentityFactory = artifacts.require('IdentityFactory')
 const Identity = artifacts.require('Identity')
 const Zapper = artifacts.require('WalletZapper')
+const QuickAccManager = artifacts.require('QuickAccManager')
 
 module.exports = async function(deployer, network) {
 	//await deployer.deploy(OUTPACE)
