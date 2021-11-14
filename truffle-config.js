@@ -34,7 +34,8 @@ let mnemonicOrKeys
 try {
 	mnemonicOrKeys = fs.readFileSync('.deployKey').toString().trim()
 	if (mnemonicOrKeys.length === 64) mnemonicOrKeys = [mnemonicOrKeys]
-	console.log('Deploy addr:', (new HDWalletProvider(mnemonicOrKeys, `https://polygon-rpc.com/rpc`)).addresses[0])
+	// causes stuff to blow up cause we don't catch the errors from the provider
+	//console.log('Deploy addr:', (new HDWalletProvider(mnemonicOrKeys, 'wss://matic-mainnet-archive-ws.bwarelabs.com')).addresses[0])
 } catch(e) {
 	console.error('WARNING: unable to read .deploykey, mainnet wont work', e)
 }
@@ -112,7 +113,7 @@ module.exports = {
 		},
 
 		polygon: {
-			provider: () => new HDWalletProvider(mnemonicOrKeys, 'https://polygon-rpc.com/rpc'),
+			provider: () => new HDWalletProvider(mnemonicOrKeys, 'wss://matic-mainnet-archive-ws.bwarelabs.com'),
 			network_id: 137,
 			gasPrice: 4e9,
 		},
