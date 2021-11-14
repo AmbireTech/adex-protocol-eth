@@ -136,14 +136,13 @@ GaslessSweeper:
 * Binance Smart Chain: https://bscscan.com/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
 
 
-### Deployment strategy
+### Deployment
 
-The full deploy processis as follows
-
-* Deploy AdExCore
-* Deploy an IdentityFactory
-* Deploy a single Identity, with no owners and no registry
-* Deploy a Staking
+```
+truffle migrate --network mainnet
+truffle migrate --network polygon
+truffle migrate --network bsc
+```
 
 ### Verifying on etherscan
 
@@ -201,7 +200,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * [G0 Group, Staking contract](https://github.com/g0-group/Audits/blob/master/G0Group-AdExStaking.pdf): all issues discovered were resolved
 * [Forkway, ADXToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/Forkway_ADXToken_audit.pdf): all issues discovered were informational and resolved
 * [Forkway, ADXLoyaltyPoolToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/forkway-loyalty-pool.md): all issues discovered were resolved
-
+* CodeArena
 
 ## Integration guide: Identity v5.2
 
