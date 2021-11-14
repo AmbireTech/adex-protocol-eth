@@ -146,7 +146,7 @@ function getSignable(userTxnBundle) {
 }
 
 function getChainID(network) {
-	if (network === 'ethereum') return 0
+	if (network === 'ethereum') return 1
 	if (network === 'polygon') return 137
 	if (network === 'bsc') return 56
 	if (network === 'fantom') return 250
