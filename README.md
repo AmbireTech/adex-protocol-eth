@@ -121,7 +121,7 @@ GaslessSweeper:
 * Mainnet: https://etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
 * Goerli: https://goerli.etherscan.io/address/0x872e239332d13d6b29bf58283906d92fb2a7209b#code
 
-### Wallet
+### Wallet (first demo)
 
 `IdentityFactory` contract:
 * Mainnet: https://etherscan.io/address/0x50484176F62bc7B5c5F24Db12ce0508c514D0C07
@@ -135,6 +135,12 @@ GaslessSweeper:
 * Polygon: https://polygonscan.com/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
 * Binance Smart Chain: https://bscscan.com/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
 
+
+### Ambire Wallet
+
+* Factory: 0xBf07a0Df119Ca234634588fbDb5625594E2a5BCA
+
+Same addresses on Ethereum, Polygon, BSC
 
 ### Deployment
 
