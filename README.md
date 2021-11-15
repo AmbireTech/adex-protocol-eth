@@ -208,7 +208,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * [G0 Group, Staking contract](https://github.com/g0-group/Audits/blob/master/G0Group-AdExStaking.pdf): all issues discovered were resolved
 * [Forkway, ADXToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/Forkway_ADXToken_audit.pdf): all issues discovered were informational and resolved
 * [Forkway, ADXLoyaltyPoolToken](https://github.com/AdExNetwork/adex-protocol-eth/blob/master/audits/forkway-loyalty-pool.md): all issues discovered were resolved
-* CodeArena
+* [CodeArena](https://github.com/AmbireTech/adex-protocol-eth/blob/master/audits/Ambire%20Contest%20%E2%80%94%20Code%20423n4.pdf) (_view report [on CodeArena's website](https://code423n4.com/reports/2021-10-ambire/)_): all issues discovered were patched
 
 ## Integration guide: Identity v5.2
 
