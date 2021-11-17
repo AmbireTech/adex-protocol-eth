@@ -142,7 +142,7 @@ GaslessSweeper:
 * Base identity: 0x2A2b85EB1054d6f0c6c2E37dA05eD3E5feA684EF
 * QuickAccManager: 0xfF3f6D14DF43c112aB98834Ee1F82083E07c26BF
 
-Same addresses on Ethereum, Polygon, BSC
+Same addresses on Ethereum, Polygon, BSC, Fantom, Arbitrum, Avalanche
 
 ### Deployment
 
