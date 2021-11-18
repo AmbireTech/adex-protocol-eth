@@ -110,8 +110,8 @@ async function signMsgHash(wallet, identity, signer, msgHash, signatureTwo) {
 		// the inner sig is the one that the QuickAccManager interprets by doing an abi.decode and sending each individual signature to isValidSignature
 		const abiCoder = new AbiCoder()
 		const sigInner = abiCoder.encode(
-			['address', 'uint', 'bytes', 'bytes'],
-			[identity, signer.timelock, signatureOne, signatureTwo]
+			['uint', 'bytes', 'bytes'],
+			[signer.timelock, signatureOne, signatureTwo]
 		)
 		// 02 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
 		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}02`
