@@ -148,11 +148,12 @@ function getSignable(userTxnBundle) {
 function getChainID(network) {
 	if (network === 'ethereum') return 1
 	if (network === 'polygon') return 137
+	if (network === 'binance-smart-chain') return 56
 	if (network === 'bsc') return 56
 	if (network === 'fantom') return 250
 	if (network === 'avalanche') return 43114
 	if (network === 'arbitrum') return 42161
-	throw new Error(`unsupproted network ${network}`)
+	throw new Error(`unsupported network ${network}`)
 }
 
 function mapSignatureV(sigRaw) {
