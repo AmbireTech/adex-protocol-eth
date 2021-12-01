@@ -17,6 +17,7 @@ function Bundle(args) {
 	this.gasLimit = args.gasLimit
 	this.nonce = args.nonce
 	this.signature = args.signature
+	this.minFeeInUSDPerGas = args.minFeeInUSDPerGas
 	return this
 }
 
@@ -29,7 +30,7 @@ Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing }) {
 	const res = await fetchPost(
 		fetch,
 		`${relayerURL}/identity/${this.identity}/${this.network}/estimate`,
-		{ txns: this.txns, signer: this.signer, replacing }
+		{ txns: this.txns, signer: this.signer, replacing, minFeeInUSDPerGas: this.minFeeInUSDPerGas }
 	)
 	this.gasLimit = res.gasLimit
 	return res
