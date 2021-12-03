@@ -15,6 +15,7 @@ solc --overwrite --optimize --allow-paths . --abi --bin contracts/deposits/Sweep
 solc --overwrite --abi --bin contracts/Identity.sol -o temp
 solc --overwrite --abi --allow-paths . contracts/wallet/QuickAccManager.sol -o temp
 solc --overwrite --abi --allow-paths . contracts/wallet/RemainingBalancesOracle.sol -o temp
+solc --overwrite --abi --allow-paths . contracts/wallet/Batcher.sol -o temp
 solc --overwrite --abi contracts/IdentityFactory.sol -o temp 
 solc --overwrite --abi contracts/StakingPool.sol -o temp 
 
@@ -28,6 +29,7 @@ mv temp/IdentityFactory.abi abi/IdentityFactory5.2.json
 mv temp/StakingPool.abi abi/StakingPool.json
 mv temp/QuickAccManager.abi abi/QuickAccManager.json
 mv temp/RemainingBalancesOracle.abi abi/RemainingBalancesOracle.json
+mv temp/Batcher.abi abi/Batcher.json
 
 # Identity bin file
 #### we require this file for the Rust implementation
