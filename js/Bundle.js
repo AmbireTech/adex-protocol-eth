@@ -18,6 +18,7 @@ function Bundle(args) {
 	this.nonce = args.nonce
 	this.signature = args.signature
 	this.minFeeInUSDPerGas = args.minFeeInUSDPerGas
+	this.recoveryMode = args.recoveryMode
 	return this
 }
 
