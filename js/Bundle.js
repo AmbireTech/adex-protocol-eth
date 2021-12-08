@@ -36,10 +36,10 @@ Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing }) {
 	return res
 }
 
-Bundle.prototype.sign = async function(wallet) {
+Bundle.prototype.sign = async function(wallet, isSingleSigMode) {
 	if (isNaN(this.nonce)) throw new Error('nonce is not set')
 	if (isNaN(this.gasLimit)) throw new Error('gasLimit is not set')
-	const encoded = getSignable(this)
+	const encoded = getSignable(this, isSingleSigMode)
 	const hash = arrayify(keccak256(encoded))
 	const signature = await signMsg(wallet, hash)
 	this.signature = signature
@@ -121,7 +121,7 @@ async function signMsgHash(wallet, identity, signer, msgHash, signatureTwo) {
 	throw new Error(`invalid signer object`)
 }
 
-function getSignable(userTxnBundle) {
+function getSignable(userTxnBundle, isSingleSigMode) {
 	const abiCoder = new AbiCoder()
 	const signer = userTxnBundle.signer
 	if (signer.address)
@@ -140,7 +140,7 @@ function getSignable(userTxnBundle) {
 		// if (signer.isTypedData)
 		return abiCoder.encode(
 			['address', 'uint', 'address', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
-			[signer.quickAccManager, getChainID(userTxnBundle.network), userTxnBundle.identity, accHash, userTxnBundle.nonce, userTxnBundle.txns, true]
+			[signer.quickAccManager, getChainID(userTxnBundle.network), userTxnBundle.identity, accHash, userTxnBundle.nonce, userTxnBundle.txns, !isSingleSigMode]
 		)
 	}
 	throw new Error(`invalid signer object`)
