@@ -1,3 +1,7 @@
+const Buffer = require('buffer').Buffer
+
+global.Buffer = Buffer
+
 // Needed for OUTPACE
 const channelLib = require('./Channel')
 const withdrawalLib = require('./Withdraw')
