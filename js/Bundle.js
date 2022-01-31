@@ -28,7 +28,7 @@ Bundle.prototype.getNonce = async function(provider) {
 Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing, getNextNonce }) {
 	const res = await fetchPost(
 		fetch,
-    `${relayerURL}/identity/${this.identity}/${this.network}/estimate${getNextNonce ? '?getNextNonce=true' : ''}`,
+		`${relayerURL}/identity/${this.identity}/${this.network}/estimate${getNextNonce ? '?getNextNonce=true' : ''}`,
 		{ txns: this.txns, signer: this.signer, replacing }
 	)
 	this.gasLimit = res.gasLimit
