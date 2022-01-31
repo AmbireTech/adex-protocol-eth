@@ -25,10 +25,6 @@ contract OUTPACE {
 		bytes32[3] sigFollower;
 		bytes32[] proof;
 	}
-	struct BalanceLeaf {
-		address earner;
-		uint amount;
-	}
 
  	// channelId => challengeExpirationTime
 	// has two santinel values: 0 means no challenge, uint.max means failed challenge (channel is closed)
