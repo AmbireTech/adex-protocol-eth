@@ -30,7 +30,9 @@ Bundle.prototype.getNonce = async function(provider) {
 Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing, getNextNonce }) {
 	const res = await fetchPost(
 		fetch,
-		`${relayerURL}/identity/${this.identity}/${this.network}/estimate${getNextNonce ? '?getNextNonce=true' : ''}`,
+		`${relayerURL}/identity/${this.identity}/${this.network}/estimate${
+			getNextNonce ? '?getNextNonce=true' : ''
+		}`,
 		{ txns: this.txns, signer: this.signer, replacing, minFeeInUSDPerGas: this.minFeeInUSDPerGas }
 	)
 	this.gasLimit = res.gasLimit
@@ -51,7 +53,14 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 	const res = await fetchPost(
 		fetch,
 		`${relayerURL}/identity/${this.identity}/${this.network}/submit`,
-		{ nonce: this.nonce, signer: this.signer, txns: this.txns, gasLimit: this.gasLimit, signature: this.signature, signatureTwo: this.signatureTwo }
+		{
+			nonce: this.nonce,
+			signer: this.signer,
+			txns: this.txns,
+			gasLimit: this.gasLimit,
+			signature: this.signature,
+			signatureTwo: this.signatureTwo
+		}
 	)
 	return res
 }
@@ -77,26 +86,27 @@ Bundle.prototype.estimateNoRelayer = async function({ provider, replacing }) {
 	if (error && error.message.startsWith('execution reverted: ')) {
 		const message = error.message.slice(20)
 		return { success: false, message }
-	} else if (error) {
+	}
+	if (error) {
 		// Match both the code and the regex to handle both errs from ethers and raw ones from nodes in case we use .send
-		if (!(error.code === 'UNPREDICTABLE_GAS_LIMIT' || error.message.match(UNPREDICTABLE_GAS_REGEX))) throw error
+		if (!(error.code === 'UNPREDICTABLE_GAS_LIMIT' || error.message.match(UNPREDICTABLE_GAS_REGEX)))
+			throw error
 		return { success: false, message: await getErrMsg(provider, txParams, blockTag) }
-	} else {
-		this.gasLimit = gasLimit.toNumber()
-		// @TODO EIP1559-optimized estimations (good first issue for external contributors)
-		const feeData = await provider.getFeeData()
-		const gasPrice = feeData.gasPrice.toNumber()
-		const baseFee = gasPrice * gasLimit / 1e18
-		return {
-			success: true,
-			gasLimit: this.gasLimit,
-			gasPrice,
-			feeInNative: {
-				slow: baseFee * 0.9,
-				medium: baseFee * 1.0,
-				fast: baseFee * 1.15,
-				ape: baseFee * 1.4
-			}
+	}
+	this.gasLimit = gasLimit.toNumber()
+	// @TODO EIP1559-optimized estimations (good first issue for external contributors)
+	const feeData = await provider.getFeeData()
+	const gasPrice = feeData.gasPrice.toNumber()
+	const baseFee = (gasPrice * gasLimit) / 1e18
+	return {
+		success: true,
+		gasLimit: this.gasLimit,
+		gasPrice,
+		feeInNative: {
+			slow: baseFee * 0.9,
+			medium: baseFee * 1.0,
+			fast: baseFee * 1.15,
+			ape: baseFee * 1.4
 		}
 	}
 }
@@ -128,7 +138,12 @@ function getSignable(userTxnBundle, isSingleSigMode) {
 	if (signer.address)
 		return abiCoder.encode(
 			['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'],
-			[userTxnBundle.identity, getChainID(userTxnBundle.network), userTxnBundle.nonce, userTxnBundle.txns]
+			[
+				userTxnBundle.identity,
+				getChainID(userTxnBundle.network),
+				userTxnBundle.nonce,
+				userTxnBundle.txns
+			]
 		)
 	if (signer.quickAccManager) {
 		const accHash = keccak256(
@@ -141,7 +156,15 @@ function getSignable(userTxnBundle, isSingleSigMode) {
 		// if (signer.isTypedData)
 		return abiCoder.encode(
 			['address', 'uint', 'address', 'bytes32', 'uint', 'tuple(address, uint, bytes)[]', 'bool'],
-			[signer.quickAccManager, getChainID(userTxnBundle.network), userTxnBundle.identity, accHash, userTxnBundle.nonce, userTxnBundle.txns, !isSingleSigMode]
+			[
+				signer.quickAccManager,
+				getChainID(userTxnBundle.network),
+				userTxnBundle.identity,
+				accHash,
+				userTxnBundle.nonce,
+				userTxnBundle.txns,
+				!isSingleSigMode
+			]
 		)
 	}
 	throw new Error(`invalid signer object`)
@@ -203,12 +226,12 @@ async function fetchPost(fetch, url, body) {
 // Signature of Error(string)
 const ERROR_SIG = '0x08c379a0'
 
-async function getErrMsg (provider, txParams, blockTag) {
+async function getErrMsg(provider, txParams, blockTag) {
 	// .call always returns a hex string with ethers
 	try {
 		const returnData = await provider.call(txParams, blockTag)
 		return returnData.startsWith(ERROR_SIG)
-			? (new AbiCoder()).decode(['string'], '0x' + returnData.slice(10))[0]
+			? new AbiCoder().decode(['string'], `0x${returnData.slice(10)}`)[0]
 			: returnData
 	} catch (e) {
 		// weird infura case
@@ -219,11 +242,14 @@ async function getErrMsg (provider, txParams, blockTag) {
 	}
 }
 
-async function estimateGasWithCatch (provider, blockTag, tx) {
-	return provider.send('eth_estimateGas', [tx, blockTag])
-		.then(gasLimit => ({ gasLimit: BigNumber.from(gasLimit) }))
-		// with .send, the error is wrapped in another error
-		.catch(e => e.code === 'SERVER_ERROR' ? { error: e.error } : { error: e })
+async function estimateGasWithCatch(provider, blockTag, tx) {
+	return (
+		provider
+			.send('eth_estimateGas', [tx, blockTag])
+			.then(gasLimit => ({ gasLimit: BigNumber.from(gasLimit) }))
+			// with .send, the error is wrapped in another error
+			.catch(e => (e.code === 'SERVER_ERROR' ? { error: e.error } : { error: e }))
+	)
 }
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)

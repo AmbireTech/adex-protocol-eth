@@ -30,16 +30,19 @@
 
 const HDWalletProvider = require('@truffle/hdwallet-provider')
 const fs = require('fs')
+
 let mnemonicOrKeys
 try {
-	mnemonicOrKeys = fs.readFileSync('.deployKey').toString().trim()
+	mnemonicOrKeys = fs
+		.readFileSync('.deployKey')
+		.toString()
+		.trim()
 	if (mnemonicOrKeys.length === 64) mnemonicOrKeys = [mnemonicOrKeys]
 	// causes stuff to blow up cause we don't catch the errors from the provider
-	//console.log('Deploy addr:', (new HDWalletProvider(mnemonicOrKeys, 'wss://matic-mainnet-archive-ws.bwarelabs.com')).addresses[0])
-} catch(e) {
+	// console.log('Deploy addr:', (new HDWalletProvider(mnemonicOrKeys, 'wss://matic-mainnet-archive-ws.bwarelabs.com')).addresses[0])
+} catch (e) {
 	console.error('WARNING: unable to read .deploykey, mainnet wont work', e)
 }
-
 
 module.exports = {
 	/**
@@ -101,30 +104,42 @@ module.exports = {
 		},
 
 		mainnet: {
-			provider: () => new HDWalletProvider(mnemonicOrKeys, 'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
+			provider: () =>
+				new HDWalletProvider(
+					mnemonicOrKeys,
+					'wss://mainnet.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'
+				),
 			network_id: 1,
 			gasPrice: 95e9, // in gwei
-			gasLimit: 2000000,
+			gasLimit: 2000000
 		},
 
 		goerli: {
-			provider: () => new HDWalletProvider(mnemonicOrKeys, 'wss://goerli.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'),
+			provider: () =>
+				new HDWalletProvider(
+					mnemonicOrKeys,
+					'wss://goerli.infura.io/ws/v3/3d22938fd7dd41b7af4197752f83e8a1'
+				),
 			network_id: 5,
-			gasPrice: 5e9,
+			gasPrice: 5e9
 		},
 
 		polygon: {
-			provider: () => new HDWalletProvider(mnemonicOrKeys, 'https://rpc-mainnet.maticvigil.com/v1/a5ab110a213caf96d58376b2ab55f37e9b61eb64'),
+			provider: () =>
+				new HDWalletProvider(
+					mnemonicOrKeys,
+					'https://rpc-mainnet.maticvigil.com/v1/a5ab110a213caf96d58376b2ab55f37e9b61eb64'
+				),
 			network_id: 137,
 			gasLimit: 2000000,
-			gasPrice: 110e9,
+			gasPrice: 110e9
 		},
 
 		bsc: {
 			provider: () => new HDWalletProvider(mnemonicOrKeys, 'https://bsc-dataseed1.binance.org'),
 			network_id: 56,
-			gasPrice: 5e9,
-		},
+			gasPrice: 5e9
+		}
 	},
 
 	// Set default mocha options here, use special reporters etc.
