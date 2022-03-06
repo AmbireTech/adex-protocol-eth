@@ -299,7 +299,9 @@ contract('StakingPool', function(accounts) {
 
 		await expectEVMError(stakingPool.leave(parseADX('10000'), false), 'INSUFFICIENT_SHARES')
 
-		const receipt = await (await stakingPool.leave(sharesToMint, false, { gasLimit: 150000 })).wait()
+		const receipt = await (await stakingPool.leave(sharesToMint, false, {
+			gasLimit: 150000
+		})).wait()
 		const currentBlockTimestamp = (await web3.eth.getBlock('latest')).timestamp
 		assert.equal(receipt.events.length, 2, 'should emit LogLeave event')
 

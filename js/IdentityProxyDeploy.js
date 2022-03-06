@@ -24,10 +24,10 @@ function sstoreCode(slotNumber, keyType, key, valueType, valueBuf) {
 function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlot: 0 }) {
 	const { privSlot = 0 } = opts
 	if (privLevels.length > 3) throw new Error('getProxyDeployBytecode: max 3 privLevels')
-	const storage = Buffer.concat(privLevels
-		.map(([addr, data]) => {
-			return data !== true ?
-				sstoreCode(privSlot, 'address', addr, 'bytes32', data)
+	const storage = Buffer.concat(
+		privLevels.map(([addr, data]) => {
+			return data !== true
+				? sstoreCode(privSlot, 'address', addr, 'bytes32', data)
 				: sstoreCode(privSlot, 'address', addr, 'bool', Buffer.from('01', 'hex'))
 		})
 	)
@@ -36,14 +36,12 @@ function getProxyDeployBytecode(masterContractAddr, privLevels, opts = { privSlo
 	// @TODO solve this case; this will remove the "max 3 privLevels" restriction
 	const offset = storage.length + initial.length + 6 // 6 more bytes including the push added later on
 	if (offset > 256) throw new Error('getProxyDeployBytecode: internal: offset>256')
-	const initialCode = Buffer.concat([
-		storage,
-		initial,
-		evmPush(Buffer.from([offset]))
-	])
+	const initialCode = Buffer.concat([storage, initial, evmPush(Buffer.from([offset]))])
 	const masterAddrBuf = Buffer.from(masterContractAddr.slice(2).replace(/^(00)+/, ''), 'hex')
 	if (masterAddrBuf > 20) throw new Error('invalid address')
-	return `0x${initialCode.toString('hex')}3d3981f3363d3d373d3d3d363d${evmPush(masterAddrBuf).toString('hex')}5af43d82803e903d91602b57fd5bf3`
+	return `0x${initialCode.toString('hex')}3d3981f3363d3d373d3d3d363d${evmPush(
+		masterAddrBuf
+	).toString('hex')}5af43d82803e903d91602b57fd5bf3`
 }
 
 function getStorageSlotsFromArtifact(IdentityArtifact) {
@@ -62,4 +60,3 @@ function getStorageSlotsFromArtifact(IdentityArtifact) {
 }
 
 module.exports = { evmPush, sstoreCode, getProxyDeployBytecode, getStorageSlotsFromArtifact }
-

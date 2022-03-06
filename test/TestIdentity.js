@@ -1,6 +1,14 @@
 const promisify = require('util').promisify
 const { providers, Contract } = require('ethers')
-const { Interface, randomBytes, getAddress, AbiCoder, keccak256, arrayify, hexlify } = require('ethers').utils
+const {
+	Interface,
+	randomBytes,
+	getAddress,
+	AbiCoder,
+	keccak256,
+	arrayify,
+	hexlify
+} = require('ethers').utils
 const { generateAddress2 } = require('ethereumjs-util')
 
 const Outpace = artifacts.require('OUTPACE')
@@ -53,7 +61,7 @@ contract('Identity', function(accounts) {
 	const anotherAccount = accounts[7]
 
 	before(async function() {
-		//chainId = (await web3Provider.getNetwork()).chainId
+		// chainId = (await web3Provider.getNetwork()).chainId
 		// we seem to be using 1 in testing conditions for whatever reason
 		chainId = 1
 
@@ -71,16 +79,17 @@ contract('Identity', function(accounts) {
 		const idWeb3 = await Identity.new([])
 		baseIdentityAddr = idWeb3.address
 
-		// a hardcoded test 
-		assert.equal(getProxyDeployBytecode('0x02a63ec1bced5545296a5193e652e25ec0bae410', [['0xe5a4Dad2Ea987215460379Ab285DF87136E83BEA', true]]), '0x60017f02c94ba85f2ea274a3869293a0a9bf447d073c83c617963b0be7c862ec2ee44e553d602d80602e3d3981f3363d3d373d3d3d363d7302a63ec1bced5545296a5193e652e25ec0bae4105af43d82803e903d91602b57fd5bf3')
-
-		const bytecode = getProxyDeployBytecode(
-			baseIdentityAddr,
-			[[userAcc, true]],
-			{
-				...getStorageSlotsFromArtifact(Identity)
-			}
+		// a hardcoded test
+		assert.equal(
+			getProxyDeployBytecode('0x02a63ec1bced5545296a5193e652e25ec0bae410', [
+				['0xe5a4Dad2Ea987215460379Ab285DF87136E83BEA', true]
+			]),
+			'0x60017f02c94ba85f2ea274a3869293a0a9bf447d073c83c617963b0be7c862ec2ee44e553d602d80602e3d3981f3363d3d373d3d3d363d7302a63ec1bced5545296a5193e652e25ec0bae4105af43d82803e903d91602b57fd5bf3'
 		)
+
+		const bytecode = getProxyDeployBytecode(baseIdentityAddr, [[userAcc, true]], {
+			...getStorageSlotsFromArtifact(Identity)
+		})
 		const receipt = await (await identityFactory.deploy(bytecode, 0, { gasLimit })).wait()
 		const deployedEv = receipt.events.find(x => x.event === 'LogDeployed')
 		id = new Contract(deployedEv.args.addr, Identity._json.abi, signer)
@@ -93,7 +102,10 @@ contract('Identity', function(accounts) {
 	})
 
 	it('protected methods', async function() {
-		await expectEVMError(id.setAddrPrivilege(userAcc, TRUE_BYTES, { gasLimit }), 'ONLY_IDENTITY_CAN_CALL')
+		await expectEVMError(
+			id.setAddrPrivilege(userAcc, TRUE_BYTES, { gasLimit }),
+			'ONLY_IDENTITY_CAN_CALL'
+		)
 	})
 
 	it('deploy an Identity, counterfactually', async function() {
@@ -143,11 +155,8 @@ contract('Identity', function(accounts) {
 		const hash = hashTxns(id.address, 1, initialNonce, [relayerTx])
 
 		// Non-authorized address does not work
-		const invalidSig = await signMsg(evilAcc, hash) 
-		await expectEVMError(
-			id.execute([relayerTx], invalidSig),
-			'INSUFFICIENT_PRIVILEGE'
-		)
+		const invalidSig = await signMsg(evilAcc, hash)
+		await expectEVMError(id.execute([relayerTx], invalidSig), 'INSUFFICIENT_PRIVILEGE')
 
 		// Do the execute() correctly, verify if it worked
 		const relayerTxSig = await signMsg(userAcc, hash)
@@ -172,10 +181,7 @@ contract('Identity', function(accounts) {
 			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, FALSE_BYTES])
 		]
 		const sig = await signMsg(userAcc, hashTxns(id.address, chainId, 1, [relayerDowngradeTx]))
-		await expectEVMError(
-			id.execute([relayerDowngradeTx], sig),
-			'PRIVILEGE_NOT_DOWNGRADED'
-		)
+		await expectEVMError(id.execute([relayerDowngradeTx], sig), 'PRIVILEGE_NOT_DOWNGRADED')
 	})
 
 	it('quickAccount signature validation', async function() {
@@ -195,13 +201,17 @@ contract('Identity', function(accounts) {
 		])
 
 		// The part that is evaluated by QuickAccManager
-		const sigInner = abiCoder.encode([ 'uint', 'bytes', 'bytes' ], [600, sig1, sig2])
-		const sig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
+		const sigInner = abiCoder.encode(['uint', 'bytes', 'bytes'], [600, sig1, sig2])
+		const sig = `${sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2)}02`
 
 		// we need to deploy before being able to validate sigs
 		const deployReceipt = await (await deploy()).wait()
 		const deployedEv = deployReceipt.events.find(x => x.event === 'LogDeployed')
-		const identity = new Contract(deployedEv.args.addr, Identity._json.abi, web3Provider.getSigner(userAcc))
+		const identity = new Contract(
+			deployedEv.args.addr,
+			Identity._json.abi,
+			web3Provider.getSigner(userAcc)
+		)
 		// 0x1626ba7e is the signature that the function has to return in case of successful verification
 		assert.equal(await identity.isValidSignature(msgHash, sig), '0x1626ba7e')
 	})
@@ -212,10 +222,16 @@ contract('Identity', function(accounts) {
 		// First, prepare to authorize the quickAccount
 		const quickAccount = [600, userAcc, anotherAccount]
 		const accHash = keccak256(abiCoder.encode(['tuple(uint, address, address)'], [quickAccount]))
-		const authorizeQuickAcc = () => 
-			(new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))).executeBySender([
-				[ id.address, 0, idInterface.encodeFunctionData('setAddrPrivilege', [quickAccManager.address, accHash]) ]
-			])
+		const authorizeQuickAcc = () =>
+			new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc)).executeBySender(
+				[
+					[
+						id.address,
+						0,
+						idInterface.encodeFunctionData('setAddrPrivilege', [quickAccManager.address, accHash])
+					]
+				]
+			)
 
 		// Try relaying a txn
 		const relayerTx = [
@@ -231,15 +247,13 @@ contract('Identity', function(accounts) {
 		])
 
 		// The part that is evaluated by QuickAccManager
-		const sigInner = abiCoder.encode([ 'uint', 'bytes', 'bytes' ], [600, sig1, sig2])
+		const sigInner = abiCoder.encode(['uint', 'bytes', 'bytes'], [600, sig1, sig2])
 		// smart contract sig for quickAccManager.address
-		const dualSig = sigInner + abiCoder.encode(['address'], [quickAccManager.address]).slice(2) + '02'
+		const dualSig = `${sigInner +
+			abiCoder.encode(['address'], [quickAccManager.address]).slice(2)}02`
 
 		// Not authorized yet
-		await expectEVMError(
-			id.execute([relayerTx], dualSig, { gasLimit }),
-			'SV_WALLET_INVALID'
-		)
+		await expectEVMError(id.execute([relayerTx], dualSig, { gasLimit }), 'SV_WALLET_INVALID')
 
 		// Authorize the QuickAccManager with this accHash
 		await authorizeQuickAcc()
@@ -320,10 +334,7 @@ contract('Identity', function(accounts) {
 			idInterface.encodeFunctionData('setAddrPrivilege', [userAcc, TRUE_BYTES])
 		]
 
-		await expectEVMError(
-			id.executeBySender([relayerTx]),
-			'INSUFFICIENT_PRIVILEGE'
-		)
+		await expectEVMError(id.executeBySender([relayerTx]), 'INSUFFICIENT_PRIVILEGE')
 
 		const idWithUser = new Contract(id.address, Identity._json.abi, web3Provider.getSigner(userAcc))
 		const receipt = await (await idWithUser.executeBySender([relayerTx], {
@@ -615,7 +626,10 @@ contract('Identity', function(accounts) {
 	*/
 	function hashTxns(identityAddr, chainId, nonce, txns) {
 		const abiCoder = new AbiCoder()
-		const encoded = abiCoder.encode(['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'], [identityAddr, chainId, nonce, txns])
+		const encoded = abiCoder.encode(
+			['address', 'uint', 'uint', 'tuple(address, uint, bytes)[]'],
+			[identityAddr, chainId, nonce, txns]
+		)
 		return arrayify(keccak256(encoded))
 	}
 
@@ -629,7 +643,7 @@ contract('Identity', function(accounts) {
 	async function signMsg(from, hash) {
 		assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
 		// 01 is the enum number of EthSign signature type
-		return mapSignatureV(await web3Provider.getSigner(from).signMessage(hash)) + '01'
+		return `${mapSignatureV(await web3Provider.getSigner(from).signMessage(hash))}01`
 	}
 
 	function createAccount(privileges, opts) {
