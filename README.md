@@ -143,7 +143,7 @@ GaslessSweeper:
 * QuickAccManager: 0xfF3f6D14DF43c112aB98834Ee1F82083E07c26BF
 * Batcher: 0x460fad03099f67391d84c9cc0ea7aa2457969cea
 
-Same addresses on Ethereum, Polygon, BSC, Fantom, Arbitrum, Avalanche
+Same addresses on Ethereum, Polygon, BSC, Fantom, Arbitrum, Avalanche, Moonbeam
 
 ### Deployment
 
