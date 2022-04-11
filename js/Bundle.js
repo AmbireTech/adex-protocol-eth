@@ -179,6 +179,7 @@ function getChainID(network) {
 	if (network === 'avalanche') return 43114
 	if (network === 'arbitrum') return 42161
 	if (network === 'moonbeam') return 1284
+	if (network === 'moonriver') return 1285
 	throw new Error(`unsupported network ${network}`)
 }
 
