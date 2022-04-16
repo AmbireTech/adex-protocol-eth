@@ -19,6 +19,7 @@ function Bundle(args) {
 	this.signature = args.signature
 	this.minFeeInUSDPerGas = args.minFeeInUSDPerGas
 	this.recoveryMode = args.recoveryMode
+	this.meta = args.meta
 	return this
 }
 
@@ -59,7 +60,8 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 			txns: this.txns,
 			gasLimit: this.gasLimit,
 			signature: this.signature,
-			signatureTwo: this.signatureTwo
+			signatureTwo: this.signatureTwo,
+			meta: this.meta
 		}
 	)
 	return res
