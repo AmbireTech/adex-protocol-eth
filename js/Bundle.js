@@ -182,6 +182,11 @@ function getChainID(network) {
 	if (network === 'arbitrum') return 42161
 	if (network === 'moonbeam') return 1284
 	if (network === 'moonriver') return 1285
+	if (network === 'gnosis') return 100
+	if (network === 'kucoin') return 321
+	if (network === 'andromeda') return 1088
+	if (network === 'cronos') return 25
+	if (network === 'aurora') return 1313161554
 	throw new Error(`unsupported network ${network}`)
 }
 
