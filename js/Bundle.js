@@ -282,4 +282,4 @@ async function estimateGasWithCatch(provider, blockTag, tx) {
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
 
-module.exports = { Bundle, signMessage, signMessage712, getSignable, signMsg }
+module.exports = { Bundle, signMessage, signMessage712, getSignable, signMsg, signMsg712 }
