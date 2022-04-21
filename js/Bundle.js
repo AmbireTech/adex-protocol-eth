@@ -114,9 +114,9 @@ Bundle.prototype.estimateNoRelayer = async function({ provider, replacing }) {
 }
 
 async function signMessage(wallet, identity, signer, message, signatureTwo) {
-	if (signer.address) return signMsg(wallet, message)
+	if (signer.address) return signMsg(wallet, message, true)
 	if (signer.quickAccManager) {
-		const signatureOne = await signMsg(wallet, message)
+		const signatureOne = await signMsg(wallet, message, true)
 		// the inner sig is the one that the QuickAccManager interprets by doing an abi.decode and sending each individual signature to isValidSignature
 		const abiCoder = new AbiCoder()
 		const sigInner = abiCoder.encode(
@@ -210,10 +210,10 @@ function mapSignatureV(sigRaw) {
 	return hexlify(sig)
 }
 
-async function signMsg(wallet, message) {
+async function signMsg(wallet, message, useFinalDigestSigMode = false) {
 	// assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
 	// was 01 originally but to avoid prefixing in solidity, we changed it to 00
-	return `${mapSignatureV(await wallet.signMessage(message))}00`
+	return `${mapSignatureV(await wallet.signMessage(message))}${useFinalDigestSigMode ? '00' : '01'}`
 }
 
 async function signMsg712(wallet, domain, types, value) {
