@@ -19,6 +19,7 @@ function Bundle(args) {
 	this.signature = args.signature
 	this.minFeeInUSDPerGas = args.minFeeInUSDPerGas
 	this.recoveryMode = args.recoveryMode
+	this.meta = args.meta
 	return this
 }
 
@@ -59,7 +60,8 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 			txns: this.txns,
 			gasLimit: this.gasLimit,
 			signature: this.signature,
-			signatureTwo: this.signatureTwo
+			signatureTwo: this.signatureTwo,
+			meta: this.meta
 		}
 	)
 	return res
@@ -111,14 +113,28 @@ Bundle.prototype.estimateNoRelayer = async function({ provider, replacing }) {
 	}
 }
 
-// wallet: wallet provider
-// identity: identity addr
-// signer: same object as the one we pass to Bundle, either {address} or {quickAccManager,timelock,one,two}
-// signatureTwo is optional, only when signer.quickAccManager is used
-async function signMsgHash(wallet, identity, signer, msgHash, signatureTwo) {
-	if (signer.address) return signMsg(wallet, msgHash)
+async function signMessage(wallet, identity, signer, message, signatureTwo) {
+	if (signer.address) return signMsg(wallet, message, true)
 	if (signer.quickAccManager) {
-		const signatureOne = await signMsg(wallet, msgHash)
+		const signatureOne = await signMsg(wallet, message, true)
+		// the inner sig is the one that the QuickAccManager interprets by doing an abi.decode and sending each individual signature to isValidSignature
+		const abiCoder = new AbiCoder()
+		const sigInner = abiCoder.encode(
+			['uint', 'bytes', 'bytes'],
+			[signer.timelock, signatureOne, signatureTwo]
+		)
+		// 02 is the SmartWallet type sig; we're essentially formatting this as a smart wallet type sig, verified by the quickAccManager
+		const sig = `${sigInner + abiCoder.encode(['address'], [signer.quickAccManager]).slice(2)}02`
+		return sig
+	}
+	throw new Error(`invalid signer object`)
+}
+
+
+async function signMessage712(wallet, identity, signer, domain, types, value, signatureTwo) {
+	if (signer.address) return signMsg712(wallet, domain, types, value)
+	if (signer.quickAccManager) {
+		const signatureOne = await signMsg712(wallet, domain, types, value)
 		// the inner sig is the one that the QuickAccManager interprets by doing an abi.decode and sending each individual signature to isValidSignature
 		const abiCoder = new AbiCoder()
 		const sigInner = abiCoder.encode(
@@ -180,6 +196,13 @@ function getChainID(network) {
 	if (network === 'arbitrum') return 42161
 	if (network === 'moonbeam') return 1284
 	if (network === 'moonriver') return 1285
+	if (network === 'gnosis') return 100
+	if (network === 'kucoin') return 321
+	if (network === 'andromeda') return 1088
+	if (network === 'cronos') return 25
+	if (network === 'aurora') return 1313161554
+	if (network === 'rinkeby') return 4
+	if (network === 'optimism') return 10
 	throw new Error(`unsupported network ${network}`)
 }
 
@@ -189,10 +212,16 @@ function mapSignatureV(sigRaw) {
 	return hexlify(sig)
 }
 
-async function signMsg(wallet, hash) {
+async function signMsg(wallet, message, useFinalDigestSigMode = false) {
 	// assert.equal(hash.length, 32, 'hash must be 32byte array buffer')
-	// 01 is the enum number of EthSign signature type
-	return `${mapSignatureV(await wallet.signMessage(hash))}01`
+	// was 01 originally but to avoid prefixing in solidity, we changed it to 00
+	return `${mapSignatureV(await wallet.signMessage(message))}${useFinalDigestSigMode ? '00' : '01'}`
+}
+
+async function signMsg712(wallet, domain, types, value) {
+	// 00 is the enum number of SignatureMode.EIP712
+	const typedDataSign = await wallet._signTypedData(domain, types, value)
+	return `${mapSignatureV(typedDataSign)}00`
 }
 
 async function getNonce(provider, userTxnBundle) {
@@ -255,4 +284,4 @@ async function estimateGasWithCatch(provider, blockTag, tx) {
 
 // getNonce(require('ethers').getDefaultProvider('homestead'), { identity: '0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e8', signer: {address: '0x942f9CE5D9a33a82F88D233AEb3292E680230348'}, txns: [] }).then(console.log)
 
-module.exports = { Bundle, signMsgHash, getSignable, signMsg }
+module.exports = { Bundle, signMessage, signMessage712, getSignable, signMsg, signMsg712 }
