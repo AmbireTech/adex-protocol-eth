@@ -7,8 +7,9 @@ contract ADXSupplyController {
 	enum GovernanceLevel { None, Mint, All }
 
 	uint public constant CAP = 150000000 * 1e18;
-	// This amount was burned on purpose when migrating from Tom pool 2 (Staking with token 0xade) to Tom pool 3 (StakingPool with token 0xade)
-	uint public immutable BURNED_MIN = 35000000 * 1e18;
+	// This amount was burned on purpose when migrating from Tom pool 2 (Staking with token 0xade) to Tom pool 3 (StakingPool with token 0xade) - 35m
+	// another 10m burned from treasury
+	uint public immutable BURNED_MIN = 45000000 * 1e18;
 	IADXToken public immutable ADX;
 
 	mapping (address => uint8) public governance;
