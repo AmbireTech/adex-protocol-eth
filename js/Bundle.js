@@ -61,7 +61,8 @@ Bundle.prototype.submit = async function({ fetch, relayerURL }) {
 			gasLimit: this.gasLimit,
 			signature: this.signature,
 			signatureTwo: this.signatureTwo,
-			meta: this.meta
+			meta: this.meta,
+			gasTank: this.gasTank
 		}
 	)
 	return res
