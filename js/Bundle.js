@@ -20,6 +20,7 @@ function Bundle(args) {
 	this.minFeeInUSDPerGas = args.minFeeInUSDPerGas
 	this.recoveryMode = args.recoveryMode
 	this.meta = args.meta
+	this.gasTank = args.gasTank
 	return this
 }
 
