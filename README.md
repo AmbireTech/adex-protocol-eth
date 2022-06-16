@@ -108,6 +108,9 @@ New V5 `SupplyController` (increased cap to account for the to-be burned staking
 * Mainnet: https://etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
 * Goerli: https://goerli.etherscan.io/address/0x9d47f1c6ba4d66d8aa5e19226191a8968bc9094e
 
+New V5 `SupplyController` (increased cap to account for the governance-induced burn):
+* Mainnet: https://etherscan.io/address/0x515629338229dd5f8cea3f4f3cc8185ba21fa30b
+
 StakingPool:
 
 * Mainnet: https://etherscan.io/address/0xb6456b57f03352be48bf101b46c1752a0813491a
