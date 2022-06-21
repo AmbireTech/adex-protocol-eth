@@ -29,11 +29,12 @@ Bundle.prototype.getNonce = async function(provider) {
 	return this.nonce
 }
 
-Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing, getNextNonce }) {
+Bundle.prototype.estimate = async function({ fetch, relayerURL, replacing, getNextNonce, gasTank }) {
+	const queryParams = Object.fromEntries(Object.entries({getNextNonce, gasTank}).filter(([_, v]) => v))
 	const res = await fetchPost(
 		fetch,
-		`${relayerURL}/identity/${this.identity}/${this.network}/estimate${
-			getNextNonce ? '?getNextNonce=true' : ''
+		`${relayerURL}/identity/${this.identity}/${this.network}/estimate?${
+			(new URLSearchParams(queryParams)).toString()
 		}`,
 		{ txns: this.txns, signer: this.signer, replacing, minFeeInUSDPerGas: this.minFeeInUSDPerGas }
 	)
