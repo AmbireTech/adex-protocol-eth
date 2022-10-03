@@ -51,12 +51,11 @@ function getNextLayer(elements) {
 }
 
 class MerkleTree {
-	constructor(_elements, _settings) {
-		const settings = _settings || {}
+	constructor(_elements, settings = { deduplicate: true }) {
 		if (!_elements.every(b => b.length === 32 && Buffer.isBuffer(b))) {
 			throw new Error('elements must be 32 byte buffers')
 		}
-		const e = { elements: (settings.deduplicate === false ? _elements : deduplicate(_elements)) }
+		const e = { elements: (settings.deduplicate ? deduplicate(_elements) : _elements) }
 		Object.assign(this, e)
 		this.elements.sort(Buffer.compare)
 
