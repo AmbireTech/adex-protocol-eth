@@ -14,7 +14,9 @@ library SignatureValidator {
 		EIP712,
 		EthSign,
 		SmartWallet,
-		Spoof
+		Spoof,
+		// WARNING: must always be last
+		LastUnused
 	}
 
 	// bytes4(keccak256("isValidSignature(bytes32,bytes)"))
@@ -28,6 +30,8 @@ library SignatureValidator {
 		require(sig.length >= 1, "SV_SIGLEN");
 		uint8 modeRaw;
 		unchecked { modeRaw = uint8(sig[sig.length - 1]); }
+		// Ensure we're in bounds for mode; Solidity does this as well but it will just silently blow up rather than showing a decent error
+		require(modeRaw < uint8(SignatureMode.LastUnused), "SV_SIGMODE");
 		SignatureMode mode = SignatureMode(modeRaw);
 
 		// {r}{s}{v}{mode}
@@ -56,10 +60,12 @@ library SignatureValidator {
 			return address(wallet);
 		// {address}{mode}; the spoof mode is used when simulating calls
 		} else if (mode == SignatureMode.Spoof && allowSpoofing) {
+			// This is safe cause it's specifically intended for spoofing sigs in simulation conditions, where tx.origin can be controlled
+			// slither-disable-next-line tx-origin
 			require(tx.origin == address(1), "SV_SPOOF_ORIGIN");
 			require(sig.length == 33, "SV_SPOOF_LEN");
 			sig.trimToSize(32);
 			return abi.decode(sig, (address));
-		} else revert("SV_SIGMODE");
+		};
 	}
 }
