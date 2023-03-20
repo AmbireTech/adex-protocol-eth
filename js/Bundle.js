@@ -204,9 +204,11 @@ function getChainID(network) {
 	if (network === 'andromeda') return 1088
 	if (network === 'cronos') return 25
 	if (network === 'aurora') return 1313161554
+	if (network === 'optimism') return 10
+	if (network === 'okc') return 66
 	if (network === 'rinkeby') return 4
 	if (network === 'mumbai') return 80001
-	if (network === 'optimism') return 10
+	if (network === 'sepolia') return 11155111
 	throw new Error(`unsupported network ${network}`)
 }
 
