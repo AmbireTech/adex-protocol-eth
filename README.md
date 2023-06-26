@@ -203,7 +203,7 @@ This is not a part of the adex-protocol-eth source code, but it may be useful fo
 * Detailed tests for every contract
 * No Solidity warnings allowed
 * No modifiers allowed
-* Limited use of inheritance
+* No use of inheritance for core contracts; inheritance is permitted for deployless contracts
 * No reentrancy guards allowed, instead we use the Checks-Effects-Interactions pattern
 * All `require`s should have an error message
 * No `delegatecall` upgradability; upgradability is achieved via off-chain social consensus
