@@ -118,6 +118,9 @@ New V5 `SupplyController` (increased cap to account for the governance-induced b
 New V5 `SupplyController` (increase cap again to account for governance-induced burn):
 * Mainnet: https://etherscan.io/address/0xD4628FA47AAe2d0f4c8a204f36c2d93AA8dc31F5 
 
+New V5 `SupplyController` (increase cap again to account for governance-induced burn and discount treasury tokens):
+* Mainnet: https://etherscan.io/address/0x9B370599B2bf61806DDca1379257F26377472BEe
+
 StakingPool:
 
 * Mainnet: https://etherscan.io/address/0xb6456b57f03352be48bf101b46c1752a0813491a
