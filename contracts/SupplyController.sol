@@ -9,8 +9,7 @@ contract ADXSupplyController {
 	uint public constant CAP = 150000000 * 1e18;
 	// This amount was burned on purpose when migrating from Tom pool 2 (Staking with token 0xade) to Tom pool 3 (StakingPool with token 0xade) - 35m
 	// another 10m burned from treasury and 2 we count as burned from the flash pool
-  // add another 2M + 2M that the company burned
-	uint public immutable BURNED_MIN = 49000000 * 1e18;
+	uint public immutable BURNED_MIN = 45000000 * 1e18;
 	IADXToken public immutable ADX;
 
 	mapping (address => uint8) public governance;
@@ -45,7 +44,7 @@ contract ADXSupplyController {
 
 	function innerMint(IADXToken token, address owner, uint amount) internal {
 		uint totalSupplyAfter = token.totalSupply() + amount;
-		require(totalSupplyAfter <= CAP + BURNED_MIN, "MINT_TOO_LARGE");
+		require(totalSupplyAfter <= CAP + BURNED_MIN + token.balanceOf("0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e9"), "MINT_TOO_LARGE");
 		token.mint(owner, amount);
 	}
 
