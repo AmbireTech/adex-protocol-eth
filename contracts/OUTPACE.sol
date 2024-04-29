@@ -49,7 +49,7 @@ contract OUTPACE {
 
 	// Functions
 	function deposit(Channel calldata channel, address recipient, uint amount) external {
-		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
+		bytes32 channelId = keccak256(abi.encode(channel));
 		require(amount > 0, 'NO_DEPOSIT');
 		require(challenges[channelId] != CLOSED, 'CHANNEL_CLOSED');
 		remaining[channelId] += amount;
@@ -79,7 +79,7 @@ contract OUTPACE {
 	}
 
 	function calcWithdrawAmount(address earner, Withdrawal calldata withdrawal) internal returns (uint) {
-		bytes32 channelId = keccak256(abi.encode(withdrawal.channel, block.chainid));
+		bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
 		// require that the is not closed
 		uint challengeExpirationTime = challenges[channelId];
 		require(challengeExpirationTime != CLOSED, 'CHANNEL_CLOSED');
@@ -88,7 +88,7 @@ contract OUTPACE {
 		if (challengeExpirationTime != 0) lastStateRoot[channelId] = withdrawal.stateRoot;
 
 		// Check the signatures
-		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot));
+		bytes32 hashToSign = keccak256(abi.encode(address(this), channelId, withdrawal.stateRoot, block.chainid));
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.leader, withdrawal.sigLeader), 'LEADER_SIG');
 		require(SignatureValidator.isValid(hashToSign, withdrawal.channel.follower, withdrawal.sigFollower), 'FOLLOWER_SIG');
 		// adds like 8k gas for 10 withdrawals (2% increase)
@@ -115,7 +115,7 @@ contract OUTPACE {
 		// same applies for resuming
 		//require(remaining[channelId] > 0, 'no funds to be distributed');
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'NOT_AUTHORIZED');
-		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
+		bytes32 channelId = keccak256(abi.encode(channel));
 		require(challenges[channelId] == 0, 'CHANNEL_ALREADY_CHALLENGED');
 		uint expires = block.timestamp + CHALLENGE_TIME;
 		challenges[channelId] = expires;
@@ -124,11 +124,11 @@ contract OUTPACE {
 	}
 
 	function resume(Channel calldata channel, bytes32[3] calldata sigLeader, bytes32[3] calldata sigFollower) external {
-		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
+		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
 		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
-		bytes32 hashToSign = keccak256(abi.encodePacked('resume', channelId, challengeExpires));
+		bytes32 hashToSign = keccak256(abi.encodePacked('resume', channelId, challengeExpires, block.chainid));
 		require(SignatureValidator.isValid(hashToSign, channel.leader, sigLeader), 'INVALID_LEADER_SIG');
 		require(SignatureValidator.isValid(hashToSign, channel.follower, sigFollower), 'INVALID_FOLLOWER_SIG');
 
@@ -140,7 +140,7 @@ contract OUTPACE {
 	function close(Channel calldata channel) external {
 		address guardian = channel.guardian;
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
-		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
+		bytes32 channelId = keccak256(abi.encode(channel));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
 		require(block.timestamp > challengeExpires, 'CHANNEL_NOT_CLOSABLE');
