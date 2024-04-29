@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.8.7;
+pragma solidity 0.8.19;
 
 import "./libs/SafeERC20.sol";
 import "./libs/MerkleProof.sol";
@@ -49,7 +49,7 @@ contract OUTPACE {
 
 	// Functions
 	function deposit(Channel calldata channel, address recipient, uint amount) external {
-		bytes32 channelId = keccak256(abi.encode(channel));
+		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
 		require(amount > 0, 'NO_DEPOSIT');
 		require(challenges[channelId] != CLOSED, 'CHANNEL_CLOSED');
 		remaining[channelId] += amount;
@@ -79,7 +79,7 @@ contract OUTPACE {
 	}
 
 	function calcWithdrawAmount(address earner, Withdrawal calldata withdrawal) internal returns (uint) {
-		bytes32 channelId = keccak256(abi.encode(withdrawal.channel));
+		bytes32 channelId = keccak256(abi.encode(withdrawal.channel, block.chainid));
 		// require that the is not closed
 		uint challengeExpirationTime = challenges[channelId];
 		require(challengeExpirationTime != CLOSED, 'CHANNEL_CLOSED');
@@ -115,7 +115,7 @@ contract OUTPACE {
 		// same applies for resuming
 		//require(remaining[channelId] > 0, 'no funds to be distributed');
 		require(msg.sender == channel.leader || msg.sender == channel.follower || msg.sender == channel.guardian, 'NOT_AUTHORIZED');
-		bytes32 channelId = keccak256(abi.encode(channel));
+		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
 		require(challenges[channelId] == 0, 'CHANNEL_ALREADY_CHALLENGED');
 		uint expires = block.timestamp + CHALLENGE_TIME;
 		challenges[channelId] = expires;
@@ -124,7 +124,7 @@ contract OUTPACE {
 	}
 
 	function resume(Channel calldata channel, bytes32[3] calldata sigLeader, bytes32[3] calldata sigFollower) external {
-		bytes32 channelId = keccak256(abi.encode(channel));
+		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
 		// NOTE: we can resume the channel by mutual consent even if it's closable, so we won't check whether challengeExpires is in the future
@@ -140,7 +140,7 @@ contract OUTPACE {
 	function close(Channel calldata channel) external {
 		address guardian = channel.guardian;
 		require(msg.sender == guardian, 'NOT_GUARDIAN');
-		bytes32 channelId = keccak256(abi.encode(channel));
+		bytes32 channelId = keccak256(abi.encode(channel, block.chainid));
 		uint challengeExpires = challenges[channelId];
 		require(challengeExpires != 0 && challengeExpires != CLOSED, 'CHANNEL_NOT_CHALLENGED');
 		require(block.timestamp > challengeExpires, 'CHANNEL_NOT_CLOSABLE');
