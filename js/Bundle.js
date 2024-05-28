@@ -207,6 +207,7 @@ function getChainID(network) {
 	if (network === 'optimism') return 10
 	if (network === 'okc') return 66
 	if (network === 'base') return 8453
+	if (network === 'scroll') return 534352
 	if (network === 'rinkeby') return 4
 	if (network === 'mumbai') return 80001
 	if (network === 'sepolia') return 11155111
