@@ -203,7 +203,7 @@ This is the first time we see an ERC20 with an ability to change the `symbol()`.
 
 **Severity:** informational
 
-**AdEx team comment:** noted, we need this if we come up with a more creative/shorter symbol for the pool token or in case we're forced by soem piece of infrastructure (eg wallet) to make it shorter
+**AdEx team comment:** noted, we need this if we come up with a more creative/shorter symbol for the pool token or in case we're forced by some piece of infrastructure (eg wallet) to make it shorter
 
 **Status:** resolved
 
