@@ -177,7 +177,7 @@ Another simple fix would be to tweak `toMint()` so that the base it uses to calc
 
 This is categorized as "low" as the AdEx team has informed us that they would be staking a significant sum of ADX when the pool is deployed, therefore eliminating the likelihood of this exploit.
 
-**AdEx team comment:** we have decided not to honor the `maxTotalADX` in `toMint()` as suggested because, 1) it impacts the APY predictability 2) it will be unfair to pool token holders who've staked early and then their collective share has incresed over `maxTotalADX`. In this scenario of oversubscription, the pool token will be traded above it's value in ADX.
+**AdEx team comment:** we have decided not to honor the `maxTotalADX` in `toMint()` as suggested because, 1) it impacts the APY predictability 2) it will be unfair to pool token holders who've staked early and then their collective share has increased over `maxTotalADX`. In this scenario of oversubscription, the pool token will be traded above it's value in ADX.
 
 **Severity:** low
 
