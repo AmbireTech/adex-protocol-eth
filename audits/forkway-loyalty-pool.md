@@ -211,7 +211,7 @@ This is the first time we see an ERC20 with an ability to change the `symbol()`.
 
 Suppose ADX is sent directly to the pool contract. At this point the amount of incentive to be minted will increase as if this amount of ADX has been there the entire time since the last `lastMintTime`. Essentially, ADX sent to the contract will automatically incur interest as if it's been deposited when the last `mintIncentive()` happened (triggered by entering/leaving).
 
-Due to the limitations of the ERC20 standard this can't be resolved better than the AdEx team's solution of having a publically callable `mintIncentive()` function. Any automated system that sends ADX to the pool should call `mintIncentive()` first to avoid this.
+Due to the limitations of the ERC20 standard this can't be resolved better than the AdEx team's solution of having a publicly callable `mintIncentive()` function. Any automated system that sends ADX to the pool should call `mintIncentive()` first to avoid this.
 
 **Severity:** informational
 
