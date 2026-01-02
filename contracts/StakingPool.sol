@@ -35,6 +35,7 @@ contract StakingPool {
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
+		require(commitments[msg.sender].shareAmount == 0, "unstaking in progress");
 		uint shareAmount = (amount * 1e18) / this.shareValue();
 		require(to != address(this), "BAD_ADDRESS");
 		shares[msg.sender] = shares[msg.sender] - shareAmount;
@@ -44,6 +45,7 @@ contract StakingPool {
 	}
 
 	function transferFrom(address from, address to, uint amount) external returns (bool success) {
+		require(commitments[msg.sender].shareAmount == 0, "unstaking in progress");
 		uint shareAmount = (amount * 1e18) / this.shareValue();
 		shares[from] = shares[from] - shareAmount;
 		allowed[from][msg.sender] = allowed[from][msg.sender] - shareAmount;
