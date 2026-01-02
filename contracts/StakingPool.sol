@@ -96,6 +96,7 @@ contract StakingPool {
 
 	// Each user can only have one unbonding committment at a time
 	mapping (address => UnbondCommitment) public commitments;
+	mapping (address => uint) public individualTimeToUnbond;
 	// Unbonding commitment from a staker
 	struct UnbondCommitment {
 		uint shareAmount;
@@ -176,6 +177,14 @@ contract StakingPool {
 
 	function enter(uint amount) external {
 		innerEnter(msg.sender, amount);
+	}
+
+	// not allowed for enterTo because it would be unfair to set somebody else's time
+	function enterWithUnbondTime(uint amount, uint time) external {
+		require(time >= individualTimeToUnbond[msg.sender] || shares[msg.sender] == 0, "you cannot reduce individual time to unbond unless you have zero stake");
+		individualTimeToUnbond[msg.sender] = time;
+		// This method can be invoked with zero amount, just to adjust time
+		if (amount > 0) innerEnter(msg.sender, amount);
 	}
 
 	function enterTo(address recipient, uint amount) external {
