@@ -7,11 +7,6 @@ interface IERCDecimals {
 	function decimals() external view returns (uint);
 }
 
-interface IChainlink {
-	// AUDIT: ensure this API is not deprecated
-	function latestAnswer() external view returns (uint);
-}
-
 // Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
 interface IUniswapSimple {
 	function WETH() external pure returns (address);
@@ -108,17 +103,8 @@ contract StakingPool {
 	uint public timeToUnbond = 20 days;
 	uint public rageReceivedPromilles = 700;
 
-	IUniswapSimple public uniswap; // = IUniswapSimple(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-	IChainlink public ADXUSDOracle; // = IChainlink(0x231e764B44b2C1b7Ca171fa8021A24ed520Cde10);
-
 	IADXToken public immutable ADXToken;
-	address public guardian;
-	address public validator;
 	address public governance;
-
-	// claim token whitelist: normally claim tokens are stablecoins
-	// eg Tether (0xdAC17F958D2ee523a2206206994597C13D831ec7)
-	mapping (address => bool) public whitelistedClaimTokens;
 
 	// Commitment ID against the max amount of tokens it will pay out
 	mapping (bytes32 => uint) public commitments;
@@ -131,26 +117,15 @@ contract StakingPool {
 		uint unlocksAt;
 	}
 
-	// claims/penalizations limits
-	uint public maxDailyPenaltiesPromilles;
-	uint public limitLastReset;
-	uint public limitRemaining;
-
 	// Staking pool events
 	// LogLeave/LogWithdraw must begin with the UnbondCommitment struct
 	event LogLeave(address indexed owner, uint shares, uint unlocksAt, uint maxTokens);
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
-	event LogNewGuardian(address newGuardian);
-	event LogClaim(address tokenAddr, address to, uint amountInUSD, uint burnedValidatorShares, uint usedADX, uint totalADX, uint totalShares);
-	event LogPenalize(uint burnedADX);
 
-	constructor(IADXToken token, IUniswapSimple uni, IChainlink oracle, address guardianAddr, address validatorStakingWallet, address governanceAddr, address claimToken) {
+	constructor(IADXToken token, IUniswapSimple uni, address governanceAddr, address claimToken) {
 		ADXToken = token;
 		uniswap = uni;
-		ADXUSDOracle = oracle;
-		guardian = guardianAddr;
-		validator = validatorStakingWallet;
 		governance = governanceAddr;
 		whitelistedClaimTokens[claimToken] = true;
 
@@ -175,12 +150,6 @@ contract StakingPool {
 		require(governance == msg.sender, "NOT_GOVERNANCE");
 		governance = addr;
 	}
-	function setDailyPenaltyMax(uint max) external {
-		require(governance == msg.sender, "NOT_GOVERNANCE");
-		require(max <= 200, "DAILY_PENALTY_TOO_LARGE");
-		maxDailyPenaltiesPromilles = max;
-		resetLimits();
-	}
 	function setRageReceived(uint rageReceived) external {
 		require(governance == msg.sender, "NOT_GOVERNANCE");
 		// AUDIT: should there be a minimum here?
@@ -192,16 +161,6 @@ contract StakingPool {
 		require(time >= 1 days && time <= 30 days, "BOUNDS");
 		timeToUnbond = time;
 	}
-	function setGuardian(address newGuardian) external {
-		require(governance == msg.sender, "NOT_GOVERNANCE");
-		guardian = newGuardian;
-		emit LogNewGuardian(newGuardian);
-	}
-	function setWhitelistedClaimToken(address token, bool whitelisted) external {
-		require(governance == msg.sender, "NOT_GOVERNANCE");
-		whitelistedClaimTokens[token] = whitelisted;
-	}
-
 	// Pool stuff
 	function shareValue() external view returns (uint) {
 		if (totalSupply == 0) return 0;
@@ -292,75 +251,5 @@ contract StakingPool {
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
 		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
-	}
-
-	// Insurance mechanism
-	// In case something goes wrong, this can be used to recoup funds
-	// As of V5, the idea is to use it to provide some interest (eg 10%) for late refunds, in case channels get stuck and have to wait through their challenge period
-	function claim(address tokenOut, address to, uint amount) external {
-		require(msg.sender == guardian, 'NOT_GUARDIAN');
-    
-		// start by resetting claim/penalty limits
-		resetLimits();
-
-		// NOTE: minting is intentionally skipped here
-		// This means that a validator may be punished a bit more when burning their shares,
-		// but it guarantees that claim() always works
-		uint totalADX = ADXToken.balanceOf(address(this));
-
-		// Note: whitelist of tokenOut tokens
-		require(whitelistedClaimTokens[tokenOut], "TOKEN_NOT_WHITELISTED");
-
-		address[] memory path = new address[](3);
-		path[0] = address(ADXToken);
-		path[1] = uniswap.WETH();
-		path[2] = tokenOut;
-
-		// You may think the Uniswap call enables reentrancy, but reentrancy is a problem only if the pattern is check-call-modify, not call-check-modify as is here
-		// there"s no case in which we "double-spend" a value
-		// Plus, ADX, USDT and uniswap are all trusted
-
-		// Slippage protection; 5% slippage allowed
-		uint price = ADXUSDOracle.latestAnswer();
-		// chainlink price is in 1e8
-		// for example, if the amount is in 1e6;
-		// we need to convert from 1e6 to 1e18 (adx) but we divide by 1e8 (price); 18 - 6 + 8 ; verified this by calculating manually
-		uint multiplier = 1.05e26 / (10 ** IERCDecimals(tokenOut).decimals());
-		uint adxAmountMax = (amount * multiplier) / price;
-		require(adxAmountMax < totalADX, "INSUFFICIENT_ADX");
-		uint[] memory amounts = uniswap.swapTokensForExactTokens(amount, adxAmountMax, path, to, block.timestamp);
-
-		// calculate the total ADX amount used in the swap
-		uint adxAmountUsed = amounts[0];
-
-		// burn the validator shares so that they pay for it first, before dilluting other holders
-		// calculate the worth in ADX of the validator"s shares
-		uint sharesNeeded = (adxAmountUsed * totalSupply) / totalADX;
-		uint toBurn = sharesNeeded < balances[validator] ? sharesNeeded : balances[validator];
-		if (toBurn > 0) innerBurn(validator, toBurn);
-
-		// Technically redundant cause we"ll fail on the subtraction, but we"re doing this for better err msgs
-		require(limitRemaining >= adxAmountUsed, "LIMITS");
-		limitRemaining -= adxAmountUsed;
-
-		emit LogClaim(tokenOut, to, amount, toBurn, adxAmountUsed, totalADX, totalSupply);
-	}
-
-	function penalize(uint adxAmount) external {
-		require(msg.sender == guardian, "NOT_GUARDIAN");
-		// AUDIT: we can do getLimitRemaining() instead of resetLimits() that returns the remaining limit
-		resetLimits();
-		// Technically redundant cause we'll fail on the subtraction, but we're doing this for better err msgs
-		require(limitRemaining >= adxAmount, "LIMITS");
-		limitRemaining -= adxAmount;
-		require(ADXToken.transfer(address(0), adxAmount));
-		emit LogPenalize(adxAmount);
-	}
-
-	function resetLimits() internal {
-		if (block.timestamp - limitLastReset > 24 hours) {
-			limitLastReset = block.timestamp;
-			limitRemaining = (ADXToken.balanceOf(address(this)) * maxDailyPenaltiesPromilles) / 1000;
-		}
 	}
 }
