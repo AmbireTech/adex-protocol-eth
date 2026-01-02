@@ -3,22 +3,6 @@ pragma solidity 0.8.7;
 
 import "./interfaces/IADXToken.sol";
 
-interface IERCDecimals {
-	function decimals() external view returns (uint);
-}
-
-// Full interface here: https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/interfaces/IUniswapV2Router01.sol
-interface IUniswapSimple {
-	function WETH() external pure returns (address);
-	function swapTokensForExactTokens(
-		uint amountOut,
-		uint amountInMax,
-		address[] calldata path,
-		address to,
-		uint deadline
-	) external returns (uint[] memory amounts);
-}
-
 contract StakingPool {
 	// ERC20 stuff
 	// Constants
@@ -172,7 +156,7 @@ contract StakingPool {
 	function innerEnter(address recipient, uint amount) internal {
 		// Please note that minting has to be in the beginning so that we take it into account
 		// when using ADXToken.balanceOf()
-		// Minting makes an external call but it"s to a trusted contract (ADXToken)
+		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		ADXToken.supplyController().mintIncentive(address(this));
 
 		uint totalADX = ADXToken.balanceOf(address(this));
