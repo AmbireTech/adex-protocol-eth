@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.8.7;
+// pragma solidity 0.8.7;
 
 import "./interfaces/IADXToken.sol";
 
@@ -11,7 +11,7 @@ contract StakingPool {
 	string public constant symbol = "stkADX";
 
 	// Mutable variables
-	uint public totalSupply;
+	uint public totalShares;
 	mapping(address => uint) private balances;
 	mapping(address => mapping(address => uint)) private allowed;
 
@@ -27,22 +27,28 @@ contract StakingPool {
 
 	// ERC20 methods
 	function balanceOf(address owner) external view returns (uint balance) {
-		return balances[owner];
+		return (balances[owner] * this.shareValue()) / 1e18;
+	}
+
+	function totalSupply() external view returns (uint total) {
+		return ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this));
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
+		uint shareAmount = (amount * 1e18) / this.shareValue();
 		require(to != address(this), "BAD_ADDRESS");
-		balances[msg.sender] = balances[msg.sender] - amount;
-		balances[to] = balances[to] + amount;
-		emit Transfer(msg.sender, to, amount);
+		balances[msg.sender] = balances[msg.sender] - shareAmount;
+		balances[to] = balances[to] + shareAmount;
+		emit Transfer(msg.sender, to, shareAmount);
 		return true;
 	}
 
 	function transferFrom(address from, address to, uint amount) external returns (bool success) {
-		balances[from] = balances[from] - amount;
-		allowed[from][msg.sender] = allowed[from][msg.sender] - amount;
-		balances[to] = balances[to] + amount;
-		emit Transfer(from, to, amount);
+		uint shareAmount = (amount * 1e18) / this.shareValue();
+		balances[from] = balances[from] - shareAmount;
+		allowed[from][msg.sender] = allowed[from][msg.sender] - shareAmount;
+		balances[to] = balances[to] + shareAmount;
+		emit Transfer(from, to, shareAmount);
 		return true;
 	}
 
@@ -71,16 +77,16 @@ contract StakingPool {
 	}
 
 	// Inner
-	function innerMint(address owner, uint amount) internal {
-		totalSupply = totalSupply + amount;
-		balances[owner] = balances[owner] + amount;
+	function innerMint(address owner, uint shareAmount) internal {
+		totalShares = totalShares + shareAmount;
+		balances[owner] = balances[owner] + shareAmount;
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
-		emit Transfer(address(0), owner, amount);
+		emit Transfer(address(0), owner, (shareAmount * this.shareValue()) / 1e18);
 	}
-	function innerBurn(address owner, uint amount) internal {
-		totalSupply = totalSupply - amount;
-		balances[owner] = balances[owner] - amount;
-		emit Transfer(owner, address(0), amount);
+	function innerBurn(address owner, uint shareAmount) internal {
+		totalShares = totalShares - shareAmount;
+		balances[owner] = balances[owner] - shareAmount;
+		emit Transfer(owner, address(0), (shareAmount * this.shareValue()) / 1e18);
 	}
 
 	// Pool functionality
@@ -107,11 +113,9 @@ contract StakingPool {
 	event LogWithdraw(address indexed owner, uint shares, uint unlocksAt, uint maxTokens, uint receivedTokens);
 	event LogRageLeave(address indexed owner, uint shares, uint maxTokens, uint receivedTokens);
 
-	constructor(IADXToken token, IUniswapSimple uni, address governanceAddr, address claimToken) {
+	constructor(IADXToken token, address governanceAddr) {
 		ADXToken = token;
-		uniswap = uni;
 		governance = governanceAddr;
-		whitelistedClaimTokens[claimToken] = true;
 
 		// EIP 2612
 		uint chainId;
@@ -147,10 +151,10 @@ contract StakingPool {
 	}
 	// Pool stuff
 	function shareValue() external view returns (uint) {
-		if (totalSupply == 0) return 0;
-		return ((ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this)))
+		if (totalShares == 0) return 0;
+		return (this.totalSupply()
 			* 1e18)
-			/ totalSupply;
+			/ totalShares;
 	}
 
 	function innerEnter(address recipient, uint amount) internal {
@@ -161,11 +165,11 @@ contract StakingPool {
 
 		uint totalADX = ADXToken.balanceOf(address(this));
 
-		// The totalADX == 0 check here should be redudnant; the only way to get totalSupply to a nonzero val is by adding ADX
-		if (totalSupply == 0 || totalADX == 0) {
+		// The totalADX == 0 check here should be redudnant; the only way to get totalShares to a nonzero val is by adding ADX
+		if (totalShares == 0 || totalADX == 0) {
 			innerMint(recipient, amount);
 		} else {
-			uint256 newShares = (amount * totalSupply) / totalADX;
+			uint256 newShares = (amount * totalShares) / totalADX;
 			innerMint(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
@@ -181,11 +185,11 @@ contract StakingPool {
 	}
 
 	function unbondingCommitmentWorth(address owner, uint shares, uint unlocksAt) external view returns (uint) {
-		if (totalSupply == 0) return 0;
+		if (totalShares == 0) return 0;
 		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shares: shares, unlocksAt: unlocksAt })));
 		uint maxTokens = commitments[commitmentId];
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint currentTokens = (shares * totalADX) / totalSupply;
+		uint currentTokens = (shares * totalADX) / totalShares;
 		return currentTokens > maxTokens ? maxTokens : currentTokens;
 	}
 
@@ -194,7 +198,7 @@ contract StakingPool {
 
 		require(shares <= balances[msg.sender] - lockedShares[msg.sender], "INSUFFICIENT_SHARES");
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint maxTokens = (shares * totalADX) / totalSupply;
+		uint maxTokens = (shares * totalADX) / totalShares;
 		uint unlocksAt = block.timestamp + timeToUnbond;
 		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shares: shares, unlocksAt: unlocksAt })));
 		require(commitments[commitmentId] == 0, "COMMITMENT_EXISTS");
@@ -213,7 +217,7 @@ contract StakingPool {
 		uint maxTokens = commitments[commitmentId];
 		require(maxTokens > 0, "NO_COMMITMENT");
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint currentTokens = (shares * totalADX) / totalSupply;
+		uint currentTokens = (shares * totalADX) / totalShares;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
 		commitments[commitmentId] = 0;
@@ -229,7 +233,7 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint adxAmount = (shares * totalADX) / totalSupply;
+		uint adxAmount = (shares * totalADX) / totalShares;
 		uint receivedTokens = (adxAmount * rageReceivedPromilles) / 1000;
 		innerBurn(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
