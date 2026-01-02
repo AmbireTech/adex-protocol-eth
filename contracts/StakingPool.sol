@@ -201,7 +201,9 @@ contract StakingPool {
 		uint totalADX = ADXToken.balanceOf(address(this));
 		commitments[msg.sender].shareAmount = shareAmount;
 		commitments[msg.sender].tokensToReceive = (shareAmount * totalADX) / totalShares;
-		commitments[msg.sender].unlocksAt = block.timestamp + timeToUnbond;
+
+		uint unbondTime = individualTimeToUnbond[msg.sender] > timeToUnbond ? individualTimeToUnbond[msg.sender] : timeToUnbond;
+		commitments[msg.sender].unlocksAt = block.timestamp + unbondTime;
 
 		emit LogLeave(msg.sender, shareAmount, commitments[msg.sender].unlocksAt, commitments[msg.sender].tokensToReceive);
 	}
