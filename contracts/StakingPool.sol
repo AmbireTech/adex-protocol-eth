@@ -12,9 +12,8 @@ contract StakingPool {
 
 	// Mutable variables
 	uint public totalShares;
-	mapping(address => uint) private shares;
+	mapping(address => uint) public shares;
 	mapping(address => mapping(address => uint)) private allowed;
-
 	// EIP 2612
 	bytes32 public DOMAIN_SEPARATOR;
 	// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
