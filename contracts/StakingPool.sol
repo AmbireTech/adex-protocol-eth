@@ -22,9 +22,9 @@ interface IUniswapSimple {
 contract StakingPool {
 	// ERC20 stuff
 	// Constants
-	string public constant name = "AdEx Staking Token";
+	string public constant name = "AdEx Staking Token v2";
 	uint8 public constant decimals = 18;
-	string public constant symbol = "ADX-STAKING";
+	string public constant symbol = "stkADX";
 
 	// Mutable variables
 	uint public totalSupply;
