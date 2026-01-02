@@ -150,15 +150,6 @@ GaslessSweeper:
 * Binance Smart Chain: https://bscscan.com/address/0x90012067C3254Af79E19D3c08e6c28Ae5Af8dAEC
 
 
-### Ambire Wallet
-
-* Factory: 0xBf07a0Df119Ca234634588fbDb5625594E2a5BCA
-* Base identity: 0x2A2b85EB1054d6f0c6c2E37dA05eD3E5feA684EF
-* QuickAccManager: 0xfF3f6D14DF43c112aB98834Ee1F82083E07c26BF
-* Batcher: 0x460fad03099f67391d84c9cc0ea7aa2457969cea
-
-Same addresses on Ethereum, Polygon, BSC, Fantom, Arbitrum, Avalanche, Moonbeam, Moonriver, Cronos, Metis, Gnosis Chain (formerly xDAI), NEAR Aurora
-
 ### Deployment
 
 ```
