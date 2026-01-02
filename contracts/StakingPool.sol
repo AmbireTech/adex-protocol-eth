@@ -93,14 +93,12 @@ contract StakingPool {
 	IADXToken public immutable ADXToken;
 	address public governance;
 
-	// Commitment ID against the max amount of tokens it will pay out
-	mapping (bytes32 => uint) public commitments;
-	// How many of a user's shares are locked
-	mapping (address => uint) public lockedShares;
+	// Each user can only have one unbonding committment at a time
+	mapping (address => UnbondCommitment) public commitments;
 	// Unbonding commitment from a staker
 	struct UnbondCommitment {
-		address owner;
 		uint shareAmount;
+		uint tokensToReceive;
 		uint unlocksAt;
 	}
 
@@ -183,46 +181,40 @@ contract StakingPool {
 		innerEnter(recipient, amount);
 	}
 
-	function unbondingCommitmentWorth(address owner, uint shareAmount, uint unlocksAt) external view returns (uint) {
-		if (totalShares == 0) return 0;
-		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: owner, shareAmount: shareAmount, unlocksAt: unlocksAt })));
-		uint maxTokens = commitments[commitmentId];
-		uint totalADX = ADXToken.balanceOf(address(this));
-		uint currentTokens = (shareAmount * totalADX) / totalShares;
-		return currentTokens > maxTokens ? maxTokens : currentTokens;
-	}
-
-	function leave(uint shareAmount, bool skipMint) external {
+	function unstake(uint shareAmount, bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
-		require(shareAmount <= shares[msg.sender] - lockedShares[msg.sender], "INSUFFICIENT_SHARES");
+		require(shareAmount > 0, "shareAmount must be greater than 0");
+		require(commitments[msg.sender].shareAmount == 0, "unstaking already in progress");
+		require(shareAmount <= shares[msg.sender], "insufficient shares");
+
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint maxTokens = (shareAmount * totalADX) / totalShares;
-		uint unlocksAt = block.timestamp + timeToUnbond;
-		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shareAmount: shareAmount, unlocksAt: unlocksAt })));
-		require(commitments[commitmentId] == 0, "COMMITMENT_EXISTS");
+		commitments[msg.sender].shareAmount = shareAmount;
+		commitments[msg.sender].tokensToReceive = (shareAmount * totalADX) / totalShares;
+		commitments[msg.sender].unlocksAt = block.timestamp + timeToUnbond;
 
-		commitments[commitmentId] = maxTokens;
-		lockedShares[msg.sender] += shareAmount;
-
-		emit LogLeave(msg.sender, shareAmount, unlocksAt, maxTokens);
+		emit LogLeave(msg.sender, shareAmount, commitments[msg.sender].unlocksAt, commitments[msg.sender].tokensToReceive);
 	}
 
-	function withdraw(uint shareAmount, uint unlocksAt, bool skipMint) external {
+	function withdraw(bool skipMint) external {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
-		require(block.timestamp > unlocksAt, "UNLOCK_TOO_EARLY");
-		bytes32 commitmentId = keccak256(abi.encode(UnbondCommitment({ owner: msg.sender, shareAmount: shareAmount, unlocksAt: unlocksAt })));
-		uint maxTokens = commitments[commitmentId];
-		require(maxTokens > 0, "NO_COMMITMENT");
+		uint shareAmount = commitments[msg.sender].shareAmount;
+		require(shareAmount > 0, "no unbonding committment");
+
+		uint unlocksAt = commitments[msg.sender].unlocksAt;
+		require(block.timestamp > unlocksAt, "too early to withdraw");
+
+		// This math only exists in case the pool goes DOWN in total tokens,
+		// otherwise we can simply use .tokensToReceive
+		uint maxTokens = commitments[msg.sender].tokensToReceive;
 		uint totalADX = ADXToken.balanceOf(address(this));
 		uint currentTokens = (shareAmount * totalADX) / totalShares;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
-		commitments[commitmentId] = 0;
-		lockedShares[msg.sender] -= shareAmount;
-
 		burnShares(msg.sender, shareAmount);
+		commitments[msg.sender] = UnbondCommitment({ unlocksAt: 0, tokensToReceive: 0, shareAmount: 0 });
+
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
 		emit Transfer(msg.sender, address(0), currentTokens);
