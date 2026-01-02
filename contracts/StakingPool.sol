@@ -77,16 +77,13 @@ contract StakingPool {
 	}
 
 	// Inner
-	function innerMint(address owner, uint shareAmount) internal {
+	function mintShares(address owner, uint shareAmount) internal {
 		totalShares = totalShares + shareAmount;
 		balances[owner] = balances[owner] + shareAmount;
-		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
-		emit Transfer(address(0), owner, (shareAmount * this.shareValue()) / 1e18);
 	}
-	function innerBurn(address owner, uint shareAmount) internal {
+	function burnShares(address owner, uint shareAmount) internal {
 		totalShares = totalShares - shareAmount;
 		balances[owner] = balances[owner] - shareAmount;
-		emit Transfer(owner, address(0), (shareAmount * this.shareValue()) / 1e18);
 	}
 
 	// Pool functionality
@@ -167,13 +164,15 @@ contract StakingPool {
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalShares to a nonzero val is by adding ADX
 		if (totalShares == 0 || totalADX == 0) {
-			innerMint(recipient, amount);
+			mintShares(recipient, amount);
 		} else {
 			uint256 newShares = (amount * totalShares) / totalADX;
-			innerMint(recipient, newShares);
+			mintShares(recipient, newShares);
 		}
 		require(ADXToken.transferFrom(msg.sender, address(this), amount));
-		// no events, as innerMint already emits enough to know the shares amount and price
+		// @TODO: perhaps emit the share value here too
+		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
+		emit Transfer(address(0), recipient, amount);
 	}
 
 	function enter(uint amount) external {
@@ -223,9 +222,10 @@ contract StakingPool {
 		commitments[commitmentId] = 0;
 		lockedShares[msg.sender] -= shares;
 
-		innerBurn(msg.sender, shares);
+		burnShares(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
+		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogWithdraw(msg.sender, shares, unlocksAt, maxTokens, receivedTokens);
 	}
 
@@ -233,11 +233,12 @@ contract StakingPool {
 		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
 
 		uint totalADX = ADXToken.balanceOf(address(this));
-		uint adxAmount = (shares * totalADX) / totalShares;
-		uint receivedTokens = (adxAmount * rageReceivedPromilles) / 1000;
-		innerBurn(msg.sender, shares);
+		uint currentTokens = (shares * totalADX) / totalShares;
+		uint receivedTokens = (currentTokens * rageReceivedPromilles) / 1000;
+		burnShares(msg.sender, shares);
 		require(ADXToken.transfer(msg.sender, receivedTokens));
 
-		emit LogRageLeave(msg.sender, shares, adxAmount, receivedTokens);
+		emit Transfer(msg.sender, address(0), currentTokens);
+		emit LogRageLeave(msg.sender, shares, currentTokens, receivedTokens);
 	}
 }
