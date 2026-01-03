@@ -33,10 +33,10 @@ contract StakingMigratorGovernance {
 		newPool.enterTo(msg.sender, tokenAmount);
 	}
 
-	// needed because we appoint this contract as the sole governance of the StakingPool, so we need to be able 
-	function call(IStakingPool pool, bytes calldata data) external {
+	// needed because we appoint this contract as the sole governance of the StakingPool, so we need to be able to do arbitrary calls
+	function call(address to, bytes calldata data) external {
 		require(msg.sender == actualGovernance, "is not governance");
-		(bool success, bytes memory returnData) = address(pool).call{ value: 0 }(data);
+		(bool success, bytes memory returnData) = to.call{ value: 0 }(data);
 		uint size = returnData.length;
 		if (success) {
 			assembly {
