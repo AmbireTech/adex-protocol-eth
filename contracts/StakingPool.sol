@@ -2,8 +2,9 @@
 // pragma solidity 0.8.7;
 
 import "./interfaces/IADXToken.sol";
+import "./interfaces/IStakingPool.sol";
 
-contract StakingPool {
+contract StakingPool is IStakingPool {
 	// ERC20 stuff
 	// Constants
 	string public constant name = "AdEx Staking Token v2";
@@ -30,7 +31,7 @@ contract StakingPool {
 	}
 
 	function totalSupply() external view returns (uint total) {
-		return ADXToken.balanceOf(address(this)) + ADXToken.supplyController().mintableIncentive(address(this));
+		return IADXToken(baseToken).balanceOf(address(this)) + IADXToken(baseToken).supplyController().mintableIncentive(address(this));
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
@@ -91,7 +92,7 @@ contract StakingPool {
 	uint public timeToUnbond = 20 days;
 	uint public rageReceivedPromilles = 700;
 
-	IADXToken public immutable ADXToken;
+	address public immutable baseToken;
 	address public governance;
 
 	// Each user can only have one unbonding committment at a time
@@ -111,7 +112,7 @@ contract StakingPool {
 	event LogRageLeave(address indexed owner, uint shareAmount, uint maxTokens, uint receivedTokens);
 
 	constructor(IADXToken token, address governanceAddr) {
-		ADXToken = token;
+		baseToken = address(token);
 		governance = governanceAddr;
 
 		// EIP 2612
@@ -156,11 +157,11 @@ contract StakingPool {
 
 	function innerEnter(address recipient, uint amount) internal {
 		// Please note that minting has to be in the beginning so that we take it into account
-		// when using ADXToken.balanceOf()
+		// when using IADXToken(baseToken).balanceOf()
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
-		ADXToken.supplyController().mintIncentive(address(this));
+		IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalShares to a nonzero val is by adding ADX
 		if (totalShares == 0 || totalADX == 0) {
@@ -169,7 +170,7 @@ contract StakingPool {
 			uint256 newShares = (amount * totalShares) / totalADX;
 			mintShares(recipient, newShares);
 		}
-		require(ADXToken.transferFrom(msg.sender, address(this), amount));
+		require(IADXToken(baseToken).transferFrom(msg.sender, address(this), amount));
 		// @TODO: perhaps emit the share value here too
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
 		emit Transfer(address(0), recipient, amount);
@@ -192,13 +193,13 @@ contract StakingPool {
 	}
 
 	function unstake(uint shareAmount, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
 		require(shareAmount > 0, "shareAmount must be greater than 0");
 		require(commitments[msg.sender].shareAmount == 0, "unstaking already in progress");
 		require(shareAmount <= shares[msg.sender], "insufficient shares");
 
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
 		commitments[msg.sender].shareAmount = shareAmount;
 		commitments[msg.sender].tokensToReceive = (shareAmount * totalADX) / totalShares;
 
@@ -209,7 +210,7 @@ contract StakingPool {
 	}
 
 	function withdraw(bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
 		uint shareAmount = commitments[msg.sender].shareAmount;
 		require(shareAmount > 0, "no unbonding committment");
@@ -220,27 +221,27 @@ contract StakingPool {
 		// This math only exists in case the pool goes DOWN in total tokens,
 		// otherwise we can simply use .tokensToReceive
 		uint maxTokens = commitments[msg.sender].tokensToReceive;
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
 		uint currentTokens = (shareAmount * totalADX) / totalShares;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
 		burnShares(msg.sender, shareAmount);
 		commitments[msg.sender] = UnbondCommitment({ unlocksAt: 0, tokensToReceive: 0, shareAmount: 0 });
 
-		require(ADXToken.transfer(msg.sender, receivedTokens));
+		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens));
 
 		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogWithdraw(msg.sender, shareAmount, unlocksAt, maxTokens, receivedTokens);
 	}
 
 	function rageLeave(uint shareAmount, bool skipMint) external {
-		if (!skipMint) ADXToken.supplyController().mintIncentive(address(this));
+		if (!skipMint) IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
-		uint totalADX = ADXToken.balanceOf(address(this));
+		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
 		uint currentTokens = (shareAmount * totalADX) / totalShares;
 		uint receivedTokens = (currentTokens * rageReceivedPromilles) / 1000;
 		burnShares(msg.sender, shareAmount);
-		require(ADXToken.transfer(msg.sender, receivedTokens));
+		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens));
 
 		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogRageLeave(msg.sender, shareAmount, currentTokens, receivedTokens);
