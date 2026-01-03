@@ -31,6 +31,15 @@ contract StakingMigratorGovernance {
 	function call(IStakingPool pool, bytes calldata data) external {
 		require(msg.sender == actualGovernance, "is not governance");
 		(bool success, bytes memory returnData) = address(pool).call{ value: 0 }(data);
-		// @TODO forward error, returnData
+		uint size = returnData.length;
+		if (success) {
+			assembly {
+				return (add(returnData, 32), size)
+			}
+		} else {
+			assembly {
+				revert(add(returnData, 32), size)
+			}
+		}
 	}
 }
