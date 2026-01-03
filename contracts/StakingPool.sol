@@ -3,8 +3,9 @@
 
 import "./interfaces/IADXToken.sol";
 import "./interfaces/IStakingPool.sol";
+import "./interfaces/IERC20.sol";
 
-contract StakingPool is IStakingPool {
+contract StakingPool is IStakingPool, IERC20 {
 	// ERC20 stuff
 	// Constants
 	string public constant name = "AdEx Staking Token v2";
@@ -20,10 +21,6 @@ contract StakingPool is IStakingPool {
 	// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 	bytes32 public constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 	mapping(address => uint) public nonces;
-
-	// ERC20 events
-	event Approval(address indexed owner, address indexed spender, uint amount);
-	event Transfer(address indexed from, address indexed to, uint amount);
 
 	// ERC20 methods
 	function balanceOf(address owner) external view returns (uint balance) {
