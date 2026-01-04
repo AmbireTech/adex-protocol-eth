@@ -225,7 +225,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		burnShares(msg.sender, shareAmount);
 		commitments[msg.sender] = UnbondCommitment({ unlocksAt: 0, tokensToReceive: 0, shareAmount: 0 });
 
-		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens));
+		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
 
 		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogWithdraw(msg.sender, shareAmount, unlocksAt, maxTokens, receivedTokens);
@@ -238,7 +238,12 @@ contract StakingPool is IStakingPool, IERC20 {
 		uint currentTokens = (shareAmount * totalADX) / totalShares;
 		uint receivedTokens = (currentTokens * rageReceivedPromilles) / 1000;
 		burnShares(msg.sender, shareAmount);
-		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens));
+		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
+
+		if (commitments[msg.sender].shareAmount > shares[msg.sender]) {
+			// reset that user's committment, otherwise they end up bricked until they deposit more tokens
+			commitments[msg.sender] = UnbondCommitment({ unlocksAt: 0, tokensToReceive: 0, shareAmount: 0 });
+		}
 
 		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogRageLeave(msg.sender, shareAmount, currentTokens, receivedTokens);
