@@ -144,6 +144,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		require(time >= 1 days && time <= 30 days, "BOUNDS");
 		timeToUnbond = time;
 	}
+
 	// Pool stuff
 	function shareValue() external view returns (uint) {
 		if (totalShares == 0) return 0;
@@ -218,7 +219,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		// This math only exists in case the pool goes DOWN in total tokens,
 		// otherwise we can simply use .tokensToReceive
 		uint maxTokens = commitments[msg.sender].tokensToReceive;
-		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
+		uint totalBase = IERC20(baseToken).balanceOf(address(this));
 		uint currentTokens = (shareAmount * totalADX) / totalShares;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
@@ -234,8 +235,8 @@ contract StakingPool is IStakingPool, IERC20 {
 	function rageLeave(uint shareAmount, bool skipMint) external {
 		if (!skipMint) IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
-		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
-		uint currentTokens = (shareAmount * totalADX) / totalShares;
+		uint totalBase = IERC20(baseToken).balanceOf(address(this));
+		uint currentTokens = (shareAmount * totalBase) / totalShares;
 		uint receivedTokens = (currentTokens * rageReceivedPromilles) / 1000;
 		burnShares(msg.sender, shareAmount);
 		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
