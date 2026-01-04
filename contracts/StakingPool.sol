@@ -200,10 +200,10 @@ contract StakingPool is IStakingPool, IERC20 {
 		uint totalBase = IERC20(baseToken).balanceOf(address(this));
 		uint unbondTime = individualTimeToUnbond[msg.sender] > timeToUnbond ? individualTimeToUnbond[msg.sender] : timeToUnbond;
 
-		commitments[msg.sender].shareAmount = UnbondCommitment({
+		commitments[msg.sender] = UnbondCommitment({
 			tokensToReceive: (shareAmount * totalBase) / totalShares,
 			unlocksAt: block.timestamp + unbondTime,
-			shareAmount
+			shareAmount: shareAmount
 		});
 
 		emit LogLeave(msg.sender, shareAmount, commitments[msg.sender].unlocksAt, commitments[msg.sender].tokensToReceive);
@@ -222,7 +222,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		// otherwise we can simply use .tokensToReceive
 		uint maxTokens = commitments[msg.sender].tokensToReceive;
 		uint totalBase = IERC20(baseToken).balanceOf(address(this));
-		uint currentTokens = (shareAmount * totalADX) / totalShares;
+		uint currentTokens = (shareAmount * totalBase) / totalShares;
 		uint receivedTokens = currentTokens > maxTokens ? maxTokens : currentTokens;
 
 		burnShares(msg.sender, shareAmount);
