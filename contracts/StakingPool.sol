@@ -43,9 +43,10 @@ contract StakingPool is IStakingPool, IERC20 {
 
 	function transferFrom(address from, address to, uint amount) external returns (bool success) {
 		require(commitments[msg.sender].shareAmount == 0, "unstaking in progress");
-		uint shareAmount = (amount * 1e18) / this.shareValue();
+		uint256 shareAmount = (amount * 1e18) / this.shareValue();
 		shares[from] = shares[from] - shareAmount;
-		allowed[from][msg.sender] = allowed[from][msg.sender] - amount;
+		uint256 prevAllowance = allowed[from][msg.sender];
+		if (prevAllowance < type(uint256).max) allowed[from][msg.sender] = prevAllowance - amount;
 		shares[to] = shares[to] + shareAmount;
 		emit Transfer(from, to, shareAmount);
 		return true;
