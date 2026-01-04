@@ -35,6 +35,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		require(to != address(this), "cannot send to contract");
 		require(commitments[msg.sender].shareAmount == 0, "unstaking in progress");
 		uint shareAmount = (amount * 1e18) / this.shareValue();
+		require(shareAmount > 0, "trying to transfer zero shares");
 		shares[msg.sender] = shares[msg.sender] - shareAmount;
 		shares[to] = shares[to] + shareAmount;
 		emit Transfer(msg.sender, to, amount);
@@ -45,6 +46,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		require(to != address(this), "cannot send to contract");
 		require(commitments[from].shareAmount == 0, "unstaking in progress");
 		uint256 shareAmount = (amount * 1e18) / this.shareValue();
+		require(shareAmount > 0, "trying to transfer zero shares");
 		shares[from] = shares[from] - shareAmount;
 		uint256 prevAllowance = allowed[from][msg.sender];
 		if (prevAllowance < type(uint256).max) allowed[from][msg.sender] = prevAllowance - amount;
