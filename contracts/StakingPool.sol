@@ -28,7 +28,7 @@ contract StakingPool is IStakingPool, IERC20 {
 	}
 
 	function totalSupply() external view returns (uint total) {
-		return IADXToken(baseToken).balanceOf(address(this)) + IADXToken(baseToken).supplyController().mintableIncentive(address(this));
+		return IERC20(baseToken).balanceOf(address(this)) + IADXToken(baseToken).supplyController().mintableIncentive(address(this));
 	}
 
 	function transfer(address to, uint amount) external returns (bool success) {
@@ -159,7 +159,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		// Minting makes an external call but it's to a trusted contract (ADXToken)
 		IADXToken(baseToken).supplyController().mintIncentive(address(this));
 
-		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
+		uint totalADX = IERC20(baseToken).balanceOf(address(this));
 
 		// The totalADX == 0 check here should be redudnant; the only way to get totalShares to a nonzero val is by adding ADX
 		if (totalShares == 0 || totalADX == 0) {
@@ -168,7 +168,7 @@ contract StakingPool is IStakingPool, IERC20 {
 			uint256 newShares = (amount * totalShares) / totalADX;
 			mintShares(recipient, newShares);
 		}
-		require(IADXToken(baseToken).transferFrom(msg.sender, address(this), amount));
+		require(IERC20(baseToken).transferFrom(msg.sender, address(this), amount));
 		// @TODO: perhaps emit the share value here too
 		// Because of https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md#transfer-1
 		emit Transfer(address(0), recipient, amount);
@@ -228,7 +228,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		burnShares(msg.sender, shareAmount);
 		commitments[msg.sender] = UnbondCommitment({ unlocksAt: 0, tokensToReceive: 0, shareAmount: 0 });
 
-		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
+		require(IERC20(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
 
 		emit Transfer(msg.sender, address(0), currentTokens);
 		emit LogWithdraw(msg.sender, shareAmount, unlocksAt, maxTokens, receivedTokens);
@@ -241,7 +241,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		uint currentTokens = (shareAmount * totalBase) / totalShares;
 		uint receivedTokens = (currentTokens * rageReceivedPromilles) / 1000;
 		burnShares(msg.sender, shareAmount);
-		require(IADXToken(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
+		require(IERC20(baseToken).transfer(msg.sender, receivedTokens), "base token transfer failed");
 
 		if (commitments[msg.sender].shareAmount > shares[msg.sender]) {
 			// reset that user's committment, otherwise they end up bricked until they deposit more tokens
