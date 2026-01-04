@@ -197,12 +197,14 @@ contract StakingPool is IStakingPool, IERC20 {
 		require(commitments[msg.sender].shareAmount == 0, "unstaking already in progress");
 		require(shareAmount <= shares[msg.sender], "insufficient shares");
 
-		uint totalADX = IADXToken(baseToken).balanceOf(address(this));
-		commitments[msg.sender].shareAmount = shareAmount;
-		commitments[msg.sender].tokensToReceive = (shareAmount * totalADX) / totalShares;
-
+		uint totalBase = IERC20(baseToken).balanceOf(address(this));
 		uint unbondTime = individualTimeToUnbond[msg.sender] > timeToUnbond ? individualTimeToUnbond[msg.sender] : timeToUnbond;
-		commitments[msg.sender].unlocksAt = block.timestamp + unbondTime;
+
+		commitments[msg.sender].shareAmount = UnbondCommitment({
+			tokensToReceive: (shareAmount * totalBase) / totalShares,
+			unlocksAt: block.timestamp + unbondTime,
+			shareAmount
+		});
 
 		emit LogLeave(msg.sender, shareAmount, commitments[msg.sender].unlocksAt, commitments[msg.sender].tokensToReceive);
 	}
