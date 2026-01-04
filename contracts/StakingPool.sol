@@ -37,7 +37,7 @@ contract StakingPool is IStakingPool, IERC20 {
 		uint shareAmount = (amount * 1e18) / this.shareValue();
 		shares[msg.sender] = shares[msg.sender] - shareAmount;
 		shares[to] = shares[to] + shareAmount;
-		emit Transfer(msg.sender, to, shareAmount);
+		emit Transfer(msg.sender, to, amount);
 		return true;
 	}
 
