@@ -90,7 +90,7 @@ contract StakingPool is IStakingPool, IERC20 {
 	}
 
 	// Pool functionality
-	uint public timeToUnbond = 20 days;
+	uint public timeToUnbond = 60 days;
 	uint public rageReceivedPromilles = 700;
 
 	address public immutable baseToken;
@@ -145,7 +145,7 @@ contract StakingPool is IStakingPool, IERC20 {
 	}
 	function setTimeToUnbond(uint time) external {
 		require(governance == msg.sender, "NOT_GOVERNANCE");
-		require(time >= 1 days && time <= 30 days, "BOUNDS");
+		require(time >= 1 days && time <= 365 days, "BOUNDS");
 		timeToUnbond = time;
 	}
 
