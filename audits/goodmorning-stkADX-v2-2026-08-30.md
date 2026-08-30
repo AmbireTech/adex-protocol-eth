@@ -306,11 +306,11 @@ The 11 pulled commits rewrote `StakingPoolMigratorGovernance.sol` (burn-ramp mig
 
 ### Findings
 
-| ID | Severity | Finding | Location |
-|---|---|---|---|
-| [N-01](#n-01--medium--enterto-dust-permanently-blocks-a-user-from-lowering-their-unbond-time) | Medium | `enterTo` dust permanently blocks a user from lowering their unbond time | `StakingPool.sol:187-193` |
-| [N-02](#n-02--low--permit-domain-separator-is-fixed-at-construction--cross-fork-replay) | Low | `permit` domain separator fixed at construction — cross-fork signature replay | `StakingPool.sol:125-134` |
-| [N-03](#n-03--low--setincentive-destroys-accrued-staker-rewards) | Low | `setIncentive` destroys accrued staker rewards | `SupplyController.sol:36-43` |
+| ID | Severity | Finding | Location | Status |
+|---|---|---|---|---|
+| [N-01](#n-01--medium--enterto-dust-permanently-blocks-a-user-from-lowering-their-unbond-time) | Medium | `enterTo` dust permanently blocks a user from lowering their unbond time | `StakingPool.sol:187-193` | Open |
+| [N-02](#n-02--low--permit-domain-separator-is-fixed-at-construction--cross-fork-replay) | Low | `permit` domain separator fixed at construction — cross-fork signature replay | `StakingPool.sol:125-134` | Acknowledged — won't fix |
+| [N-03](#n-03--low--setincentive-destroys-accrued-staker-rewards) | Low | `setIncentive` destroys accrued staker rewards | `SupplyController.sol:36-43` | Acknowledged — won't fix |
 
 Fifteen further items (N-04 – N-18) are recorded as [informational](#informational--no-action-required): design decisions confirmed with the team, closed historical issues, non-exploitable conformance and build problems, and code-quality notes. None require action.
 
@@ -379,6 +379,10 @@ function _domainSeparatorV4() private view returns (bytes32) {
 
 Adopt it in the pool. It keeps the gas saving in the common case and costs nothing until a fork actually happens.
 
+**Team response — acknowledged, won't fix.**
+
+> We only deploy on Ethereum and it is a PoS chain that cannot split.
+
 ---
 
 ### N-03 · Low · `setIncentive` destroys accrued staker rewards
@@ -408,6 +412,10 @@ Note this is *only* destruction of accrued rewards, not a pricing exploit. Depos
 **Why this survives the trust model.** Governance being trusted means trusted not to act maliciously; it does not mean trusted never to adjust an incentive rate. Adjusting the rate is a routine operation, the loss lands on users rather than on the party being trusted, there is no warning and no recovery, and the obvious way to perform the operation is the one that triggers it.
 
 **Recommendation.** Call `mintIncentive(addr)` at the top of `setIncentive`, before touching `incentiveLastMint`. `mintIncentive` is already permissionless, so as an interim operational measure it can simply be called first in the same transaction.
+
+**Team response — acknowledged, won't fix.**
+
+> We accept this as a quirk and this will rarely be used. No funds at risk.
 
 ---
 
@@ -447,12 +455,12 @@ Note this is *only* destruction of accrued rewards, not a pricing exploit. Depos
 
 ## Recommended order of work
 
-1. **[N-03](#n-03--low--setincentive-destroys-accrued-staker-rewards)** — one line, and it prevents a routine governance action from silently burning staker rewards. Until it lands, call `mintIncentive(pool)` in the same transaction as any `setIncentive`.
-2. **[N-01](#n-01--medium--enterto-dust-permanently-blocks-a-user-from-lowering-their-unbond-time)** — the only Medium, and the only defect a third party can trigger against another user.
-3. **[N-02](#n-02--low--permit-domain-separator-is-fixed-at-construction--cross-fork-replay)** — adopt the pattern `HeyAuraLoginDomain` already uses in this same branch.
-4. Informational items as convenient. Two are worth doing opportunistically: N-04 (restore the pragmas) because it is five minutes and makes the tree buildable again, and N-08's one-line `require(newShares > 0)` before any *future* pool deployment.
+One finding is open. [N-02](#n-02--low--permit-domain-separator-is-fixed-at-construction--cross-fork-replay) and [N-03](#n-03--low--setincentive-destroys-accrued-staker-rewards) have been acknowledged and accepted by the team; their responses are recorded with each finding.
 
----
+1. **[N-01](#n-01--medium--enterto-dust-permanently-blocks-a-user-from-lowering-their-unbond-time)** — the only open finding, and the only defect a third party can trigger against another user.
+2. Informational items as convenient. Two are worth doing opportunistically: N-04 (restore the pragmas) because it is five minutes and makes the tree buildable again, and N-08's one-line `require(newShares > 0)` before any *future* pool deployment.
+
+Where a finding is accepted rather than fixed, the operational mitigations noted under it still apply — in particular, calling `mintIncentive(pool)` in the same transaction as any `setIncentive` avoids N-03 entirely without a code change.
 
 ## Appendix — verification & limitations
 
