@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADX Burn Rollout</title>
+<style>
+:root {
+	--bg: #f6f7f9; --card: #fff; --text: #16181d; --muted: #5d6470; --border: #dfe3e8;
+	--accent: #3b5bdb; --ok: #2b8a3e; --bad: #c92a2a; --warn: #b7791f; --code: #eef1f5;
+}
+@media (prefers-color-scheme: dark) {
+	:root { --bg: #111317; --card: #1a1d23; --text: #e6e8eb; --muted: #9aa3ae; --border: #2c313a;
+		--accent: #7b93ff; --ok: #51cf66; --bad: #ff6b6b; --warn: #fcc419; --code: #242832; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+h2 { font-size: 17px; margin: 0; }
+p { margin: 6px 0; }
+.muted { color: var(--muted); }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+code { background: var(--code); padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+a { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 14px 0; }
+.card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.card.done { opacity: .75; }
+.head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.badge.done { color: var(--ok); } .badge.ready { color: var(--accent); } .badge.blocked { color: var(--muted); }
+.wallet { margin: 10px 0; padding: 8px 12px; border-radius: 8px; background: var(--code); }
+.wallet.match { outline: 1px solid var(--ok); } .wallet.mismatch { outline: 1px solid var(--warn); }
+ul.checks { list-style: none; padding: 0; margin: 8px 0; }
+ul.checks li { padding: 2px 0; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+.call { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--border); }
+button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; margin: 6px 6px 0 0; }
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+input { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); width: 100%; max-width: 460px; }
+label { display: block; margin-top: 8px; font-size: 13px; color: var(--muted); }
+#log { white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px; max-height: 260px; overflow: auto; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+td { padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: top; word-break: break-all; }
+td:first-child { color: var(--muted); white-space: nowrap; word-break: normal; }
+</style>
+</head>
+<body>
+<main>
+	<div class="topbar">
+		<div>
+			<h1>ADX burn rollout</h1>
+			<p class="muted">Implements the Snapshot vote "Burn an extra 1.00% daily" and prepares for the 9.4M Binance burn.</p>
+		</div>
+		<div><button id="connect">Connect wallet</button></div>
+	</div>
+	<div class="card" id="wallet-card"></div>
+
+	<div class="card">
+		<h2>What this app does</h2>
+		<ol>
+			<li><b>Deploy a StakingPoolLinearBurner</b> for the legacy ADX-STAKING pool through the ERC-2470 factory. It burns the pool's ADX so each share loses 1% of its Oct 8 value per day (linear, zero after 100 days). Because it burns inside the pool, every way out (migrate, rage-leave, unbond) is hit equally.</li>
+			<li><b>Deploy the new SupplyController</b> through the factory. It's today's contract plus two changes: a zero-amount mint returns early (otherwise moving the 9.4M out of the multisig puts supply over the cap and every stkADX <code>enter</code>, including every migration, reverts), and every <code>mintIncentive()</code> calls the burner, so pools are on schedule right before they read their balance.</li>
+			<li><b>Give the multisig level-2 governance on it</b>, as it has on the current one.</li>
+			<li><b>Point the ADX token at the new SupplyController</b>.</li>
+			<li><b>Raise the legacy pool's daily penalty limit to 20%</b> (its maximum). Harmless until the next step, since the pool has no guardian.</li>
+			<li><b>Activate:</b> make the burner the pool's guardian and immediately call <code>burn()</code> for the ~4% catch-up, ideally in the same block through a private RPC.</li>
+			<li><b>Keep it on schedule:</b> staking activity calls <code>burn()</code> automatically; an hourly cron (or the button) covers quiet periods.</li>
+			<li><b>Burn ADX from the 3-of-6 multisig</b> by transferring it to <code>0x0</code>: one owner submits, two others confirm. The third confirmation executes it.</li>
+		</ol>
+		<p class="muted">Every transaction is dry-run with <code>eth_estimateGas</code> from your account before your wallet asks you to sign. Factory deployments get a gas limit sized from a direct deployment (the factory doesn't revert when it runs out of gas) and are checked afterwards. Progress is read from the chain, so reloading is safe. Steps 3–6 are signed by the governance EOA, steps 1, 2 and 7 by any wallet, and step 8 by the multisig owners. The old migrator stays as it is: migrants still lose its fixed 20%, on top of the pool burn.</p>
+	</div>
+
+	<div id="steps"></div>
+
+	<div class="card">
+		<h2>Current on-chain state</h2>
+		<table id="state"></table>
+	</div>
+
+	<div class="card">
+		<div class="head"><h2>Log</h2><button class="secondary" id="refresh">Refresh state</button></div>
+		<div id="log"></div>
+	</div>
+</main>
+
+<script src="ethers.umd.min.js"></script>
+<script src="bytecode.js"></script>
+<script>
+const { ethers } = window
+const g = ethers.getAddress
+const A = {
+	ADX: g('0xade00c28244d5ce17d72e40330b1c318cd12b7c3'),
+	OLD_SC: g('0x9b370599b2bf61806ddca1379257f26377472bee'),
+	GOV: g('0x1304f1b9e8eb2c328b564e7fad2c8402a5954572'),
+	OLD_POOL: g('0xb6456b57f03352be48bf101b46c1752a0813491a'),
+	STK_POOL: g('0xf13e6f6fe1b9178da81d113940b5dc2a3dc1fa01'),
+	OLD_MIG: g('0xace1c2f354cdc73861768839392cb0539d46197b'),
+	MULTISIG: g('0x23c2c34f38ce66ccc10e71e9bb2a06532d52c5e9'),
+	FACTORY: g('0xce0042b868300000d44a59004da54a005ffdcf9f'), // ERC-2470 SingletonFactory
+}
+const SALT = ethers.ZeroHash
+// Burner schedule: starts at the end of the migration penalty period (Oct 8 2026), from the pool's share value at that block
+// (26148400; unchanged since), losing 10 promilles of it per day
+const BURN = { startTime: 1791471155n, startShareValue: 2853513233513303809n, promillesPerDay: 10n }
+const DAILY_MAX = 200n
+const PROMISED_BURN = '9400000'
+
+const ABI = {
+	adx: ['function supplyController() view returns (address)', 'function balanceOf(address) view returns (uint)', 'function totalSupply() view returns (uint)', 'function transfer(address,uint)'],
+	sc: ['constructor(address token, address initialGovernance, address burnHook)', 'function governance(address) view returns (uint8)', 'function ADX() view returns (address)', 'function burnHook() view returns (address)', 'function changeSupplyController(address)', 'function setGovernance(address,uint8)', 'function mintIncentive(address)'],
+	factory: ['function deploy(bytes initCode, bytes32 salt) returns (address)'],
+	mig: ['function actualGovernance() view returns (address)', 'function call(address,bytes)'],
+	pool: ['function governance() view returns (address)', 'function guardian() view returns (address)', 'function setGuardian(address)', 'function setDailyPenaltyMax(uint)', 'function maxDailyPenaltiesPromilles() view returns (uint)', 'function limitRemaining() view returns (uint)', 'function limitLastReset() view returns (uint)', 'function shareValue() view returns (uint)', 'function totalSupply() view returns (uint)'],
+	burner: ['constructor(address,address,uint,uint,uint)', 'function pool() view returns (address)', 'function ADX() view returns (address)', 'function startTime() view returns (uint)', 'function startShareValue() view returns (uint)', 'function promillesPerDay() view returns (uint)', 'function targetBalance() view returns (uint)', 'function burnable() view returns (uint)', 'function burn()'],
+	ms: ['function getOwners() view returns (address[])', 'function required() view returns (uint)', 'function transactionCount() view returns (uint)', 'function transactions(uint) view returns (address destination, uint value, bytes data, bool executed)', 'function getConfirmations(uint) view returns (address[])', 'function submitTransaction(address,uint,bytes) returns (uint)', 'function confirmTransaction(uint)', 'function executeTransaction(uint)', 'event Submission(uint indexed transactionId)'],
+}
+const I = Object.fromEntries(Object.entries(ABI).map(([k, v]) => [k, new ethers.Interface(v)]))
+
+const publicProvider = new ethers.JsonRpcProvider('https://ethereum-rpc.publicnode.com', 1, { staticNetwork: true })
+let browserProvider = null, account = null, chainId = null
+let S = {} // last read state
+let busy = false
+let burnAmount = PROMISED_BURN
+
+const rp = () => (browserProvider && chainId === 1n) ? browserProvider : publicProvider
+const con = (addr, abi) => new ethers.Contract(addr, ABI[abi], rp())
+const short = a => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—'
+const eq = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase()
+const link = a => `<a class="mono" href="https://etherscan.io/address/${a}" target="_blank" rel="noopener">${a}</a>`
+const fmt = x => Number(ethers.formatEther(x)).toLocaleString('en-US', { maximumFractionDigits: 2 })
+const pct = (a, b) => b ? (Number(a) * 100 / Number(b)).toFixed(2) + '%' : '—'
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+function log(msg, cls) {
+	const el = document.getElementById('log')
+	el.innerHTML = `<div class="${cls || ''}">[${new Date().toLocaleTimeString()}] ${msg}</div>` + el.innerHTML
+}
+const errMsg = e => esc(e?.info?.error?.message || e?.shortMessage || e?.reason || e?.message || String(e))
+
+// Both contracts are deployed through the ERC-2470 factory with salt 0, so their addresses are known in advance.
+// Init code is deterministic, so eth_call on it also yields the exact runtime code (immutables included) to compare against
+const burnerInit = BYTECODE.burner + I.burner.encodeDeploy([A.OLD_POOL, A.ADX, BURN.startTime, BURN.startShareValue, BURN.promillesPerDay]).slice(2)
+const BURNER = ethers.getCreate2Address(A.FACTORY, SALT, ethers.keccak256(burnerInit))
+const scInit = BYTECODE.supplyController + I.sc.encodeDeploy([A.ADX, A.GOV, BURNER]).slice(2)
+const NEW_SC = ethers.getCreate2Address(A.FACTORY, SALT, ethers.keccak256(scInit))
+async function codeMatches(addr, deployData) {
+	try {
+		const [code, expected] = await Promise.all([rp().getCode(addr), rp().call({ data: deployData })])
+		return code !== '0x' && code === expected
+	} catch (e) { return null }
+}
+async function dryRun(to, data) {
+	try { await rp().call({ to, data }); return true } catch (e) { return false }
+}
+
+async function readState() {
+	const p = rp()
+	const adx = con(A.ADX, 'adx'), oldSc = con(A.OLD_SC, 'sc'), pool = con(A.OLD_POOL, 'pool'), oldMig = con(A.OLD_MIG, 'mig'), ms = con(A.MULTISIG, 'ms')
+	const s = {}
+	;[s.currentSc, s.poolGov, s.guardian, s.dailyMax, s.limitLastReset, s.limitRemaining, s.shareValue, s.poolShares, s.poolBal, s.oldMigGov, s.oldScGov,
+		s.msBal, s.zeroBal, s.totalSupply, s.owners, s.required, s.txCount, s.block] = await Promise.all([
+		adx.supplyController(), pool.governance(), pool.guardian(), pool.maxDailyPenaltiesPromilles(), pool.limitLastReset(), pool.limitRemaining(),
+		pool.shareValue(), pool.totalSupply(), adx.balanceOf(A.OLD_POOL), oldMig.actualGovernance(), oldSc.governance(A.GOV),
+		adx.balanceOf(A.MULTISIG), adx.balanceOf(ethers.ZeroAddress), adx.totalSupply(),
+		ms.getOwners(), ms.required(), ms.transactionCount(), p.getBlock('latest'),
+	])
+	s.now = BigInt(s.block.timestamp)
+
+	// New SupplyController: once ADX points at it, that's the source of truth; before that, use the saved/entered address
+	s.newSc = NEW_SC
+	{
+		const sc = con(s.newSc, 'sc')
+		;[s.newScCode, s.newScGov, s.newScFactoryGov, s.newScAdx, s.newScHook] = await Promise.all([codeMatches(s.newSc, scInit),
+			sc.governance(A.GOV).catch(() => null), sc.governance(A.FACTORY).catch(() => null), sc.ADX().catch(() => null), sc.burnHook().catch(() => null)])
+		;[s.newScMsGov, s.oldScMsGov] = await Promise.all([sc.governance(A.MULTISIG).catch(() => null), oldSc.governance(A.MULTISIG)])
+		s.newScDryRun = await dryRun(s.newSc, I.sc.encodeFunctionData('mintIncentive', [A.STK_POOL]))
+	}
+	s.currentScDryRun = await dryRun(s.currentSc, I.sc.encodeFunctionData('mintIncentive', [A.STK_POOL]))
+
+	s.burner = BURNER
+	{
+		const b = con(s.burner, 'burner')
+		try {
+			;[s.burnerCode, s.burnerPool, s.burnerAdx, s.burnerStart, s.burnerV0, s.burnerRate, s.burnerTarget, s.burnable] = await Promise.all([
+				codeMatches(s.burner, burnerInit), b.pool(), b.ADX(), b.startTime(), b.startShareValue(), b.promillesPerDay(), b.targetBalance(), b.burnable()])
+		} catch (e) { s.burnerCode = false }
+	}
+
+	// Multisig: find burn transactions (ADX.transfer(0x0, x)) among the latest 40
+	s.burnTxs = []
+	const from = s.txCount > 40n ? s.txCount - 40n : 0n
+	const ids = []; for (let i = s.txCount - 1n; i >= from; i--) ids.push(i)
+	const txs = await Promise.all(ids.map(i => ms.transactions(i)))
+	for (let k = 0; k < ids.length; k++) {
+		const t = txs[k]
+		if (!eq(t.destination, A.ADX) || t.value !== 0n || !t.data.startsWith('0xa9059cbb')) continue
+		const [to, amount] = I.adx.decodeFunctionData('transfer', t.data)
+		if (!eq(to, ethers.ZeroAddress)) continue
+		s.burnTxs.push({ id: ids[k], amount, executed: t.executed, confirmations: await ms.getConfirmations(ids[k]) })
+	}
+	s.burnExecuted = s.burnTxs.find(t => t.executed)
+	s.burnPending = s.burnTxs.find(t => !t.executed)
+	return s
+}
+
+// Per-share value the schedule calls for right now, as a fraction of the Oct 8 value
+function scheduleFraction(now) {
+	if (now <= BURN.startTime) return 1
+	return Math.max(0, 1 - Number((now - BURN.startTime) * BURN.promillesPerDay) / (1000 * 86400))
+}
+
+function steps(s) {
+	const isGov = eq(account, A.GOV)
+	const ownerIdx = s.owners.findIndex(o => eq(o, account))
+	const ck = (ok, text) => ({ ok, text })
+	const out = []
+	const viaMig = (fn, args) => I.mig.encodeFunctionData('call', [A.OLD_POOL, I.pool.encodeFunctionData(fn, args)])
+
+	// 1. Deploy burner
+	const s1done = s.burnerCode === true && eq(s.burnerPool, A.OLD_POOL) && eq(s.burnerAdx, A.ADX) && s.burnerStart === BURN.startTime && s.burnerV0 === BURN.startShareValue && s.burnerRate === BURN.promillesPerDay
+	out.push({
+		id: 1, title: 'Deploy the StakingPoolLinearBurner', done: s1done,
+		wallet: { text: 'Any wallet', match: !!account, why: 'It is deployed through the ERC-2470 factory to a fixed address; the burner has no owner, so the deployer gets no rights.' },
+		what: `Calls <code>deploy(initCode, 0x0)</code> on the ERC-2470 factory ${link(A.FACTORY)}, creating <code>StakingPoolLinearBurner(${short(A.OLD_POOL)}, ADX, ${BURN.startTime}, ${BURN.startShareValue}, ${BURN.promillesPerDay})</code> at ${link(BURNER)}. Starting ${new Date(Number(BURN.startTime) * 1000).toUTCString()}, each ADX-STAKING share loses 1% of its value then (${(Number(BURN.startShareValue) / 1e18).toFixed(4)} ADX) per day, reaching zero after 100 days. Right now the schedule is at <b>${(scheduleFraction(s.now) * 100).toFixed(2)}%</b> of that value.`,
+		checks: s.burnerCode ? [
+			ck(s.burnerCode, `Code at ${short(BURNER)} matches this app's bytecode`),
+			ck(eq(s.burnerPool, A.OLD_POOL) && eq(s.burnerAdx, A.ADX), 'pool and ADX addresses are correct'),
+			ck(s.burnerStart === BURN.startTime && s.burnerV0 === BURN.startShareValue && s.burnerRate === BURN.promillesPerDay, 'startTime, startShareValue and promillesPerDay are correct'),
+		] : [],
+		action: !s1done && { label: 'Deploy burner', enabled: !!account, run: () => deployViaFactory(burnerInit, BURNER, 'StakingPoolLinearBurner') },
+	})
+
+	// 2. Deploy SupplyController
+	const s2done = s.newScCode === true && s.newScGov === 2n && s.newScFactoryGov === 0n && eq(s.newScAdx, A.ADX) && eq(s.newScHook, BURNER)
+	out.push({
+		id: 2, title: 'Deploy the new SupplyController', done: s2done, blockedBy: !s1done && 'step 1',
+		wallet: { text: 'Any wallet', match: !!account, why: 'Governance is a constructor argument (the governance EOA), not the deployer.' },
+		what: `Calls <code>deploy(initCode, 0x0)</code> on the factory, creating <code>ADXSupplyController(ADX, ${short(A.GOV)}, ${short(BURNER)})</code> at ${link(NEW_SC)}. Same as today's SupplyController (CAP, BURNED_MIN, 0x23C2 exclusion), plus: a zero-amount mint returns early, and every <code>mintIncentive()</code> calls the burner's <code>burn()</code> with a fixed 150k gas, ignoring failures.`,
+		checks: s.newScCode ? [
+			ck(s.newScCode, `Code at ${short(NEW_SC)} matches this app's bytecode`),
+			ck(s.newScGov === 2n && s.newScFactoryGov === 0n, 'Governance EOA has level 2, the factory has none'),
+			ck(eq(s.newScAdx, A.ADX) && eq(s.newScHook, BURNER), 'ADX and burnHook are correct'),
+		] : [],
+		action: !s2done && { label: 'Deploy SupplyController', enabled: !!account && s1done, run: () => deployViaFactory(scInit, NEW_SC, 'ADXSupplyController') },
+	})
+
+	// 3. Keep the multisig's governance (it has level 2 on the current SupplyController, as a backup for the EOA)
+	const s3done = s.newScMsGov === 2n
+	out.push({
+		id: 3, title: 'Give the multisig governance on the new SupplyController', done: s3done, blockedBy: !s2done && !s3done && 'step 2',
+		wallet: { text: `Governance EOA ${A.GOV}`, match: isGov, why: 'It is the only governance of the new SupplyController right after deployment.' },
+		what: `Calls <code>setGovernance(${short(A.MULTISIG)}, 2)</code> on the new SupplyController. The 3-of-6 multisig has level 2 on the current SupplyController (backup if the governance EOA key is lost); this keeps it that way. The loyalty pool's level 1 is deliberately not carried over: its incentive is 0, and after the 9.4M burn any non-zero mint would exceed the cap anyway.`,
+		checks: [ck(s.oldScMsGov === 2n, `Multisig has level ${s.oldScMsGov} on the current SupplyController`)],
+		action: !s3done && { label: 'Grant multisig level 2', enabled: isGov && s2done, run: () => send({ to: NEW_SC, data: I.sc.encodeFunctionData('setGovernance', [A.MULTISIG, 2]) }, 'New SupplyController setGovernance(multisig, 2)') },
+	})
+
+	// 4. Switch ADX supply controller
+	const s4done = eq(s.currentSc, NEW_SC)
+	out.push({
+		id: 4, title: 'Point ADX at the new SupplyController', done: s4done, blockedBy: !s3done && !s4done && 'step 3',
+		wallet: { text: `Governance EOA ${A.GOV}`, match: isGov, why: 'It has level 2 governance on the current SupplyController.' },
+		what: `Calls <code>changeSupplyController(${NEW_SC})</code> on the current SupplyController ${link(A.OLD_SC)}, which calls <code>ADX.changeSupplyController</code>. <b>The old SupplyController can't undo this:</b> afterwards only the new one can change it again, which is why the governance checks below matter. From here on, every pool interaction calls the burner (it does nothing until step 6).`,
+		checks: [
+			ck(s.oldScGov === 2n || s4done, 'Governance EOA has level 2 on the current SupplyController'),
+			ck(s.newScGov === 2n && s.newScMsGov === 2n, 'Governance EOA and multisig have level 2 on the new SupplyController (no lock-out)'),
+			ck(s.newScDryRun === true, 'Dry-run: new SupplyController\'s mintIncentive(stkADX) succeeds'),
+		],
+		action: !s4done && { label: 'Switch SupplyController', enabled: isGov && s3done, run: switchSc },
+	})
+
+	// 5. setDailyPenaltyMax first: it has no effect while the pool has no guardian
+	const s5done = s.dailyMax === DAILY_MAX
+	out.push({
+		id: 5, title: 'Raise the pool\'s daily penalty limit to 20%', done: s5done, blockedBy: !s1done && !s5done && 'step 1',
+		wallet: { text: `Governance EOA ${A.GOV}`, match: isGov, why: 'It is the actualGovernance of the old migrator, which is the pool\'s governance; only it can use the migrator\'s call().' },
+		what: `Calls <code>call(${short(A.OLD_POOL)}, setDailyPenaltyMax(200))</code> on the old migrator ${link(A.OLD_MIG)}. <code>penalize</code> can burn at most this share of the pool's balance per 24h; 200‰ is the pool's maximum. The schedule needs ~1%/day, but this lets the ${((1 - scheduleFraction(s.now)) * 100).toFixed(1)}% catch-up and quiet periods go through. <b>Harmless on its own:</b> while the pool has no guardian, nobody can call <code>penalize</code>. It's done before the guardian so that activation (step 6) is a single moment.`,
+		checks: [
+			ck(eq(s.poolGov, A.OLD_MIG), 'Pool governance is the old migrator'),
+			ck(eq(s.oldMigGov, A.GOV), 'Old migrator actualGovernance is the governance EOA'),
+			ck(s.guardian === ethers.ZeroAddress || eq(s.guardian, BURNER), `Pool guardian is ${s.guardian === ethers.ZeroAddress ? 'unset (nobody can penalize)' : short(s.guardian)}`),
+		],
+		action: !s5done && { label: 'Set daily limit to 20%', enabled: isGov && s1done, run: () => sendGov('setDailyPenaltyMax', [DAILY_MAX], 'Pool setDailyPenaltyMax(200) via old migrator') },
+	})
+
+	// 6. Activate: setGuardian + burn() back to back
+	const s6done = s1done && eq(s.guardian, BURNER)
+	out.push({
+		id: 6, title: 'Activate: make the burner the guardian and burn the catch-up', done: s6done, blockedBy: !(s4done && s5done) && !s6done && 'steps 4 and 5',
+		wallet: { text: `Governance EOA ${A.GOV}`, match: isGov, why: 'Only it can set the guardian (through the old migrator\'s call()).' },
+		what: `Sends two transactions right after each other, without waiting in between: <code>call(${short(A.OLD_POOL)}, setGuardian(${short(BURNER)}))</code> on the old migrator, then <code>burn()</code> on the burner (~${((1 - scheduleFraction(s.now)) * 100).toFixed(1)}% of the pool). Anyone who exits with <code>skipMint=true</code> between the two would dodge the catch-up, so ideally both land in the same block. <b>Switch your wallet's RPC to a private one (e.g. Flashbots Protect, <code>https://rpc.flashbots.net</code>) before signing</b>, so neither is visible in the public mempool. If the second one reverts with NOTHING_TO_BURN, a pool interaction already ran the burn: that's fine.`,
+		checks: [
+			ck(s5done, 'Daily limit is already 20%'),
+			ck(s4done, 'ADX already points at the new SupplyController (so pool interactions keep it on schedule)'),
+		],
+		action: !s6done && { label: 'Activate (sign 2 transactions)', enabled: isGov && s4done && s5done && s1done, run: activate },
+	})
+
+	// 7. Ongoing burn status
+	const started = s6done && s.shareValue < BURN.startShareValue
+	out.push({
+		id: 7, title: 'Keep it on schedule: burn()', done: started, blockedBy: !s6done && 'step 6',
+		wallet: { text: 'Any wallet', match: !!account, why: 'burn() is permissionless: it can only burn down to the schedule.' },
+		what: `Every staking interaction (stkADX enter/unstake/withdraw, legacy-pool exits with skipMint=false, migrations) now calls <code>burn()</code> through the SupplyController. A legacy-pool exit with <code>skipMint=true</code> is priced at the last burn, so run <code>burn()</code> regularly (hourly from a cron, or this button) to keep that gap negligible; after ~20 days with no calls at all, one call can no longer fully catch up.`,
+		extra: s1done ? `<table>
+			<tr><td>Share value now</td><td>${(Number(s.shareValue) / 1e18).toFixed(4)} ADX (${pct(s.shareValue, BURN.startShareValue)} of Oct 8)</td></tr>
+			<tr><td>Schedule now</td><td>${(Number(BURN.startShareValue) / 1e18 * scheduleFraction(s.now)).toFixed(4)} ADX (${(scheduleFraction(s.now) * 100).toFixed(2)}%)</td></tr>
+			<tr><td>Burnable now</td><td>${s.burnable !== undefined ? fmt(s.burnable) + ' ADX (' + pct(s.burnable, s.poolBal) + ' of the pool)' : '—'}</td></tr>
+			<tr><td>Daily limit left</td><td>${s.now - s.limitLastReset > 86400n ? 'resets on the next burn' : fmt(s.limitRemaining) + ' ADX'}</td></tr>
+		</table>` : '',
+		checks: [],
+		action: s6done && { label: 'Call burn()', enabled: !!account && s.burnable > 0n, run: callBurn },
+	})
+
+	// 8. Multisig burn
+	const s8done = !!s.burnExecuted
+	const pend = s.burnPending
+	const confirmedByMe = pend && pend.confirmations.some(c => eq(c, account))
+	let action = null, extra = ''
+	const ownersList = s.owners.map((o, i) => {
+		const c = pend && pend.confirmations.some(x => eq(x, o))
+		return `<div class="mono">${c ? '<span class="ok">✓ confirmed</span>' : '<span class="muted">· not yet</span>'} #${i + 1} ${o}${eq(o, account) ? ' <b>(connected)</b>' : ''}</div>`
+	}).join('')
+	if (s8done) {
+		extra = `<p class="ok">Executed as multisig transaction #${s.burnExecuted.id}: ${fmt(s.burnExecuted.amount)} ADX sent to 0x0.</p>`
+	} else if (!pend) {
+		extra = `<label>Amount of ADX to burn (multisig holds ${fmt(s.msBal)} ADX; the promise was ${Number(PROMISED_BURN).toLocaleString('en-US')})</label><input id="burn-amount" value="${esc(burnAmount)}">`
+		action = { label: 'Submit burn transaction', enabled: ownerIdx >= 0 && s4done, run: submitBurn }
+	} else {
+		const n = BigInt(pend.confirmations.length)
+		extra = `<p>Pending multisig transaction <b>#${pend.id}</b>: <code>ADX.transfer(0x0, ${fmt(pend.amount)} ADX)</code>, ${n}/${s.required} confirmations.</p>`
+		if (n >= s.required) action = { label: `Execute #${pend.id}`, enabled: ownerIdx >= 0, run: () => execBurn(pend.id) }
+		else action = { label: `Confirm #${pend.id} (${fmt(pend.amount)} ADX)`, enabled: ownerIdx >= 0 && !confirmedByMe && s4done, run: () => confirmBurn(pend.id) }
+	}
+	const need = pend ? `one of the owners below who hasn't confirmed yet (${s.required - BigInt(pend.confirmations.length)} more needed)` : 'any one of the owners below (you auto-confirm by submitting; 2 more owners confirm afterwards)'
+	out.push({
+		id: 8, title: 'Burn ADX from the multisig', done: s8done, blockedBy: !s4done && !s8done && 'step 4 (otherwise staking breaks)',
+		wallet: { text: `A multisig owner of ${short(A.MULTISIG)}: ${need}`, match: ownerIdx >= 0 && !confirmedByMe, why: `${s.required}-of-${s.owners.length} Gnosis MultiSigWallet; the confirmation that reaches ${s.required} executes the transfer.` },
+		what: `Through the multisig ${link(A.MULTISIG)}: <code>submitTransaction(ADX, 0, transfer(0x0, amount))</code>, then <code>confirmTransaction(id)</code> by two other owners. This is permanent: the new SupplyController doesn't count 0x0, so these tokens can never be minted again.` + ownersList,
+		extra,
+		checks: [
+			ck(s4done, 'ADX already points at the new SupplyController'),
+			ck(s.currentScDryRun === true, 'Dry-run: mintIncentive(stkADX) on the active SupplyController succeeds'),
+		],
+		action: !s8done && action,
+	})
+	return out
+}
+
+const isGovConnected = () => eq(account, A.GOV)
+function render() {
+	const w = document.getElementById('wallet-card')
+	const label = !account ? '' : eq(account, A.GOV) ? ' — governance EOA' : (S.owners || []).some(o => eq(o, account)) ? ` — multisig owner #${S.owners.findIndex(o => eq(o, account)) + 1}` : ' — not the governance EOA or a multisig owner (fine for steps 1, 2 and 7)'
+	w.innerHTML = !window.ethereum ? '<p class="bad">No browser wallet found. Open this page in a browser with MetaMask, Rabby, Ambire, Frame, etc.</p>'
+		: !account ? '<p>Not connected. Click <b>Connect wallet</b>.</p>'
+		: `<p>Connected: <span class="mono">${account}</span><b>${label}</b></p>` + (chainId !== 1n ? '<p class="bad">Wrong network: switch your wallet to Ethereum mainnet.</p>' : '<p class="muted">Ethereum mainnet. To switch roles, change the account in your wallet; this page follows it.</p>')
+	if (!S.owners) return
+	const list = steps(S)
+	const next = list.find(x => !x.done && !x.blockedBy)
+	document.getElementById('steps').innerHTML = list.map(x => {
+		const status = x.done ? 'done' : x.blockedBy ? 'blocked' : 'ready'
+		const badge = x.done ? 'Done' : x.blockedBy ? `Waiting on ${x.blockedBy}` : 'Ready'
+		return `<div class="card ${x === next ? 'active' : ''} ${x.done ? 'done' : ''}">
+			<div class="head"><h2>Step ${x.id}. ${x.title}</h2><span class="badge ${status}">${badge}</span></div>
+			${x.done ? '' : `<div class="wallet ${account ? (x.wallet.match ? 'match' : 'mismatch') : ''}"><b>Connect:</b> ${esc(x.wallet.text)}<br><span class="muted">${x.wallet.why}</span>${account && !x.wallet.match ? '<br><span class="warn">The connected account is not the right one for this step.</span>' : ''}</div>`}
+			<div class="call">${x.what}</div>
+			${x.checks.length ? `<ul class="checks">${x.checks.map(c => `<li class="${c.ok ? 'ok' : c.ok === null ? 'warn' : 'bad'}">${c.ok ? '✓' : c.ok === null ? '?' : '✗'} ${c.text}</li>`).join('')}</ul>` : ''}
+			${x.extra || ''}
+			${x.action ? `<button data-step="${x.id}" ${x.action.enabled && !busy && chainId === 1n && !x.blockedBy ? '' : 'disabled'}>${x.action.label}</button>` : ''}
+		</div>`
+	}).join('')
+	document.getElementById('steps').innerHTML += `<div class="card">
+		<div class="head"><h2>Emergency stop</h2></div>
+		<p>Stops the legacy pool burn at once by setting the pool's guardian to <code>0x0</code> (through the old migrator, signed by the governance EOA ${short(A.GOV)}). Staking keeps working: the hook's failures are ignored. <b>Don't use <code>setDailyPenaltyMax(0)</code> for this</b>: the current 24h allowance would stay usable. Also: never set a non-zero <code>setIncentive</code> on the new SupplyController after the 9.4M burn; supply is then above the cap, so the mint would revert and with it every stkADX enter.</p>
+		<button data-step="stop" ${isGovConnected() && eq(S.guardian, BURNER) && !busy && chainId === 1n ? '' : 'disabled'}>Stop the burn</button>
+	</div>`
+	const sb = document.querySelector('button[data-step="stop"]')
+	if (sb) sb.onclick = () => run(stopBurn)
+	list.forEach(x => {
+		const b = document.querySelector(`button[data-step="${x.id}"]`)
+		if (b) b.onclick = () => run(x.action.run)
+	})
+	const amt = document.getElementById('burn-amount')
+	if (amt) amt.oninput = () => { burnAmount = amt.value }
+
+	const row = (k, v) => `<tr><td>${k}</td><td>${v}</td></tr>`
+	document.getElementById('state').innerHTML = [
+		row('Block', `${S.block.number} (${new Date(S.block.timestamp * 1000).toUTCString()})`),
+		row('ADX supplyController', link(S.currentSc) + (eq(S.currentSc, A.OLD_SC) ? ' (old)' : ' (new)')),
+		row('mintIncentive(stkADX) dry-run', S.currentScDryRun ? '<span class="ok">succeeds</span>' : '<span class="bad">REVERTS: staking/migration broken</span>'),
+		row('Old pool governance', link(S.poolGov) + (eq(S.poolGov, A.OLD_MIG) ? ' (old migrator)' : '')),
+		row('Old pool guardian', S.guardian === ethers.ZeroAddress ? 'unset' : link(S.guardian)),
+		row('Old pool daily penalty limit', `${S.dailyMax}‰`),
+		row('Old pool ADX / shares', `${fmt(S.poolBal)} ADX / ${fmt(S.poolShares)} shares`),
+		row('Old pool share value', `${(Number(S.shareValue) / 1e18).toFixed(4)} ADX (${pct(S.shareValue, BURN.startShareValue)} of Oct 8; schedule ${(scheduleFraction(S.now) * 100).toFixed(2)}%)`),
+		row('Multisig ADX balance', fmt(S.msBal)),
+		row('ADX at 0x0', fmt(S.zeroBal)),
+		row('ADX totalSupply', fmt(S.totalSupply)),
+		row('Multisig', `${S.required}-of-${S.owners.length}, ${S.txCount} transactions`),
+	].join('')
+}
+
+async function refresh() {
+	try { S = await readState() } catch (e) { log('Failed to read state: ' + errMsg(e), 'bad') }
+	render()
+}
+
+async function run(fn) {
+	if (busy) return
+	busy = true; render()
+	try { await fn() } catch (e) { log(errMsg(e), 'bad') }
+	busy = false
+	await refresh()
+}
+
+// Dry-runs from the connected account, then asks the wallet to sign
+async function send(tx, what, minGas) {
+	const signer = await browserProvider.getSigner()
+	let gas
+	try { gas = await browserProvider.estimateGas({ ...tx, from: account }) }
+	catch (e) { throw new Error(`Dry-run of "${what}" failed, nothing was sent: ${e?.info?.error?.message || e?.shortMessage || e?.message}`) }
+	let gasLimit = (gas * 13n) / 10n
+	if (minGas && gasLimit < minGas) gasLimit = minGas
+	log(`Dry-run OK for "${esc(what)}". Please sign in your wallet…`)
+	const sent = await signer.sendTransaction({ ...tx, gasLimit })
+	log(`Sent: <a href="https://etherscan.io/tx/${sent.hash}" target="_blank" rel="noopener">${sent.hash}</a>. Waiting for confirmation…`)
+	const r = await sent.wait()
+	if (r.status !== 1) throw new Error(`Transaction reverted: ${sent.hash}`)
+	log(`Confirmed in block ${r.blockNumber}: ${esc(what)}`, 'ok')
+	return r
+}
+
+// The ERC-2470 factory returns address(0) instead of reverting when the inner CREATE2 fails (eg out of gas), so its own gas
+// estimate is useless: size the gas limit from a direct deployment estimate, and verify the code afterwards
+async function deployViaFactory(initCode, expected, name) {
+	if ((await rp().getCode(expected)) !== '0x') throw new Error(`${name} is already deployed at ${expected}`)
+	const direct = await browserProvider.estimateGas({ data: initCode, from: account })
+	await send({ to: A.FACTORY, data: I.factory.encodeFunctionData('deploy', [initCode, SALT]) }, `Deploy ${name} via ERC-2470 factory`, direct * 13n / 10n + 50000n)
+	if ((await rp().getCode(expected)) === '0x') throw new Error(`${name} is NOT deployed at ${expected} after the transaction; do not continue`)
+	log(`${name} deployed at ${link(expected)}`, 'ok')
+}
+async function switchSc() {
+	await send({ to: A.OLD_SC, data: I.sc.encodeFunctionData('changeSupplyController', [NEW_SC]) }, 'ADX.changeSupplyController via old SupplyController')
+}
+async function sendGov(fn, args, what) {
+	await send({ to: A.OLD_MIG, data: I.mig.encodeFunctionData('call', [A.OLD_POOL, I.pool.encodeFunctionData(fn, args)]) }, what)
+}
+// setGuardian and burn() sent back to back (the wallet assigns consecutive nonces), so they can land in the same block.
+// burn() can't be dry-run before the guardian is set, so it gets a fixed gas limit; the worst case measured is ~60k
+async function activate() {
+	const signer = await browserProvider.getSigner()
+	const guardianTx = { to: A.OLD_MIG, data: I.mig.encodeFunctionData('call', [A.OLD_POOL, I.pool.encodeFunctionData('setGuardian', [BURNER])]) }
+	let gas
+	try { gas = await browserProvider.estimateGas({ ...guardianTx, from: account }) }
+	catch (e) { throw new Error('Dry-run of setGuardian failed, nothing was sent: ' + (e?.info?.error?.message || e?.shortMessage || e?.message)) }
+	log('Dry-run OK. Sign 2 transactions: setGuardian, then burn() (sign the second one right away)…')
+	const t1 = await signer.sendTransaction({ ...guardianTx, gasLimit: (gas * 13n) / 10n })
+	log(`Sent setGuardian: <a href="https://etherscan.io/tx/${t1.hash}" target="_blank" rel="noopener">${t1.hash}</a>`)
+	const t2 = await signer.sendTransaction({ to: BURNER, data: I.burner.encodeFunctionData('burn'), gasLimit: 250000n })
+	log(`Sent burn(): <a href="https://etherscan.io/tx/${t2.hash}" target="_blank" rel="noopener">${t2.hash}</a>. Waiting…`)
+	const r1 = await t1.wait()
+	if (r1.status !== 1) throw new Error('setGuardian reverted: ' + t1.hash)
+	log(`setGuardian confirmed in block ${r1.blockNumber}`, 'ok')
+	try {
+		const r2 = await t2.wait()
+		log(`burn() confirmed in block ${r2.blockNumber}${r2.blockNumber === r1.blockNumber ? ' (same block)' : ''}`, 'ok')
+	} catch (e) {
+		log('burn() reverted (most likely a pool interaction already ran the burn; check "Burnable now" below): ' + errMsg(e), 'warn')
+	}
+}
+async function stopBurn() {
+	if (!confirm('Stop the burn by setting the legacy pool guardian to 0x0? Note: setDailyPenaltyMax(0) does NOT stop it immediately (the current 24h allowance stays usable); this does.')) return
+	await sendGov('setGuardian', [ethers.ZeroAddress], 'EMERGENCY STOP: pool setGuardian(0x0) via old migrator')
+}
+async function callBurn() {
+	await send({ to: BURNER, data: I.burner.encodeFunctionData('burn') }, `burn() (~${fmt(S.burnable)} ADX)`)
+}
+async function submitBurn() {
+	let amount
+	try { amount = ethers.parseEther(String(burnAmount).replace(/[,_\s]/g, '')) } catch (e) { throw new Error('Invalid amount') }
+	if (amount <= 0n || amount > S.msBal) throw new Error(`Amount must be between 0 and the multisig balance (${fmt(S.msBal)})`)
+	if (!confirm(`Submit a multisig transaction that burns ${fmt(amount)} ADX (sends it to 0x0)? Once two more owners confirm, it's executed and can't be undone.`)) return
+	const data = I.adx.encodeFunctionData('transfer', [ethers.ZeroAddress, amount])
+	const r = await send({ to: A.MULTISIG, data: I.ms.encodeFunctionData('submitTransaction', [A.ADX, 0, data]) }, `Submit burn of ${fmt(amount)} ADX`)
+	const ev = r.logs.map(l => { try { return I.ms.parseLog(l) } catch (e) { return null } }).find(x => x && x.name === 'Submission')
+	if (ev) log(`Multisig transaction id: #${ev.args.transactionId}. Two more owners now need to confirm it.`, 'ok')
+}
+// The old MultiSigWallet swallows inner-call failures (marks ExecutionFailure), and estimateGas can come out too low for the
+// executing confirmation, so we use a generous floor
+async function confirmBurn(id) {
+	await send({ to: A.MULTISIG, data: I.ms.encodeFunctionData('confirmTransaction', [id]) }, `Confirm multisig #${id}`, 300000n)
+	const ms = con(A.MULTISIG, 'ms')
+	const t = await ms.transactions(id)
+	if ((await ms.getConfirmations(id)).length >= Number(S.required) && !t.executed) log(`#${id} has enough confirmations but did not execute; use the Execute button.`, 'warn')
+}
+async function execBurn(id) {
+	await send({ to: A.MULTISIG, data: I.ms.encodeFunctionData('executeTransaction', [id]) }, `Execute multisig #${id}`, 300000n)
+}
+
+async function syncWallet() {
+	if (!window.ethereum) return
+	const accs = await window.ethereum.request({ method: 'eth_accounts' })
+	account = accs[0] ? g(accs[0]) : null
+	chainId = BigInt(await window.ethereum.request({ method: 'eth_chainId' }))
+	browserProvider = new ethers.BrowserProvider(window.ethereum)
+}
+document.getElementById('connect').onclick = async () => {
+	if (!window.ethereum) return log('No browser wallet found', 'bad')
+	await window.ethereum.request({ method: 'eth_requestAccounts' })
+	await syncWallet(); refresh()
+}
+document.getElementById('refresh').onclick = refresh
+if (window.ethereum) {
+	window.ethereum.on?.('accountsChanged', async () => { await syncWallet(); render() })
+	window.ethereum.on?.('chainChanged', async () => { await syncWallet(); refresh() })
+}
+syncWallet().then(refresh)
+</script>
+</body>
+</html>
