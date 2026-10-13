@@ -62,7 +62,7 @@ td:first-child { color: var(--muted); white-space: nowrap; word-break: normal; }
 		<h2>What this app does</h2>
 		<ol>
 			<li><b>Deploy a StakingPoolLinearBurner</b> for the legacy ADX-STAKING pool through the ERC-2470 factory. It burns the pool's ADX so each share loses 1% of its Oct 8 value per day (linear, zero after 100 days). Because it burns inside the pool, every way out (migrate, rage-leave, unbond) is hit equally.</li>
-			<li><b>Deploy the new SupplyController</b> through the factory. It's today's contract plus two changes: a zero-amount mint returns early (otherwise moving the 9.4M out of the multisig puts supply over the cap and every stkADX <code>enter</code>, including every migration, reverts), and every <code>mintIncentive()</code> calls the burner, so pools are on schedule right before they read their balance.</li>
+			<li><b>Deploy the new SupplyController</b> through the factory. It's today's contract plus three changes: ADX burned to <code>0x0</code> is excluded from the supply cap, like the multisig's balance already is (otherwise moving the 9.4M out of the multisig puts supply over the cap); a zero-amount mint returns early; and every <code>mintIncentive()</code> calls the burner, so pools are on schedule right before they read their balance.</li>
 			<li><b>Give the multisig level-2 governance on it</b>, as it has on the current one.</li>
 			<li><b>Point the ADX token at the new SupplyController</b>.</li>
 			<li><b>Raise the legacy pool's daily penalty limit to 20%</b> (its maximum). Harmless until the next step, since the pool has no guardian.</li>
@@ -87,7 +87,7 @@ td:first-child { color: var(--muted); white-space: nowrap; word-break: normal; }
 </main>
 
 <script src="ethers.umd.min.js"></script>
-<script src="bytecode.js"></script>
+<script src="bytecode.js?v=566ea931004e"></script>
 <script>
 const { ethers } = window
 const g = ethers.getAddress
@@ -237,7 +237,7 @@ function steps(s) {
 	out.push({
 		id: 2, title: 'Deploy the new SupplyController', done: s2done, blockedBy: !s1done && 'step 1',
 		wallet: { text: 'Any wallet', match: !!account, why: 'Governance is a constructor argument (the governance EOA), not the deployer.' },
-		what: `Calls <code>deploy(initCode, 0x0)</code> on the factory, creating <code>ADXSupplyController(ADX, ${short(A.GOV)}, ${short(BURNER)})</code> at ${link(NEW_SC)}. Same as today's SupplyController (CAP, BURNED_MIN, 0x23C2 exclusion), plus: a zero-amount mint returns early, and every <code>mintIncentive()</code> calls the burner's <code>burn()</code> with a fixed 150k gas, ignoring failures.`,
+		what: `Calls <code>deploy(initCode, 0x0)</code> on the factory, creating <code>ADXSupplyController(ADX, ${short(A.GOV)}, ${short(BURNER)})</code> at ${link(NEW_SC)}. Same as today's SupplyController (CAP, BURNED_MIN, 0x23C2 exclusion), plus: ADX at <code>0x0</code> is also excluded from the cap, a zero-amount mint returns early, and every <code>mintIncentive()</code> calls the burner's <code>burn()</code> with a fixed 150k gas, ignoring failures.`,
 		checks: s.newScCode ? [
 			ck(s.newScCode, `Code at ${short(NEW_SC)} matches this app's bytecode`),
 			ck(s.newScGov === 2n && s.newScFactoryGov === 0n, 'Governance EOA has level 2, the factory has none'),
@@ -251,7 +251,7 @@ function steps(s) {
 	out.push({
 		id: 3, title: 'Give the multisig governance on the new SupplyController', done: s3done, blockedBy: !s2done && !s3done && 'step 2',
 		wallet: { text: `Governance EOA ${A.GOV}`, match: isGov, why: 'It is the only governance of the new SupplyController right after deployment.' },
-		what: `Calls <code>setGovernance(${short(A.MULTISIG)}, 2)</code> on the new SupplyController. The 3-of-6 multisig has level 2 on the current SupplyController (backup if the governance EOA key is lost); this keeps it that way. The loyalty pool's level 1 is deliberately not carried over: its incentive is 0, and after the 9.4M burn any non-zero mint would exceed the cap anyway.`,
+		what: `Calls <code>setGovernance(${short(A.MULTISIG)}, 2)</code> on the new SupplyController. The 3-of-6 multisig has level 2 on the current SupplyController (backup if the governance EOA key is lost); this keeps it that way. The loyalty pool's level 1 is deliberately not carried over: its incentive is 0, so it never mints, and leaving it out means it can't start minting later without governance granting it again.`,
 		checks: [ck(s.oldScMsGov === 2n, `Multisig has level ${s.oldScMsGov} on the current SupplyController`)],
 		action: !s3done && { label: 'Grant multisig level 2', enabled: isGov && s2done, run: () => send({ to: NEW_SC, data: I.sc.encodeFunctionData('setGovernance', [A.MULTISIG, 2]) }, 'New SupplyController setGovernance(multisig, 2)') },
 	})
@@ -337,7 +337,7 @@ function steps(s) {
 	out.push({
 		id: 8, title: 'Burn ADX from the multisig', done: s8done, blockedBy: !s4done && !s8done && 'step 4 (otherwise staking breaks)',
 		wallet: { text: `A multisig owner of ${short(A.MULTISIG)}: ${need}`, match: ownerIdx >= 0 && !confirmedByMe, why: `${s.required}-of-${s.owners.length} Gnosis MultiSigWallet; the confirmation that reaches ${s.required} executes the transfer.` },
-		what: `Through the multisig ${link(A.MULTISIG)}: <code>submitTransaction(ADX, 0, transfer(0x0, amount))</code>, then <code>confirmTransaction(id)</code> by two other owners. This is permanent: the new SupplyController doesn't count 0x0, so these tokens can never be minted again.` + ownersList,
+		what: `Through the multisig ${link(A.MULTISIG)}: <code>submitTransaction(ADX, 0, transfer(0x0, amount))</code>, then <code>confirmTransaction(id)</code> by two other owners. The tokens leave circulation for good; like all ADX at <code>0x0</code>, they're excluded from the supply cap, so the cap headroom stays the same (governance could still mint up to the cap).` + ownersList,
 		extra,
 		checks: [
 			ck(s4done, 'ADX already points at the new SupplyController'),
@@ -372,7 +372,7 @@ function render() {
 	}).join('')
 	document.getElementById('steps').innerHTML += `<div class="card">
 		<div class="head"><h2>Emergency stop</h2></div>
-		<p>Stops the legacy pool burn at once by setting the pool's guardian to <code>0x0</code> (through the old migrator, signed by the governance EOA ${short(A.GOV)}). Staking keeps working: the hook's failures are ignored. <b>Don't use <code>setDailyPenaltyMax(0)</code> for this</b>: the current 24h allowance would stay usable. Also: never set a non-zero <code>setIncentive</code> on the new SupplyController after the 9.4M burn; supply is then above the cap, so the mint would revert and with it every stkADX enter.</p>
+		<p>Stops the legacy pool burn at once by setting the pool's guardian to <code>0x0</code> (through the old migrator, signed by the governance EOA ${short(A.GOV)}). Staking keeps working: the hook's failures are ignored. <b>Don't use <code>setDailyPenaltyMax(0)</code> for this</b>: the current 24h allowance would stay usable. Also: keep any future <code>setIncentive</code> on the new SupplyController within the cap headroom (currently ~4.2M ADX, growing with every burn): a mint over the cap reverts, and with it every stkADX enter.</p>
 		<button data-step="stop" ${isGovConnected() && eq(S.guardian, BURNER) && !busy && chainId === 1n ? '' : 'disabled'}>Stop the burn</button>
 	</div>`
 	const sb = document.querySelector('button[data-step="stop"]')

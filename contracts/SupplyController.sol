@@ -23,6 +23,9 @@ contract ADXSupplyController {
 	address public immutable burnHook;
 	// The hook gets exactly this much gas, and can never make mintIncentive() fail
 	uint public constant BURN_HOOK_GAS = 150000;
+	// The hook runs at most once per block: within a block the burn schedule doesn't move, and a second call
+	// (eg migrate() goes through both pools) would only add gas cost and variance
+	uint public lastHookBlock;
 
 	// governance is explicit (not msg.sender) because this is deployed through a CREATE2 factory
 	constructor(IADXToken token, address initialGovernance, address _burnHook) {
@@ -55,7 +58,11 @@ contract ADXSupplyController {
 		// StakingPool calls mintIncentive() on every enter (no skipMint there), so a zero mint must never revert
 		if (amount == 0) return;
 		uint totalSupplyAfter = token.totalSupply() + amount;
-		require(totalSupplyAfter <= CAP + BURNED_MIN + token.balanceOf(address(0x23C2c34f38ce66ccC10E71e9bB2A06532D52C5E9)), "MINT_TOO_LARGE");
+		// ADX has no burn function: tokens are burned by sending them to address(0), which doesn't reduce totalSupply,
+		// so we exclude them from the cap like the other burned/excluded amounts
+		require(totalSupplyAfter <= CAP + BURNED_MIN
+			+ token.balanceOf(address(0x23C2c34f38ce66ccC10E71e9bB2A06532D52C5E9))
+			+ token.balanceOf(address(0)), "MINT_TOO_LARGE");
 		token.mint(owner, amount);
 	}
 
@@ -79,7 +86,8 @@ contract ADXSupplyController {
 
 	function callBurnHook() internal {
 		address hook = burnHook;
-		if (hook == address(0)) return;
+		if (hook == address(0) || lastHookBlock == block.number) return;
+		lastHookBlock = block.number;
 		// Make sure the hook really gets BURN_HOOK_GAS (63/64 rule, plus the cost of the call itself). Otherwise gas estimation,
 		// which looks for the lowest gas limit that doesn't revert, would settle on a limit where the hook silently runs out of gas
 		require(gasleft() > BURN_HOOK_GAS + BURN_HOOK_GAS / 63 + 10000, "INSUFFICIENT_GAS");
